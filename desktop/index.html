@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>QR Remote Input Browser</title>
+<title>Hậu GHN-Hiệp Hưng browser</title>
 <style>
   :root {
     --bg-deep: #120a1f;
@@ -76,12 +76,19 @@
     background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
+  #brand {
+    font-weight:700; font-size:14px; white-space:nowrap; margin-right:6px;
+    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    letter-spacing:.2px;
+  }
   #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
   #closeQr:hover { color:#fff; }
 </style>
 </head>
 <body>
   <div id="toolbar">
+    <span id="brand">Hậu GHN-Hiệp Hưng browser</span>
     <button id="backBtn">◀</button>
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
