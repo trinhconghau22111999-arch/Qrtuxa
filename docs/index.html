@@ -51,8 +51,7 @@ if (!session) {
   const db = firebase.database();
   const dataRef = db.ref('sessions/' + session + '/data');
 
-  let lastText = '';
-  let lastSentAt = 0;
+  let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
 
   // ====== Doc to "Ớ" khi gui du lieu thanh cong (1 lan duy nhat) ======
   ['click', 'touchstart'].forEach(evt => {
@@ -76,12 +75,10 @@ if (!session) {
   }
 
   function onScanSuccess(decodedText) {
-    const now = Date.now();
-    if (decodedText === lastText && now - lastSentAt < 1200) return;
+    if (decodedText === lastText) return; // trung voi ma vua quet ngay truoc, bo qua
     lastText = decodedText;
-    lastSentAt = now;
 
-    dataRef.set({ text: decodedText, ts: now })
+    dataRef.set({ text: decodedText, ts: Date.now() })
       .then(() => {
         statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40);
         playBeep();
