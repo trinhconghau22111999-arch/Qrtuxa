@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>QR Remote Input Browser</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; font-family: -apple-system, Segoe UI, Arial, sans-serif; background:#1e1f22; color:#eee; }
+  #toolbar { display:flex; align-items:center; gap:8px; padding:8px; background:#26272b; }
+  #toolbar button { background:#3a3b40; color:#eee; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+  #toolbar button:hover { background:#4a4b52; }
+  #urlbar { flex:1; padding:7px 10px; border-radius:6px; border:1px solid #444; background:#111; color:#eee; }
+  #qrBtn { background:#3f7bd6; }
+  #qrBtn:hover { background:#5b90e0; }
+  #webviewWrap { position:relative; height: calc(100% - 52px); }
+  webview { width:100%; height:100%; }
+  #qrPanel {
+    position:absolute; top:10px; right:10px; width:280px; background:#111; border:1px solid #444;
+    border-radius:10px; padding:14px; display:none; z-index:10; box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  }
+  #qrPanel.show { display:block; }
+  #qrPanel canvas { width:100%; height:auto; background:#fff; border-radius:6px; }
+  #qrLink { font-size:11px; word-break:break-all; color:#8ab4f8; margin-top:8px; display:block; }
+  #qrStatus { font-size:12px; color:#9ada9a; margin-top:6px; }
+  #qrPanel h3 { margin:0 0 8px 0; font-size:14px; }
+  #closeQr { position:absolute; top:8px; right:10px; cursor:pointer; color:#aaa; }
+</style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="backBtn">◀</button>
+    <button id="fwdBtn">▶</button>
+    <button id="reloadBtn">⟳</button>
+    <input id="urlbar" value="https://www.google.com" />
+    <button id="goBtn">Đi</button>
+    <button id="qrBtn">📱 Chia sẻ QR</button>
+  </div>
+
+  <div id="webviewWrap">
+    <webview id="wv" src="https://www.google.com" partition="persist:browse"></webview>
+
+    <div id="qrPanel">
+      <span id="closeQr">✕</span>
+      <h3>Quét bằng điện thoại</h3>
+      <canvas id="qrCanvas"></canvas>
+      <a id="qrLink" href="#" target="_blank"></a>
+      <div id="qrStatus">Đang chờ dữ liệu quét...</div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCPwMKElbsQLjOeSVddGAfjNiHnPHV9b1A",
+    authDomain: "qrremod.firebaseapp.com",
+    databaseURL: "https://qrremod-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "qrremod",
+    storageBucket: "qrremod.firebasestorage.app",
+    messagingSenderId: "949360436062",
+    appId: "1:949360436062:web:c9b5b5d47ee4f76fdce5cf"
+  };
+  window.MOBILE_SCAN_URL = "https://<username>.github.io/<repo>/";
+
+  const wv = document.getElementById('wv');
+  const urlbar = document.getElementById('urlbar');
+
+  function normalizeUrl(v) {
+    v = v.trim();
+    if (!v) return 'https://www.google.com';
+    if (/^https?:\/\//i.test(v)) return v;
+    if (v.includes('.') && !v.includes(' ')) return 'https://' + v;
+    return 'https://www.google.com/search?q=' + encodeURIComponent(v);
+  }
+
+  document.getElementById('goBtn').onclick = () => wv.loadURL(normalizeUrl(urlbar.value));
+  urlbar.addEventListener('keydown', e => { if (e.key === 'Enter') wv.loadURL(normalizeUrl(urlbar.value)); });
+  document.getElementById('backBtn').onclick = () => wv.canGoBack() && wv.goBack();
+  document.getElementById('fwdBtn').onclick = () => wv.canGoForward() && wv.goForward();
+  document.getElementById('reloadBtn').onclick = () => wv.reload();
+  wv.addEventListener('did-navigate', e => urlbar.value = e.url);
+  wv.addEventListener('did-navigate-in-page', e => urlbar.value = e.url);
+
+  function sanitizeText(text) {
+    if (typeof text !== 'string') return '';
+    return text.replace(/[^\p{L}\p{N}_\s]/gu, '');
+  }
+
+  function buildInjectionScript(text) {
+    const fn = function (t) {
+      const el = document.activeElement;
+      if (!el) return false;
+      try {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          const start = el.selectionStart ?? el.value.length;
+          const end = el.selectionEnd ?? el.value.length;
+          el.setRangeText(t, start, end, 'end');
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
+        }
+        if (el.isContentEditable) {
+          document.execCommand('insertText', false, t);
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    };
+    return `(${fn.toString()})(${JSON.stringify(text)});`;
+  }
+
+  function injectIntoWebview(rawText) {
+    const clean = sanitizeText(rawText);
+    if (!clean) return;
+    wv.executeJavaScript(buildInjectionScript(clean)).catch(() => {});
+  }
+
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  let currentSession = null;
+  let sessionRef = null;
+  let lastTs = 0;
+
+  function genSessionId() {
+    return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  }
+
+  const qrPanel = document.getElementById('qrPanel');
+  const qrCanvas = document.getElementById('qrCanvas');
+  const qrLink = document.getElementById('qrLink');
+  const qrStatus = document.getElementById('qrStatus');
+
+  document.getElementById('qrBtn').onclick = () => startSession();
+  document.getElementById('closeQr').onclick = () => stopSession();
+
+  function startSession() {
+    stopSession();
+    currentSession = genSessionId();
+    const link = `${window.MOBILE_SCAN_URL}?session=${currentSession}`;
+
+    QRCode.toCanvas(qrCanvas, link, { width: 250, margin: 1 }, () => {});
+    qrLink.href = link;
+    qrLink.textContent = link;
+    qrStatus.textContent = 'Đang chờ dữ liệu quét...';
+    qrPanel.classList.add('show');
+
+    sessionRef = db.ref('sessions/' + currentSession);
+    sessionRef.set({ createdAt: firebase.database.ServerValue.TIMESTAMP });
+
+    sessionRef.child('data').on('value', snap => {
+      const val = snap.val();
+      if (!val || !val.text) return;
+      if (val.ts && val.ts === lastTs) return;
+      lastTs = val.ts || Date.now();
+      qrStatus.textContent = 'Đã nhận: ' + sanitizeText(val.text).slice(0, 40);
+      injectIntoWebview(val.text);
+    });
+  }
+
+  function stopSession() {
+    if (sessionRef) {
+      sessionRef.child('data').off();
+      sessionRef.remove().catch(() => {});
+    }
+    sessionRef = null;
+    currentSession = null;
+    lastTs = 0;
+    qrPanel.classList.remove('show');
+  }
+  </script>
+</body>
+</html>
