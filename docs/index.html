@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quét QR gửi vào máy tính</title>
+<title>Quét QR/mã vạch gửi vào máy tính</title>
 <style>
   html,body{margin:0;height:100%;background:#111;color:#eee;font-family:-apple-system,Segoe UI,Arial,sans-serif;}
   #wrap{display:flex;flex-direction:column;align-items:center;padding:16px;}
@@ -15,7 +15,7 @@
 </head>
 <body>
 <div id="wrap">
-  <h2>📷 Đưa camera vào mã QR</h2>
+  <h2>📷 Đưa camera vào mã QR / mã vạch</h2>
   <div id="reader"></div>
   <div id="status">Đang khởi động camera...</div>
   <div id="err"></div>
@@ -86,7 +86,23 @@ if (!session) {
       .catch(e => { errEl.textContent = 'Lỗi gửi dữ liệu: ' + e.message; });
   }
 
-  const qr = new Html5Qrcode('reader');
+  const qr = new Html5Qrcode('reader', {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.CODABAR,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.DATA_MATRIX,
+      Html5QrcodeSupportedFormats.PDF_417,
+      Html5QrcodeSupportedFormats.AZTEC
+    ]
+  });
   let started = false;
 
   const stallTimer = setTimeout(() => {
