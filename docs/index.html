@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quét QR gửi vào máy tính</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;color:#eee;font-family:-apple-system,Segoe UI,Arial,sans-serif;}
+  #wrap{display:flex;flex-direction:column;align-items:center;padding:16px;}
+  #reader{width:100%;max-width:420px;border-radius:12px;overflow:hidden;}
+  #status{margin-top:14px;font-size:14px;text-align:center;color:#9ada9a;min-height:20px;}
+  #err{color:#f28b8b;font-size:13px;margin-top:8px;text-align:center;}
+  h2{font-size:16px;margin:10px 0;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h2>📷 Đưa camera vào mã QR</h2>
+  <div id="reader"></div>
+  <div id="status">Đang khởi động camera...</div>
+  <div id="err"></div>
+</div>
+
+<script src="vendor/firebase-compat.js"></script>
+<script src="vendor/html5-qrcode.min.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const session = params.get('session');
+const statusEl = document.getElementById('status');
+const errEl = document.getElementById('err');
+
+if (!session) {
+  statusEl.textContent = '';
+  errEl.textContent = 'Thiếu mã phiên (session). Hãy quét lại link/QR do máy tính tạo ra.';
+} else {
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  const db = firebase.database();
+  const dataRef = db.ref('sessions/' + session + '/data');
+
+  let lastText = '';
+  let lastSentAt = 0;
+
+  function onScanSuccess(decodedText) {
+    const now = Date.now();
+    // chong gui trung lien tuc trong 1.2s (camera co the doc lien tiep cung 1 khung hinh)
+    if (decodedText === lastText && now - lastSentAt < 1200) return;
+    lastText = decodedText;
+    lastSentAt = now;
+
+    dataRef.set({ text: decodedText, ts: now })
+      .then(() => { statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40); })
+      .catch(e => { errEl.textContent = 'Lỗi gửi dữ liệu: ' + e.message; });
+  }
+
+  const qr = new Html5Qrcode('reader');
+  Html5Qrcode.getCameras().then(cams => {
+    if (!cams || !cams.length) { errEl.textContent = 'Không tìm thấy camera.'; return; }
+    const camId = cams.find(c => /back|rear|environment/i.test(c.label))?.id || cams[cams.length - 1].id;
+    qr.start(
+      camId,
+      { fps: 12, qrbox: { width: 260, height: 260 } },
+      onScanSuccess,
+      () => {} // bo qua loi khong doc duoc frame, quet lien tuc
+    ).then(() => { statusEl.textContent = 'Sẵn sàng quét...'; })
+     .catch(e => { errEl.textContent = 'Không mở được camera: ' + e; });
+  }).catch(e => { errEl.textContent = 'Không truy cập được camera: ' + e; });
+}
+</script>
+</body>
+</html>
