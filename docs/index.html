@@ -7,16 +7,27 @@
 <style>
   html,body{margin:0;height:100%;background:#111;color:#eee;font-family:-apple-system,Segoe UI,Arial,sans-serif;}
   #wrap{display:flex;flex-direction:column;align-items:center;padding:16px;}
-  #reader{width:100%;max-width:420px;border-radius:12px;overflow:hidden;}
+  #readerWrap{position:relative;width:100%;max-width:420px;}
+  #reader{width:100%;border-radius:12px;overflow:hidden;}
   #status{margin-top:14px;font-size:14px;text-align:center;color:#9ada9a;min-height:20px;}
   #err{color:#f28b8b;font-size:13px;margin-top:8px;text-align:center;}
   h2{font-size:16px;margin:10px 0;}
+  #flashBtn {
+    position:absolute; top:10px; right:10px; z-index:20;
+    padding:8px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.4);
+    background:rgba(0,0,0,0.55); color:#eee; font-size:13px; cursor:pointer; display:none;
+    backdrop-filter: blur(2px);
+  }
+  #flashBtn.on { background:#ffd93d; color:#111; border-color:#ffd93d; font-weight:600; }
 </style>
 </head>
 <body>
 <div id="wrap">
   <h2>📷 Đưa camera vào mã QR / mã vạch</h2>
-  <div id="reader"></div>
+  <div id="readerWrap">
+    <div id="reader"></div>
+    <button id="flashBtn">💡</button>
+  </div>
   <div id="status">Đang khởi động camera...</div>
   <div id="err"></div>
 </div>
@@ -115,7 +126,36 @@ if (!session) {
     started = true;
     clearTimeout(stallTimer);
     statusEl.textContent = 'Sẵn sàng quét...';
+    setupFlashButton();
   }
+
+  // ====== Dieu khien den flash ======
+  const flashBtn = document.getElementById('flashBtn');
+  let flashOn = false;
+
+  function setupFlashButton() {
+    try {
+      const capabilities = qr.getRunningTrackCapabilities();
+      if (capabilities && capabilities.torch) {
+        flashBtn.style.display = 'inline-block';
+      }
+    } catch (e) {
+      // Thiet bi/trinh duyet khong ho tro doc torch capability, an nut di
+      flashBtn.style.display = 'none';
+    }
+  }
+
+  flashBtn.onclick = () => {
+    flashOn = !flashOn;
+    qr.applyVideoConstraints({ advanced: [{ torch: flashOn }] })
+      .then(() => {
+        flashBtn.classList.toggle('on', flashOn);
+      })
+      .catch(e => {
+        flashOn = !flashOn; // hoan tac neu that bai
+        errEl.textContent = 'Không bật/tắt được đèn flash: ' + (e && e.message ? e.message : e);
+      });
+  };
 
   function tryStart(cameraConfig) {
     return qr.start(
