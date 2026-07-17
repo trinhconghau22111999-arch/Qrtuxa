@@ -142,30 +142,6 @@
   wv.addEventListener('did-navigate', e => urlbar.value = e.url);
   wv.addEventListener('did-navigate-in-page', e => urlbar.value = e.url);
 
-  // ====== Am thanh "beep" khi nhan du lieu tu dien thoai ======
-  let audioCtx = null;
-  function playBeep() {
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const now = audioCtx.currentTime;
-
-      // Phat 2 tieng "bip bip" lien tiep, to va ro
-      [0, 0.18].forEach(offset => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(1200, now + offset);
-        gain.gain.setValueAtTime(0, now + offset);
-        gain.gain.linearRampToValueAtTime(1.0, now + offset + 0.01);
-        gain.gain.linearRampToValueAtTime(0, now + offset + 0.15);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now + offset);
-        osc.stop(now + offset + 0.16);
-      });
-    } catch (e) {}
-  }
-
   function sanitizeText(text) {
     if (typeof text !== 'string') return '';
     return text.replace(/[^\p{L}\p{N}_\s]/gu, '');
@@ -280,7 +256,6 @@
         if (val.ts && val.ts === lastTs) return;
         lastTs = val.ts || Date.now();
         qrStatus.textContent = 'Đã nhận: ' + sanitizeText(val.text).slice(0, 40);
-        playBeep();
         injectIntoWebview(val.text);
       }, (err) => {
         qrStatus.textContent = 'Lỗi lắng nghe Firebase: ' + err.message;
