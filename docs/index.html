@@ -54,6 +54,27 @@ if (!session) {
   let lastText = '';
   let lastSentAt = 0;
 
+  // ====== Doc to "Ớ" khi gui du lieu thanh cong (1 lan duy nhat) ======
+  ['click', 'touchstart'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      // "danh thuc" speech synthesis som de lan doc dau tien khong bi cham/im lang
+      try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch (e) {}
+    }, { once: true });
+  });
+
+  function playBeep() {
+    try {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel(); // huy cau doc dang cho, tranh chong tieng
+      const utter = new SpeechSynthesisUtterance('Ớ');
+      utter.lang = 'vi-VN';
+      utter.rate = 1;
+      utter.pitch = 1.1;
+      utter.volume = 1;
+      window.speechSynthesis.speak(utter);
+    } catch (e) {}
+  }
+
   function onScanSuccess(decodedText) {
     const now = Date.now();
     if (decodedText === lastText && now - lastSentAt < 1200) return;
@@ -61,7 +82,10 @@ if (!session) {
     lastSentAt = now;
 
     dataRef.set({ text: decodedText, ts: now })
-      .then(() => { statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40); })
+      .then(() => {
+        statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40);
+        playBeep();
+      })
       .catch(e => { errEl.textContent = 'Lỗi gửi dữ liệu: ' + e.message; });
   }
 
