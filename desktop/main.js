@@ -1,9 +1,11 @@
 const { app, BrowserWindow } = require('electron');
+const path = require('path');
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 820,
+    icon: path.join(__dirname, 'build', 'icon.ico'),
     webPreferences: {
       webviewTag: true,
       contextIsolation: true,
