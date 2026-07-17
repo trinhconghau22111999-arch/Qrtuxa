@@ -23,8 +23,17 @@
 
 <script src="vendor/firebase-compat.js"></script>
 <script src="vendor/html5-qrcode.min.js"></script>
-<script src="firebase-config.js"></script>
 <script>
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCPwMKElbsQLjOeSVddGAfjNiHnPHV9b1A",
+  authDomain: "qrremod.firebaseapp.com",
+  databaseURL: "https://qrremod-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "qrremod",
+  storageBucket: "qrremod.firebasestorage.app",
+  messagingSenderId: "949360436062",
+  appId: "1:949360436062:web:c9b5b5d47ee4f76fdce5cf"
+};
+
 const params = new URLSearchParams(location.search);
 const session = params.get('session');
 const statusEl = document.getElementById('status');
@@ -34,7 +43,11 @@ if (!session) {
   statusEl.textContent = '';
   errEl.textContent = 'Thiếu mã phiên (session). Hãy quét lại link/QR do máy tính tạo ra.';
 } else {
-  firebase.initializeApp(window.FIREBASE_CONFIG);
+  try {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+  } catch (e) {
+    errEl.textContent = 'Lỗi khởi tạo Firebase: ' + e.message;
+  }
   const db = firebase.database();
   const dataRef = db.ref('sessions/' + session + '/data');
 
@@ -43,7 +56,6 @@ if (!session) {
 
   function onScanSuccess(decodedText) {
     const now = Date.now();
-    // chong gui trung lien tuc trong 1.2s (camera co the doc lien tiep cung 1 khung hinh)
     if (decodedText === lastText && now - lastSentAt < 1200) return;
     lastText = decodedText;
     lastSentAt = now;
@@ -54,17 +66,36 @@ if (!session) {
   }
 
   const qr = new Html5Qrcode('reader');
-  Html5Qrcode.getCameras().then(cams => {
-    if (!cams || !cams.length) { errEl.textContent = 'Không tìm thấy camera.'; return; }
-    const camId = cams.find(c => /back|rear|environment/i.test(c.label))?.id || cams[cams.length - 1].id;
-    qr.start(
-      camId,
+  let started = false;
+
+  const stallTimer = setTimeout(() => {
+    if (!started) {
+      errEl.textContent = 'Camera không phản hồi. Hãy kiểm tra: (1) đã cho phép quyền Camera cho trang này trong Cài đặt trình duyệt, (2) không có app khác đang chiếm camera, (3) thử tải lại trang.';
+    }
+  }, 8000);
+
+  function markStarted() {
+    started = true;
+    clearTimeout(stallTimer);
+    statusEl.textContent = 'Sẵn sàng quét...';
+  }
+
+  function tryStart(cameraConfig) {
+    return qr.start(
+      cameraConfig,
       { fps: 12, qrbox: { width: 260, height: 260 } },
       onScanSuccess,
-      () => {} // bo qua loi khong doc duoc frame, quet lien tuc
-    ).then(() => { statusEl.textContent = 'Sẵn sàng quét...'; })
-     .catch(e => { errEl.textContent = 'Không mở được camera: ' + e; });
-  }).catch(e => { errEl.textContent = 'Không truy cập được camera: ' + e; });
+      () => {}
+    ).then(markStarted);
+  }
+
+  tryStart({ facingMode: 'environment' })
+    .catch(() => tryStart({ facingMode: 'user' }))
+    .catch(e => {
+      clearTimeout(stallTimer);
+      errEl.textContent = 'Không mở được camera: ' + (e && e.message ? e.message : e) +
+        '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
+    });
 }
 </script>
 </body>
