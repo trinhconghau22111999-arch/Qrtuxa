@@ -4,25 +4,80 @@
 <meta charset="UTF-8">
 <title>QR Remote Input Browser</title>
 <style>
-  html, body { margin:0; padding:0; height:100%; font-family: -apple-system, Segoe UI, Arial, sans-serif; background:#1e1f22; color:#eee; }
-  #toolbar { display:flex; align-items:center; gap:8px; padding:8px; background:#26272b; }
-  #toolbar button { background:#3a3b40; color:#eee; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
-  #toolbar button:hover { background:#4a4b52; }
-  #urlbar { flex:1; padding:7px 10px; border-radius:6px; border:1px solid #444; background:#111; color:#eee; }
-  #qrBtn { background:#3f7bd6; }
-  #qrBtn:hover { background:#5b90e0; }
-  #webviewWrap { position:relative; height: calc(100% - 52px); }
+  :root {
+    --bg-deep: #120a1f;
+    --bg-panel: #1c1030;
+    --neon-1: #c026ff;
+    --neon-2: #8b2dff;
+    --neon-3: #4d0bff;
+    --neon-soft: #b57bff;
+    --text: #ecdcff;
+  }
+  html, body {
+    margin:0; padding:0; height:100%;
+    font-family: -apple-system, Segoe UI, Arial, sans-serif;
+    background: radial-gradient(circle at 20% 0%, #2a1240 0%, var(--bg-deep) 60%);
+    color: var(--text);
+  }
+  #toolbar {
+    display:flex; align-items:center; gap:8px; padding:10px;
+    background: linear-gradient(180deg, #1c1030, #150b26);
+    border-bottom: 1px solid rgba(192,38,255,0.35);
+    box-shadow: 0 2px 16px rgba(139,45,255,0.25);
+  }
+  #toolbar button {
+    background: linear-gradient(135deg, #2a1548, #1c0f36);
+    color: var(--text); border: 1px solid rgba(192,38,255,0.4);
+    padding:7px 12px; border-radius:8px; cursor:pointer;
+    transition: all .15s ease;
+  }
+  #toolbar button:hover {
+    border-color: var(--neon-1);
+    box-shadow: 0 0 12px rgba(192,38,255,0.6);
+    color: #fff;
+  }
+  #urlbar {
+    flex:1; padding:8px 12px; border-radius:8px;
+    border:1px solid rgba(139,45,255,0.4);
+    background: #0f0819; color: var(--text);
+    outline:none;
+  }
+  #urlbar:focus {
+    border-color: var(--neon-1);
+    box-shadow: 0 0 10px rgba(192,38,255,0.5);
+  }
+  #qrBtn {
+    background: linear-gradient(135deg, var(--neon-1), var(--neon-3));
+    border: none; font-weight:600;
+    box-shadow: 0 0 14px rgba(192,38,255,0.55);
+  }
+  #qrBtn:hover {
+    box-shadow: 0 0 22px rgba(192,38,255,0.9);
+    filter: brightness(1.1);
+  }
+  #webviewWrap { position:relative; height: calc(100% - 56px); }
   webview { width:100%; height:100%; }
   #qrPanel {
-    position:absolute; top:10px; right:10px; width:280px; background:#111; border:1px solid #444;
-    border-radius:10px; padding:14px; display:none; z-index:10; box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    position:absolute; top:14px; right:14px; width:280px;
+    background: linear-gradient(160deg, #1c1030, #120a1f);
+    border:1px solid rgba(192,38,255,0.5);
+    border-radius:14px; padding:16px; display:none; z-index:10;
+    box-shadow: 0 0 30px rgba(139,45,255,0.45), 0 8px 24px rgba(0,0,0,.5);
   }
   #qrPanel.show { display:block; }
-  #qrPanel canvas { width:100%; height:auto; background:#fff; border-radius:6px; }
-  #qrLink { font-size:11px; word-break:break-all; color:#8ab4f8; margin-top:8px; display:block; }
-  #qrStatus { font-size:12px; color:#9ada9a; margin-top:6px; }
-  #qrPanel h3 { margin:0 0 8px 0; font-size:14px; }
-  #closeQr { position:absolute; top:8px; right:10px; cursor:pointer; color:#aaa; }
+  #qrPanel canvas {
+    width:100%; height:auto; background:#fff; border-radius:8px;
+    box-shadow: 0 0 16px rgba(192,38,255,0.4);
+  }
+  #qrLink { font-size:11px; word-break:break-all; color: var(--neon-soft); margin-top:10px; display:block; }
+  #qrStatus { font-size:12px; color:#7effc0; margin-top:8px; }
+  #qrPanel h3 {
+    margin:0 0 10px 0; font-size:14px; letter-spacing:.3px;
+    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
+  #closeQr:hover { color:#fff; }
 </style>
 </head>
 <body>
@@ -112,7 +167,22 @@
   function injectIntoWebview(rawText) {
     const clean = sanitizeText(rawText);
     if (!clean) return;
-    wv.executeJavaScript(buildInjectionScript(clean)).catch(() => {});
+    wv.executeJavaScript(buildInjectionScript(clean))
+      .then(() => sendAutoConfirmKeys())
+      .catch(() => {});
+  }
+
+  // ====== Tu dong bam Alt+Enter, neu khong duoc thi bam Enter ======
+  function sendAutoConfirmKeys() {
+    try {
+      wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['alt'] });
+      wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['alt'] });
+
+      setTimeout(() => {
+        wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+        wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+      }, 120);
+    } catch (e) {}
   }
 
   firebase.initializeApp(window.FIREBASE_CONFIG);
