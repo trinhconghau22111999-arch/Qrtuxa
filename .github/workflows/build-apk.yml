@@ -1,0 +1,2168 @@
+name: Build Math App APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
+      - name: Tạo toàn bộ cấu trúc project
+        run: |
+          mkdir -p app
+          mkdir -p app/src/main
+          mkdir -p app/src/main/java/com/example/calculator
+          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/mipmap-anydpi-v26
+          mkdir -p app/src/main/res/values
+
+          # ===== app/build.gradle =====
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+
+          android {
+              namespace 'com.example.calculator'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.example.calculator"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+
+              buildFeatures {
+                  viewBinding true
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+          }
+
+          EOF
+
+          # ===== app/src/main/AndroidManifest.xml =====
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="@string/app_name"
+                  android:theme="@style/Theme.Calculator"
+                  android:supportsRtl="true">
+
+                  <activity android:name=".MenuActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <activity android:name=".CalculatorActivity" android:exported="false" />
+                  <activity android:name=".IntegerToolsActivity" android:exported="false" />
+                  <activity android:name=".FractionActivity" android:exported="false" />
+                  <activity android:name=".LinearEquationActivity" android:exported="false" />
+                  <activity android:name=".QuadraticEquationActivity" android:exported="false" />
+                  <activity android:name=".LinearSystemActivity" android:exported="false" />
+                  <activity android:name=".PolynomialActivity" android:exported="false" />
+                  <activity android:name=".ComplexNumberActivity" android:exported="false" />
+                  <activity android:name=".SequenceActivity" android:exported="false" />
+                  <activity android:name=".CalculusActivity" android:exported="false" />
+                  <activity android:name=".VectorActivity" android:exported="false" />
+                  <activity android:name=".StatsActivity" android:exported="false" />
+                  <activity android:name=".GeometryActivity" android:exported="false" />
+
+              </application>
+
+          </manifest>
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/CalculatorActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/CalculatorActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityCalculatorBinding
+          import java.text.DecimalFormat
+          import kotlin.math.*
+
+          class CalculatorActivity : AppCompatActivity() {
+
+              private lateinit var binding: ActivityCalculatorBinding
+
+              private var currentInput: String = "0"
+              private var pendingOperator: String? = null
+              private var firstOperand: Double? = null
+              private var justEvaluated: Boolean = false
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityCalculatorBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+                  setupButtons()
+                  updateDisplay()
+              }
+
+              private fun setupButtons() {
+                  val digitButtons = mapOf(
+                      binding.btn0 to "0", binding.btn1 to "1", binding.btn2 to "2",
+                      binding.btn3 to "3", binding.btn4 to "4", binding.btn5 to "5",
+                      binding.btn6 to "6", binding.btn7 to "7", binding.btn8 to "8",
+                      binding.btn9 to "9"
+                  )
+                  digitButtons.forEach { (button, digit) ->
+                      button.setOnClickListener { onDigit(digit) }
+                  }
+
+                  binding.btnDot.setOnClickListener { onDot() }
+                  binding.btnClear.setOnClickListener { onClear() }
+                  binding.btnBackspace.setOnClickListener { onBackspace() }
+                  binding.btnPercent.setOnClickListener { onPercent() }
+                  binding.btnEquals.setOnClickListener { onEquals() }
+
+                  binding.btnPlus.setOnClickListener { onOperator("+") }
+                  binding.btnMinus.setOnClickListener { onOperator("−") }
+                  binding.btnMultiply.setOnClickListener { onOperator("×") }
+                  binding.btnDivide.setOnClickListener { onOperator("÷") }
+
+                  binding.btnSin.setOnClickListener { onUnary("sin") }
+                  binding.btnCos.setOnClickListener { onUnary("cos") }
+                  binding.btnTan.setOnClickListener { onUnary("tan") }
+                  binding.btnSqrt.setOnClickListener { onUnary("√") }
+                  binding.btnSquare.setOnClickListener { onUnary("x²") }
+                  binding.btnLog.setOnClickListener { onUnary("log") }
+                  binding.btnLn.setOnClickListener { onUnary("ln") }
+                  binding.btnReciprocal.setOnClickListener { onUnary("1/x") }
+                  binding.btnPi.setOnClickListener { onPi() }
+                  binding.btnPow.setOnClickListener { onOperator("xʸ") }
+              }
+
+              private fun onDigit(digit: String) {
+                  if (currentInput == "0" || justEvaluated) {
+                      currentInput = digit
+                      justEvaluated = false
+                  } else {
+                      currentInput += digit
+                  }
+                  updateDisplay()
+              }
+
+              private fun onDot() {
+                  if (justEvaluated) {
+                      currentInput = "0."
+                      justEvaluated = false
+                  } else if (!currentInput.contains(".")) {
+                      currentInput += "."
+                  }
+                  updateDisplay()
+              }
+
+              private fun onClear() {
+                  currentInput = "0"
+                  pendingOperator = null
+                  firstOperand = null
+                  justEvaluated = false
+                  updateDisplay()
+              }
+
+              private fun onBackspace() {
+                  currentInput = if (currentInput.length > 1) currentInput.dropLast(1) else "0"
+                  updateDisplay()
+              }
+
+              private fun onPercent() {
+                  val value = currentInput.toDoubleOrNull() ?: return
+                  currentInput = formatNumber(value / 100.0)
+                  updateDisplay()
+              }
+
+              private fun onUnary(op: String) {
+                  val value = currentInput.toDoubleOrNull() ?: return
+                  val result = when (op) {
+                      "sin" -> sin(Math.toRadians(value))
+                      "cos" -> cos(Math.toRadians(value))
+                      "tan" -> tan(Math.toRadians(value))
+                      "√" -> if (value >= 0) sqrt(value) else Double.NaN
+                      "x²" -> value * value
+                      "log" -> if (value > 0) log10(value) else Double.NaN
+                      "ln" -> if (value > 0) ln(value) else Double.NaN
+                      "1/x" -> if (value != 0.0) 1.0 / value else Double.NaN
+                      else -> value
+                  }
+                  currentInput = formatNumber(result)
+                  justEvaluated = true
+                  updateDisplay()
+              }
+
+              private fun onPi() {
+                  currentInput = formatNumber(PI)
+                  justEvaluated = true
+                  updateDisplay()
+              }
+
+              private fun onOperator(op: String) {
+                  val value = currentInput.toDoubleOrNull() ?: return
+                  when {
+                      pendingOperator != null && currentInput == "0" && !justEvaluated -> {
+                          // Người dùng đổi ý toán tử liên tiếp (vd: bấm + rồi ×) — chỉ đổi toán tử, không tính lại
+                          pendingOperator = op
+                      }
+                      pendingOperator != null && !justEvaluated -> {
+                          firstOperand = calculate(firstOperand ?: 0.0, value, pendingOperator!!)
+                          pendingOperator = op
+                      }
+                      else -> {
+                          firstOperand = value
+                          pendingOperator = op
+                      }
+                  }
+                  justEvaluated = false
+                  currentInput = "0"
+                  updateDisplay()
+              }
+
+              private fun onEquals() {
+                  val second = currentInput.toDoubleOrNull() ?: return
+                  val op = pendingOperator
+                  val first = firstOperand
+                  if (op != null && first != null) {
+                      val result = calculate(first, second, op)
+                      currentInput = formatNumber(result)
+                      pendingOperator = null
+                      firstOperand = null
+                      justEvaluated = true
+                  }
+                  updateDisplay()
+              }
+
+              private fun calculate(a: Double, b: Double, op: String): Double {
+                  return when (op) {
+                      "+" -> a + b
+                      "−" -> a - b
+                      "×" -> a * b
+                      "÷" -> if (b != 0.0) a / b else Double.NaN
+                      "xʸ" -> a.pow(b)
+                      else -> b
+                  }
+              }
+
+              private fun formatNumber(value: Double): String {
+                  if (value.isNaN()) return "Lỗi"
+                  val df = DecimalFormat("#,##0.##########")
+                  return df.format(value)
+              }
+
+              private fun updateDisplay() {
+                  binding.tvDisplay.text = currentInput
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/CalculusActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/CalculusActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityCalculusBinding
+          import kotlin.math.pow
+
+          class CalculusActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityCalculusBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityCalculusBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnDerivative.setOnClickListener { calcDerivative() }
+                  binding.btnAntiderivative.setOnClickListener { calcAntiderivative() }
+                  binding.btnDefiniteIntegral.setOnClickListener { calcDefiniteIntegral() }
+              }
+
+              // Hệ số lưu theo thứ tự bậc cao -> thấp, ví dụ [1,0,-2,1] nghĩa là x^3 + 0x^2 - 2x + 1
+              private fun parsePoly(): DoubleArray? {
+                  return try {
+                      binding.etPoly.text.toString().split(",").map { it.trim().toDouble() }.toDoubleArray()
+                  } catch (e: Exception) { null }
+              }
+
+              private fun calcDerivative() {
+                  val p = parsePoly()
+                  if (p == null) { binding.tvResult.text = "Vui lòng nhập đa thức hợp lệ."; return }
+                  val degree = p.size - 1
+                  if (degree == 0) { binding.tvResult.text = "f'(x) = 0"; return }
+                  val deriv = DoubleArray(degree)
+                  for (i in 0 until degree) {
+                      val power = degree - i
+                      deriv[i] = p[i] * power
+                  }
+                  binding.tvResult.text = "f'(x) = ${toReadable(deriv)}"
+              }
+
+              private fun calcAntiderivative() {
+                  val p = parsePoly()
+                  if (p == null) { binding.tvResult.text = "Vui lòng nhập đa thức hợp lệ."; return }
+                  val degree = p.size - 1
+                  val result = DoubleArray(p.size + 1)
+                  for (i in p.indices) {
+                      val power = degree - i
+                      result[i] = p[i] / (power + 1)
+                  }
+                  // result[last] = C (hằng số tích phân, để 0)
+                  binding.tvResult.text = "F(x) = ${toReadable(result)} + C"
+              }
+
+              private fun calcDefiniteIntegral() {
+                  val p = parsePoly()
+                  val a = binding.etLowerBound.text.toString().toDoubleOrNull()
+                  val b = binding.etUpperBound.text.toString().toDoubleOrNull()
+                  if (p == null || a == null || b == null) {
+                      binding.tvResult.text = "Vui lòng nhập đa thức và cận a, b hợp lệ."
+                      return
+                  }
+                  val degree = p.size - 1
+                  fun evalAntiderivativeAt(x: Double): Double {
+                      var sum = 0.0
+                      for (i in p.indices) {
+                          val power = degree - i
+                          sum += p[i] / (power + 1) * x.pow(power + 1)
+                      }
+                      return sum
+                  }
+                  val result = evalAntiderivativeAt(b) - evalAntiderivativeAt(a)
+                  binding.tvResult.text = "∫ từ ${trim(a)} đến ${trim(b)} f(x)dx = ${trim(result)}"
+              }
+
+              private fun toReadable(coeffs: DoubleArray): String {
+                  val degree = coeffs.size - 1
+                  val sb = StringBuilder()
+                  for (i in coeffs.indices) {
+                      val power = degree - i
+                      val c = coeffs[i]
+                      if (c == 0.0) continue
+                      val sign = if (sb.isEmpty()) (if (c < 0) "−" else "") else (if (c < 0) " − " else " + ")
+                      val absC = trim(kotlin.math.abs(c))
+                      val term = when {
+                          power == 0 -> absC
+                          power == 1 -> if (absC == "1") "x" else "${absC}x"
+                          else -> if (absC == "1") "x^$power" else "${absC}x^$power"
+                      }
+                      sb.append(sign).append(term)
+                  }
+                  return if (sb.isEmpty()) "0" else sb.toString()
+              }
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/ComplexNumberActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/ComplexNumberActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityComplexNumberBinding
+
+          class ComplexNumberActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityComplexNumberBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityComplexNumberBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnAdd.setOnClickListener { withComplex { z1, z2 -> "z1 + z2 = ${z1 + z2}" } }
+                  binding.btnSub.setOnClickListener { withComplex { z1, z2 -> "z1 − z2 = ${z1 - z2}" } }
+                  binding.btnMul.setOnClickListener { withComplex { z1, z2 -> "z1 × z2 = ${z1 * z2}" } }
+                  binding.btnDiv.setOnClickListener { withComplex { z1, z2 ->
+                      if (z2.re == 0.0 && z2.im == 0.0) "Không thể chia cho 0." else "z1 ÷ z2 = ${z1 / z2}"
+                  } }
+                  binding.btnModulus.setOnClickListener {
+                      val z1 = readZ1()
+                      val z2 = readZ2()
+                      binding.tvResult.text = if (z1 == null || z2 == null) {
+                          "Vui lòng nhập đủ phần thực và phần ảo."
+                      } else {
+                          "|z1| = ${trim(z1.modulus())}\n|z2| = ${trim(z2.modulus())}"
+                      }
+                  }
+              }
+
+              private fun readZ1(): Complex? {
+                  val re = binding.etRe1.text.toString().toDoubleOrNull() ?: return null
+                  val im = binding.etIm1.text.toString().toDoubleOrNull() ?: return null
+                  return Complex(re, im)
+              }
+
+              private fun readZ2(): Complex? {
+                  val re = binding.etRe2.text.toString().toDoubleOrNull() ?: return null
+                  val im = binding.etIm2.text.toString().toDoubleOrNull() ?: return null
+                  return Complex(re, im)
+              }
+
+              private fun withComplex(block: (Complex, Complex) -> String) {
+                  val z1 = readZ1()
+                  val z2 = readZ2()
+                  binding.tvResult.text = if (z1 == null || z2 == null) {
+                      "Vui lòng nhập đủ phần thực và phần ảo của hai số phức."
+                  } else block(z1, z2)
+              }
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/FractionActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/FractionActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityFractionBinding
+
+          class FractionActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityFractionBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityFractionBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnCalc.setOnClickListener { calc() }
+              }
+
+              private fun calc() {
+                  val n1 = binding.etNum1.text.toString().toLongOrNull()
+                  val d1 = binding.etDen1.text.toString().toLongOrNull()
+                  val n2 = binding.etNum2.text.toString().toLongOrNull()
+                  val d2 = binding.etDen2.text.toString().toLongOrNull()
+
+                  if (n1 == null || d1 == null || n2 == null || d2 == null || d1 == 0L || d2 == 0L) {
+                      binding.tvResult.text = "Vui lòng nhập đủ tử/mẫu hợp lệ (mẫu số khác 0)."
+                      return
+                  }
+
+                  val f1 = Fraction(n1, d1)
+                  val f2 = Fraction(n2, d2)
+
+                  val thuong = if (n2 == 0L) "không xác định (chia cho 0)" else (f1 / f2).toString()
+
+                  binding.tvResult.text = """
+                      Rút gọn phân số 1: ${f1.simplify()}
+                      Rút gọn phân số 2: ${f2.simplify()}
+
+                      Tổng: ${f1 + f2}
+                      Hiệu: ${f1 - f2}
+                      Tích: ${f1 * f2}
+                      Thương: $thuong
+                  """.trimIndent()
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/GeometryActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/GeometryActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityGeometryBinding
+          import kotlin.math.PI
+          import kotlin.math.pow
+          import kotlin.math.sqrt
+
+          class GeometryActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityGeometryBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityGeometryBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+
+                  binding.btnCube.setOnClickListener {
+                      val a = d1()
+                      binding.tvResult.text = if (a == null) needInput() else "Thể tích lập phương = a³ = ${trim(a.pow(3))}"
+                  }
+                  binding.btnBox.setOnClickListener {
+                      val a = d1(); val b = d2(); val c = d3()
+                      binding.tvResult.text = if (a == null || b == null || c == null) needInput()
+                      else "Thể tích hộp chữ nhật = a×b×c = ${trim(a * b * c)}"
+                  }
+                  binding.btnCylinder.setOnClickListener {
+                      val r = d1(); val h = d2()
+                      binding.tvResult.text = if (r == null || h == null) needInput()
+                      else "Thể tích hình trụ = πr²h = ${trim(PI * r * r * h)}"
+                  }
+                  binding.btnCone.setOnClickListener {
+                      val r = d1(); val h = d2()
+                      binding.tvResult.text = if (r == null || h == null) needInput()
+                      else "Thể tích hình nón = ⅓πr²h = ${trim(PI * r * r * h / 3.0)}"
+                  }
+                  binding.btnSphere.setOnClickListener {
+                      val r = d1()
+                      binding.tvResult.text = if (r == null) needInput()
+                      else "Thể tích hình cầu = 4/3·πr³ = ${trim(4.0 / 3.0 * PI * r.pow(3))}"
+                  }
+                  binding.btnPyramid.setOnClickListener {
+                      val sDay = d1(); val h = d2()
+                      binding.tvResult.text = if (sDay == null || h == null) needInput()
+                      else "Thể tích hình chóp = ⅓·S đáy·h = ${trim(sDay * h / 3.0)}"
+                  }
+                  binding.btnCoord.setOnClickListener { calcCoord() }
+              }
+
+              private fun needInput() = "Vui lòng nhập đủ các giá trị cần thiết ở trên."
+
+              private fun d1() = binding.etDim1.text.toString().toDoubleOrNull()
+              private fun d2() = binding.etDim2.text.toString().toDoubleOrNull()
+              private fun d3() = binding.etDim3.text.toString().toDoubleOrNull()
+
+              private fun calcCoord() {
+                  val a = parsePoint(binding.etPointA.text.toString())
+                  val b = parsePoint(binding.etPointB.text.toString())
+                  if (a == null || b == null) {
+                      binding.tvResult.text = "Vui lòng nhập tọa độ A, B dạng x, y, z hợp lệ."
+                      return
+                  }
+                  val dist = sqrt((a[0]-b[0]).pow(2) + (a[1]-b[1]).pow(2) + (a[2]-b[2]).pow(2))
+                  val mid = Triple((a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2)
+                  binding.tvResult.text = "Khoảng cách AB = ${trim(dist)}\nTrung điểm AB = (${trim(mid.first)}, ${trim(mid.second)}, ${trim(mid.third)})"
+              }
+
+              private fun parsePoint(s: String): DoubleArray? {
+                  return try {
+                      val parts = s.split(",").map { it.trim().toDouble() }
+                      if (parts.size < 2) return null
+                      DoubleArray(3) { if (it < parts.size) parts[it] else 0.0 }
+                  } catch (e: Exception) { null }
+              }
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/IntegerToolsActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/IntegerToolsActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityIntegerToolsBinding
+
+          class IntegerToolsActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityIntegerToolsBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityIntegerToolsBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnCalc.setOnClickListener { calc() }
+              }
+
+              private fun calc() {
+                  val a = binding.etA.text.toString().toLongOrNull()
+                  val b = binding.etB.text.toString().toLongOrNull()
+                  if (a == null || b == null) {
+                      binding.tvResult.text = "Vui lòng nhập đủ hai số nguyên hợp lệ."
+                      return
+                  }
+                  val gcd = MathUtils.gcd(a, b)
+                  val lcm = MathUtils.lcm(a, b)
+                  val chia = if (b != 0L) {
+                      if (a % b == 0L) "${a / b}" else "%.6f".format(a.toDouble() / b).trimEnd('0').trimEnd('.')
+                  } else "không xác định (chia cho 0)"
+
+                  binding.tvResult.text = """
+                      a + b = ${a + b}
+                      a − b = ${a - b}
+                      a × b = ${a * b}
+                      a ÷ b = $chia
+                      ƯCLN(a, b) = $gcd
+                      BCNN(a, b) = $lcm
+                  """.trimIndent()
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/LinearEquationActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/LinearEquationActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityLinearEquationBinding
+
+          class LinearEquationActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityLinearEquationBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityLinearEquationBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnCalc.setOnClickListener { calc() }
+              }
+
+              private fun calc() {
+                  val a = binding.etA.text.toString().toDoubleOrNull()
+                  val b = binding.etB.text.toString().toDoubleOrNull()
+                  if (a == null || b == null) {
+                      binding.tvResult.text = "Vui lòng nhập đủ hệ số a, b."
+                      return
+                  }
+                  binding.tvResult.text = when {
+                      a == 0.0 && b == 0.0 -> "Phương trình có vô số nghiệm (đúng với mọi x)."
+                      a == 0.0 -> "Phương trình vô nghiệm."
+                      else -> "x = ${format(-b / a)}"
+                  }
+              }
+
+              private fun format(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/LinearSystemActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/LinearSystemActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityLinearSystemBinding
+
+          class LinearSystemActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityLinearSystemBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityLinearSystemBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnCalc.setOnClickListener { calc() }
+              }
+
+              private fun calc() {
+                  val a1 = binding.etA1.text.toString().toDoubleOrNull()
+                  val b1 = binding.etB1.text.toString().toDoubleOrNull()
+                  val c1 = binding.etC1.text.toString().toDoubleOrNull()
+                  val a2 = binding.etA2.text.toString().toDoubleOrNull()
+                  val b2 = binding.etB2.text.toString().toDoubleOrNull()
+                  val c2 = binding.etC2.text.toString().toDoubleOrNull()
+
+                  if (a1 == null || b1 == null || c1 == null || a2 == null || b2 == null || c2 == null) {
+                      binding.tvResult.text = "Vui lòng nhập đủ 6 hệ số."
+                      return
+                  }
+
+                  val d = a1 * b2 - a2 * b1
+                  val dx = c1 * b2 - c2 * b1
+                  val dy = a1 * c2 - a2 * c1
+
+                  binding.tvResult.text = when {
+                      d != 0.0 -> "Hệ có nghiệm duy nhất:\nx = ${format(dx / d)}\ny = ${format(dy / d)}"
+                      dx == 0.0 && dy == 0.0 -> "Hệ có vô số nghiệm."
+                      else -> "Hệ vô nghiệm."
+                  }
+              }
+
+              private fun format(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/MathUtils.kt =====
+          cat > app/src/main/java/com/example/calculator/MathUtils.kt <<'EOF'
+          package com.example.calculator
+
+          import kotlin.math.abs
+
+          object MathUtils {
+
+              fun gcd(a: Long, b: Long): Long {
+                  var x = abs(a); var y = abs(b)
+                  while (y != 0L) { val t = y; y = x % y; x = t }
+                  return if (x == 0L) 1L else x
+              }
+
+              fun lcm(a: Long, b: Long): Long {
+                  if (a == 0L || b == 0L) return 0L
+                  return abs(a / gcd(a, b) * b)
+              }
+
+              fun factorial(n: Int): Double {
+                  if (n <= 1) return 1.0
+                  var result = 1.0
+                  for (i in 2..n) result *= i
+                  return result
+              }
+
+              fun nPr(n: Int, r: Int): Double {
+                  if (r > n || r < 0) return Double.NaN
+                  var result = 1.0
+                  for (i in 0 until r) result *= (n - i)
+                  return result
+              }
+
+              fun nCr(n: Int, r: Int): Double {
+                  if (r > n || r < 0) return Double.NaN
+                  return nPr(n, r) / factorial(r)
+              }
+          }
+
+          // ===== Phân số =====
+          data class Fraction(val num: Long, val den: Long) {
+
+              fun simplify(): Fraction {
+                  if (den == 0L) return this
+                  val g = MathUtils.gcd(num, den)
+                  var n = num / g
+                  var d = den / g
+                  if (d < 0) { n = -n; d = -d }
+                  return Fraction(n, d)
+              }
+
+              operator fun plus(o: Fraction) = Fraction(num * o.den + o.num * den, den * o.den).simplify()
+              operator fun minus(o: Fraction) = Fraction(num * o.den - o.num * den, den * o.den).simplify()
+              operator fun times(o: Fraction) = Fraction(num * o.num, den * o.den).simplify()
+              operator fun div(o: Fraction) = Fraction(num * o.den, den * o.num).simplify()
+
+              fun toDouble(): Double = if (den != 0L) num.toDouble() / den.toDouble() else Double.NaN
+
+              override fun toString(): String {
+                  val s = simplify()
+                  return if (s.den == 1L) "${s.num}" else "${s.num}/${s.den}"
+              }
+          }
+
+          // ===== Số phức =====
+          data class Complex(val re: Double, val im: Double) {
+
+              operator fun plus(o: Complex) = Complex(re + o.re, im + o.im)
+              operator fun minus(o: Complex) = Complex(re - o.re, im - o.im)
+              operator fun times(o: Complex) = Complex(re * o.re - im * o.im, re * o.im + im * o.re)
+              operator fun div(o: Complex): Complex {
+                  val d = o.re * o.re + o.im * o.im
+                  return Complex((re * o.re + im * o.im) / d, (im * o.re - re * o.im) / d)
+              }
+
+              fun modulus(): Double = kotlin.math.sqrt(re * re + im * im)
+
+              override fun toString(): String {
+                  val r = trim(re)
+                  val i = trim(abs(im))
+                  return when {
+                      im == 0.0 -> r
+                      im > 0 -> "$r + ${i}i"
+                      else -> "$r − ${i}i"
+                  }
+              }
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString() else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/MenuActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/MenuActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.content.Intent
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+
+          class MenuActivity : AppCompatActivity() {
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContentView(R.layout.activity_menu)
+
+                  fun go(id: Int, activityClass: Class<*>) {
+                      findViewById<android.widget.Button>(id).setOnClickListener {
+                          startActivity(Intent(this, activityClass))
+                      }
+                  }
+
+                  go(R.id.btnCalculator, CalculatorActivity::class.java)
+                  go(R.id.btnInteger, IntegerToolsActivity::class.java)
+                  go(R.id.btnFraction, FractionActivity::class.java)
+                  go(R.id.btnLinearEq, LinearEquationActivity::class.java)
+                  go(R.id.btnQuadraticEq, QuadraticEquationActivity::class.java)
+                  go(R.id.btnLinearSystem, LinearSystemActivity::class.java)
+                  go(R.id.btnPolynomial, PolynomialActivity::class.java)
+                  go(R.id.btnVector, VectorActivity::class.java)
+                  go(R.id.btnSequence, SequenceActivity::class.java)
+                  go(R.id.btnStats, StatsActivity::class.java)
+                  go(R.id.btnCalculus, CalculusActivity::class.java)
+                  go(R.id.btnComplex, ComplexNumberActivity::class.java)
+                  go(R.id.btnGeometry, GeometryActivity::class.java)
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/PolynomialActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/PolynomialActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityPolynomialBinding
+
+          class PolynomialActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityPolynomialBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityPolynomialBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnAdd.setOnClickListener { compute("+") }
+                  binding.btnSub.setOnClickListener { compute("−") }
+                  binding.btnMul.setOnClickListener { compute("×") }
+              }
+
+              private fun parse(s: String): DoubleArray? {
+                  return try {
+                      s.split(",").map { it.trim().toDouble() }.toDoubleArray()
+                  } catch (e: Exception) {
+                      null
+                  }
+              }
+
+              private fun compute(op: String) {
+                  val p1 = parse(binding.etPoly1.text.toString())
+                  val p2 = parse(binding.etPoly2.text.toString())
+                  if (p1 == null || p2 == null) {
+                      binding.tvResult.text = "Vui lòng nhập hệ số hợp lệ, cách nhau bởi dấu phẩy."
+                      return
+                  }
+
+                  val result: DoubleArray = when (op) {
+                      "+" -> addPoly(p1, p2)
+                      "−" -> addPoly(p1, p2.map { -it }.toDoubleArray())
+                      "×" -> mulPoly(p1, p2)
+                      else -> doubleArrayOf(0.0)
+                  }
+
+                  binding.tvResult.text = "Kết quả:\n${toReadable(result)}\n\nHệ số: ${result.joinToString(", ") { trim(it) }}"
+              }
+
+              private fun addPoly(a: DoubleArray, b: DoubleArray): DoubleArray {
+                  val n = maxOf(a.size, b.size)
+                  val ra = DoubleArray(n)
+                  val rb = DoubleArray(n)
+                  a.reversed().forEachIndexed { i, v -> ra[i] = v }
+                  b.reversed().forEachIndexed { i, v -> rb[i] = v }
+                  val result = DoubleArray(n) { ra[it] + rb[it] }
+                  return result.reversed().toDoubleArray()
+              }
+
+              private fun mulPoly(a: DoubleArray, b: DoubleArray): DoubleArray {
+                  val result = DoubleArray(a.size + b.size - 1)
+                  for (i in a.indices) {
+                      for (j in b.indices) {
+                          result[i + j] += a[i] * b[j]
+                      }
+                  }
+                  return result
+              }
+
+              private fun toReadable(coeffs: DoubleArray): String {
+                  val degree = coeffs.size - 1
+                  val sb = StringBuilder()
+                  for (i in coeffs.indices) {
+                      val power = degree - i
+                      val c = coeffs[i]
+                      if (c == 0.0) continue
+                      val sign = if (sb.isEmpty()) (if (c < 0) "−" else "") else (if (c < 0) " − " else " + ")
+                      val absC = trim(kotlin.math.abs(c))
+                      val term = when {
+                          power == 0 -> absC
+                          power == 1 -> if (absC == "1") "x" else "${absC}x"
+                          else -> if (absC == "1") "x^$power" else "${absC}x^$power"
+                      }
+                      sb.append(sign).append(term)
+                  }
+                  return if (sb.isEmpty()) "0" else sb.toString()
+              }
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.4f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/QuadraticEquationActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/QuadraticEquationActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityQuadraticEquationBinding
+          import kotlin.math.sqrt
+
+          class QuadraticEquationActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityQuadraticEquationBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityQuadraticEquationBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnCalc.setOnClickListener { calc() }
+              }
+
+              private fun calc() {
+                  val a = binding.etA.text.toString().toDoubleOrNull()
+                  val b = binding.etB.text.toString().toDoubleOrNull()
+                  val c = binding.etC.text.toString().toDoubleOrNull()
+                  if (a == null || b == null || c == null) {
+                      binding.tvResult.text = "Vui lòng nhập đủ hệ số a, b, c."
+                      return
+                  }
+                  if (a == 0.0) {
+                      binding.tvResult.text = "a = 0 → đây là phương trình bậc nhất, không phải bậc hai."
+                      return
+                  }
+                  val delta = b * b - 4 * a * c
+                  binding.tvResult.text = when {
+                      delta > 0 -> {
+                          val x1 = (-b + sqrt(delta)) / (2 * a)
+                          val x2 = (-b - sqrt(delta)) / (2 * a)
+                          "Δ = ${format(delta)} > 0 → phương trình có 2 nghiệm phân biệt:\nx₁ = ${format(x1)}\nx₂ = ${format(x2)}"
+                      }
+                      delta == 0.0 -> {
+                          val x = -b / (2 * a)
+                          "Δ = 0 → phương trình có nghiệm kép:\nx = ${format(x)}"
+                      }
+                      else -> {
+                          val re = -b / (2 * a)
+                          val im = sqrt(-delta) / (2 * a)
+                          "Δ = ${format(delta)} < 0 → phương trình vô nghiệm thực.\nNghiệm phức: x = ${format(re)} ± ${format(im)}i"
+                      }
+                  }
+              }
+
+              private fun format(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/SequenceActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/SequenceActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivitySequenceBinding
+          import kotlin.math.pow
+
+          class SequenceActivity : AppCompatActivity() {
+              private lateinit var binding: ActivitySequenceBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivitySequenceBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnArithmetic.setOnClickListener { calcArithmetic() }
+                  binding.btnGeometric.setOnClickListener { calcGeometric() }
+              }
+
+              private fun readInputs(): Triple<Double, Double, Int>? {
+                  val u1 = binding.etU1.text.toString().toDoubleOrNull() ?: return null
+                  val d = binding.etD.text.toString().toDoubleOrNull() ?: return null
+                  val n = binding.etN.text.toString().toIntOrNull() ?: return null
+                  return Triple(u1, d, n)
+              }
+
+              private fun calcArithmetic() {
+                  val inp = readInputs()
+                  if (inp == null) { binding.tvResult.text = "Vui lòng nhập đủ u1, d, n."; return }
+                  val (u1, d, n) = inp
+                  val un = u1 + (n - 1) * d
+                  val sn = n * (u1 + un) / 2.0
+                  binding.tvResult.text = "Số hạng thứ $n: u$n = ${trim(un)}\nTổng $n số hạng đầu: S$n = ${trim(sn)}"
+              }
+
+              private fun calcGeometric() {
+                  val inp = readInputs()
+                  if (inp == null) { binding.tvResult.text = "Vui lòng nhập đủ u1, q, n."; return }
+                  val (u1, q, n) = inp
+                  val un = u1 * q.pow(n - 1)
+                  val sn = if (q == 1.0) u1 * n else u1 * (1 - q.pow(n)) / (1 - q)
+                  binding.tvResult.text = "Số hạng thứ $n: u$n = ${trim(un)}\nTổng $n số hạng đầu: S$n = ${trim(sn)}"
+              }
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/StatsActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/StatsActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityStatsBinding
+          import kotlin.math.sqrt
+
+          class StatsActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityStatsBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityStatsBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnStats.setOnClickListener { calcStats() }
+                  binding.btnCombo.setOnClickListener { calcCombo() }
+              }
+
+              private fun calcStats() {
+                  val data = try {
+                      binding.etData.text.toString().split(",").map { it.trim().toDouble() }
+                  } catch (e: Exception) { null }
+
+                  if (data == null || data.isEmpty()) {
+                      binding.tvResult.text = "Vui lòng nhập dãy số liệu hợp lệ."
+                      return
+                  }
+                  val mean = data.average()
+                  val variance = data.sumOf { (it - mean) * (it - mean) } / data.size
+                  val std = sqrt(variance)
+
+                  binding.tvResult.text = """
+                      Số phần tử: ${data.size}
+                      Trung bình: ${trim(mean)}
+                      Phương sai: ${trim(variance)}
+                      Độ lệch chuẩn: ${trim(std)}
+                  """.trimIndent()
+              }
+
+              private fun calcCombo() {
+                  val n = binding.etN.text.toString().toIntOrNull()
+                  val r = binding.etR.text.toString().toIntOrNull()
+                  if (n == null || r == null) {
+                      binding.tvResult.text = "Vui lòng nhập n và r hợp lệ."
+                      return
+                  }
+                  val fact = MathUtils.factorial(n)
+                  val perm = MathUtils.nPr(n, r)
+                  val comb = MathUtils.nCr(n, r)
+
+                  binding.tvResult.text = """
+                      n! = ${trim(fact)}
+                      Chỉnh hợp Aₙʳ = ${trim(perm)}
+                      Tổ hợp Cₙʳ = ${trim(comb)}
+                  """.trimIndent()
+              }
+
+              private fun trim(v: Double): String {
+                  if (v.isNaN()) return "không xác định"
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/java/com/example/calculator/VectorActivity.kt =====
+          cat > app/src/main/java/com/example/calculator/VectorActivity.kt <<'EOF'
+          package com.example.calculator
+
+          import android.os.Bundle
+          import androidx.appcompat.app.AppCompatActivity
+          import com.example.calculator.databinding.ActivityVectorBinding
+          import kotlin.math.sqrt
+
+          class VectorActivity : AppCompatActivity() {
+              private lateinit var binding: ActivityVectorBinding
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  binding = ActivityVectorBinding.inflate(layoutInflater)
+                  setContentView(binding.root)
+
+                  binding.btnBack.setOnClickListener { finish() }
+                  binding.btnAdd.setOnClickListener { withVectors { a, b -> "A + B = ${fmt(add(a, b))}" } }
+                  binding.btnSub.setOnClickListener { withVectors { a, b -> "A − B = ${fmt(sub(a, b))}" } }
+                  binding.btnDot.setOnClickListener { withVectors { a, b -> "A · B = ${trim(dot(a, b))}" } }
+                  binding.btnScale.setOnClickListener {
+                      val a = parse(binding.etVA.text.toString())
+                      val k = binding.etK.text.toString().toDoubleOrNull()
+                      if (a == null || k == null) {
+                          binding.tvResult.text = "Vui lòng nhập vectơ A và hệ số k hợp lệ."
+                      } else {
+                          binding.tvResult.text = "k · A = ${fmt(a.map { it * k }.toDoubleArray())}"
+                      }
+                  }
+                  binding.btnLength.setOnClickListener {
+                      val a = parse(binding.etVA.text.toString())
+                      val b = parse(binding.etVB.text.toString())
+                      if (a == null || b == null) {
+                          binding.tvResult.text = "Vui lòng nhập vectơ A và B hợp lệ."
+                      } else {
+                          binding.tvResult.text = "|A| = ${trim(length(a))}\n|B| = ${trim(length(b))}"
+                      }
+                  }
+              }
+
+              private fun withVectors(block: (DoubleArray, DoubleArray) -> String) {
+                  val a = parse(binding.etVA.text.toString())
+                  val b = parse(binding.etVB.text.toString())
+                  binding.tvResult.text = if (a == null || b == null) {
+                      "Vui lòng nhập vectơ A và B hợp lệ."
+                  } else {
+                      val (pa, pb) = pad(a, b)
+                      block(pa, pb)
+                  }
+              }
+
+              private fun parse(s: String): DoubleArray? {
+                  return try {
+                      s.split(",").map { it.trim().toDouble() }.toDoubleArray()
+                  } catch (e: Exception) { null }
+              }
+
+              private fun pad(a: DoubleArray, b: DoubleArray): Pair<DoubleArray, DoubleArray> {
+                  val n = maxOf(a.size, b.size)
+                  val pa = DoubleArray(n) { if (it < a.size) a[it] else 0.0 }
+                  val pb = DoubleArray(n) { if (it < b.size) b[it] else 0.0 }
+                  return pa to pb
+              }
+
+              private fun add(a: DoubleArray, b: DoubleArray) = DoubleArray(a.size) { a[it] + b[it] }
+              private fun sub(a: DoubleArray, b: DoubleArray) = DoubleArray(a.size) { a[it] - b[it] }
+              private fun dot(a: DoubleArray, b: DoubleArray) = a.indices.sumOf { a[it] * b[it] }
+              private fun length(a: DoubleArray) = sqrt(a.sumOf { it * it })
+
+              private fun fmt(v: DoubleArray) = "(${v.joinToString(", ") { trim(it) }})"
+
+              private fun trim(v: Double): String {
+                  return if (v == v.toLong().toDouble()) v.toLong().toString()
+                  else "%.6f".format(v).trimEnd('0').trimEnd('.')
+              }
+          }
+
+          EOF
+
+          # ===== app/src/main/res/drawable/btn_key_accent.xml =====
+          cat > app/src/main/res/drawable/btn_key_accent.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"
+              android:shape="rectangle">
+              <corners android:radius="18dp" />
+              <solid android:color="@color/accent_bg" />
+              <stroke android:width="2.5dp" android:color="@color/accent_border" />
+          </shape>
+
+          EOF
+
+          # ===== app/src/main/res/drawable/btn_key_dark.xml =====
+          cat > app/src/main/res/drawable/btn_key_dark.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"
+              android:shape="rectangle">
+              <corners android:radius="18dp" />
+              <solid android:color="@color/key_bg" />
+              <stroke android:width="2.5dp" android:color="@color/key_border" />
+          </shape>
+
+          EOF
+
+          # ===== app/src/main/res/drawable/edit_bg.xml =====
+          cat > app/src/main/res/drawable/edit_bg.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"
+              android:shape="rectangle">
+              <corners android:radius="12dp" />
+              <solid android:color="@color/key_bg" />
+              <stroke android:width="1.5dp" android:color="@color/key_border" />
+          </shape>
+
+          EOF
+
+          # ===== app/src/main/res/drawable/ic_launcher_foreground.xml =====
+          cat > app/src/main/res/drawable/ic_launcher_foreground.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path
+                  android:fillColor="#FFFFFF"
+                  android:pathData="M30,20 L78,20 L78,88 L30,88 Z M36,28 L72,28 L72,44 L36,44 Z M36,50 L46,50 L46,60 L36,60 Z M50,50 L60,50 L60,60 L50,60 Z M64,50 L74,50 L74,60 L64,60 Z M36,64 L46,64 L46,74 L36,74 Z M50,64 L60,64 L60,74 L50,74 Z M64,64 L74,64 L74,84 L64,84 Z M36,78 L60,78 L60,84 L36,84 Z" />
+          </vector>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_calculator.xml =====
+          cat > app/src/main/res/layout/activity_calculator.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:background="#050308"
+              android:padding="12dp">
+
+              <TextView
+                  android:id="@+id/tvDisplay"
+                  android:layout_width="match_parent"
+                  android:layout_height="0dp"
+                  android:layout_weight="1"
+                  android:gravity="bottom|end"
+                  android:textColor="#FFFFFF"
+                  android:textSize="56sp"
+                  android:padding="16dp"
+                  android:text="0"
+                  android:maxLines="2"
+                  android:ellipsize="start" />
+
+              <LinearLayout style="@style/RowStyle5">
+                  <Button android:id="@+id/btnSin" style="@style/SciButton" android:text="sin" />
+                  <Button android:id="@+id/btnCos" style="@style/SciButton" android:text="cos" />
+                  <Button android:id="@+id/btnTan" style="@style/SciButton" android:text="tan" />
+                  <Button android:id="@+id/btnSqrt" style="@style/SciButton" android:text="√" />
+                  <Button android:id="@+id/btnSquare" style="@style/SciButton" android:text="x²" />
+              </LinearLayout>
+
+              <LinearLayout style="@style/RowStyle5">
+                  <Button android:id="@+id/btnLog" style="@style/SciButton" android:text="log" />
+                  <Button android:id="@+id/btnLn" style="@style/SciButton" android:text="ln" />
+                  <Button android:id="@+id/btnPi" style="@style/SciButton" android:text="π" />
+                  <Button android:id="@+id/btnPow" style="@style/SciButton" android:text="xʸ" />
+                  <Button android:id="@+id/btnReciprocal" style="@style/SciButton" android:text="1/x" />
+              </LinearLayout>
+
+              <LinearLayout style="@style/RowStyle">
+                  <Button android:id="@+id/btnClear" style="@style/FuncButton" android:text="AC" />
+                  <Button android:id="@+id/btnBackspace" style="@style/FuncButton" android:text="⌫" />
+                  <Button android:id="@+id/btnPercent" style="@style/FuncButton" android:text="%" />
+                  <Button android:id="@+id/btnDivide" style="@style/OpButton" android:text="÷" />
+              </LinearLayout>
+
+              <LinearLayout style="@style/RowStyle">
+                  <Button android:id="@+id/btn7" style="@style/NumButton" android:text="7" />
+                  <Button android:id="@+id/btn8" style="@style/NumButton" android:text="8" />
+                  <Button android:id="@+id/btn9" style="@style/NumButton" android:text="9" />
+                  <Button android:id="@+id/btnMultiply" style="@style/OpButton" android:text="×" />
+              </LinearLayout>
+
+              <LinearLayout style="@style/RowStyle">
+                  <Button android:id="@+id/btn4" style="@style/NumButton" android:text="4" />
+                  <Button android:id="@+id/btn5" style="@style/NumButton" android:text="5" />
+                  <Button android:id="@+id/btn6" style="@style/NumButton" android:text="6" />
+                  <Button android:id="@+id/btnMinus" style="@style/OpButton" android:text="−" />
+              </LinearLayout>
+
+              <LinearLayout style="@style/RowStyle">
+                  <Button android:id="@+id/btn1" style="@style/NumButton" android:text="1" />
+                  <Button android:id="@+id/btn2" style="@style/NumButton" android:text="2" />
+                  <Button android:id="@+id/btn3" style="@style/NumButton" android:text="3" />
+                  <Button android:id="@+id/btnPlus" style="@style/OpButton" android:text="+" />
+              </LinearLayout>
+
+              <LinearLayout style="@style/RowStyle">
+                  <Button android:id="@+id/btn0" style="@style/NumButton" android:text="0" android:layout_weight="2" />
+                  <Button android:id="@+id/btnDot" style="@style/NumButton" android:text="." />
+                  <Button android:id="@+id/btnEquals" style="@style/EqualButton" android:text="=" />
+              </LinearLayout>
+
+          </LinearLayout>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_calculus.xml =====
+          cat > app/src/main/res/layout/activity_calculus.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Đạo hàm – Nguyên hàm đa thức" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Nhập hệ số từ bậc cao đến thấp.&#10;Ví dụ: x³ − 2x + 1  →  nhập: 1, 0, -2, 1" />
+
+                  <TextView style="@style/FieldLabel" android:text="Đa thức f(x)" />
+                  <EditText android:id="@+id/etPoly" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 1, 0, -2, 1" />
+
+                  <Button android:id="@+id/btnDerivative" style="@style/ActionButton" android:text="Tính đạo hàm f'(x)" />
+                  <Button android:id="@+id/btnAntiderivative" style="@style/ActionButton" android:text="Tính nguyên hàm F(x)" />
+
+                  <TextView style="@style/FieldLabel" android:text="Cận dưới a (cho tích phân xác định)" />
+                  <EditText android:id="@+id/etLowerBound" style="@style/FieldInput" android:hint="Ví dụ: 0" />
+                  <TextView style="@style/FieldLabel" android:text="Cận trên b" />
+                  <EditText android:id="@+id/etUpperBound" style="@style/FieldInput" android:hint="Ví dụ: 2" />
+                  <Button android:id="@+id/btnDefiniteIntegral" style="@style/ActionButton" android:text="Tính tích phân xác định ∫[a,b] f(x)dx" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_complex_number.xml =====
+          cat > app/src/main/res/layout/activity_complex_number.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Số phức" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Dạng z = a + bi" />
+
+                  <TextView style="@style/FieldLabel" android:text="Số phức 1 - Phần thực a1" />
+                  <EditText android:id="@+id/etRe1" style="@style/FieldInput" />
+                  <TextView style="@style/FieldLabel" android:text="Số phức 1 - Phần ảo b1" />
+                  <EditText android:id="@+id/etIm1" style="@style/FieldInput" />
+
+                  <TextView style="@style/FieldLabel" android:text="Số phức 2 - Phần thực a2" />
+                  <EditText android:id="@+id/etRe2" style="@style/FieldInput" />
+                  <TextView style="@style/FieldLabel" android:text="Số phức 2 - Phần ảo b2" />
+                  <EditText android:id="@+id/etIm2" style="@style/FieldInput" />
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="14dp">
+                      <Button android:id="@+id/btnAdd" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Cộng" />
+                      <Button android:id="@+id/btnSub" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Trừ" />
+                  </LinearLayout>
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+                      <Button android:id="@+id/btnMul" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Nhân" />
+                      <Button android:id="@+id/btnDiv" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Chia" />
+                  </LinearLayout>
+                  <Button android:id="@+id/btnModulus" style="@style/ActionButton" android:text="Môđun |z1| và |z2|" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_fraction.xml =====
+          cat > app/src/main/res/layout/activity_fraction.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Phân số" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Nhập hai phân số dạng tử/mẫu" />
+
+                  <TextView style="@style/FieldLabel" android:text="Phân số 1 - Tử số" />
+                  <EditText android:id="@+id/etNum1" style="@style/FieldInput" android:hint="Ví dụ: 2" />
+                  <TextView style="@style/FieldLabel" android:text="Phân số 1 - Mẫu số" />
+                  <EditText android:id="@+id/etDen1" style="@style/FieldInput" android:hint="Ví dụ: 3" />
+
+                  <TextView style="@style/FieldLabel" android:text="Phân số 2 - Tử số" />
+                  <EditText android:id="@+id/etNum2" style="@style/FieldInput" android:hint="Ví dụ: 1" />
+                  <TextView style="@style/FieldLabel" android:text="Phân số 2 - Mẫu số" />
+                  <EditText android:id="@+id/etDen2" style="@style/FieldInput" android:hint="Ví dụ: 6" />
+
+                  <Button android:id="@+id/btnCalc" style="@style/ActionButton" android:text="Tính" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_geometry.xml =====
+          cat > app/src/main/res/layout/activity_geometry.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Hình học không gian" />
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Thể tích khối đa diện / tròn xoay" />
+
+                  <TextView style="@style/FieldLabel" android:text="Cạnh a (lập phương) / dài a (hộp) / bán kính r (trụ, nón, cầu) / S đáy (hình chóp)" />
+                  <EditText android:id="@+id/etDim1" style="@style/FieldInput" android:hint="Ví dụ: 3" />
+                  <TextView style="@style/FieldLabel" android:text="Rộng b (hộp chữ nhật) / chiều cao h (trụ, nón, chóp) — để trống nếu không cần" />
+                  <EditText android:id="@+id/etDim2" style="@style/FieldInput" android:hint="Ví dụ: 4" />
+                  <TextView style="@style/FieldLabel" android:text="Cao c (chỉ dùng cho hộp chữ nhật) — để trống nếu không cần" />
+                  <EditText android:id="@+id/etDim3" style="@style/FieldInput" android:hint="Ví dụ: 5" />
+
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="10dp">
+                      <Button android:id="@+id/btnCube" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="3dp" android:text="Lập phương" />
+                      <Button android:id="@+id/btnBox" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="3dp" android:text="Hộp chữ nhật" />
+                  </LinearLayout>
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                      <Button android:id="@+id/btnCylinder" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="3dp" android:text="Hình trụ" />
+                      <Button android:id="@+id/btnCone" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="3dp" android:text="Hình nón" />
+                  </LinearLayout>
+                  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                      <Button android:id="@+id/btnSphere" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="3dp" android:text="Hình cầu" />
+                      <Button android:id="@+id/btnPyramid" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="3dp" android:text="Hình chóp (S đáy × h)" />
+                  </LinearLayout>
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Tọa độ trong không gian (Oxyz)" />
+                  <TextView style="@style/FieldLabel" android:text="Điểm A (x, y, z)" />
+                  <EditText android:id="@+id/etPointA" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 1, 2, 3" />
+                  <TextView style="@style/FieldLabel" android:text="Điểm B (x, y, z)" />
+                  <EditText android:id="@+id/etPointB" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 4, 0, -1" />
+                  <Button android:id="@+id/btnCoord" style="@style/ActionButton" android:text="Tính khoảng cách AB và trung điểm" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_integer_tools.xml =====
+          cat > app/src/main/res/layout/activity_integer_tools.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Số nguyên • Ước – Bội" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Nhập hai số nguyên a, b (có thể âm)" />
+
+                  <TextView style="@style/FieldLabel" android:text="Số a" />
+                  <EditText android:id="@+id/etA" style="@style/FieldInput" android:hint="Ví dụ: 24" />
+
+                  <TextView style="@style/FieldLabel" android:text="Số b" />
+                  <EditText android:id="@+id/etB" style="@style/FieldInput" android:hint="Ví dụ: -18" />
+
+                  <Button android:id="@+id/btnCalc" style="@style/ActionButton" android:text="Tính" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_linear_equation.xml =====
+          cat > app/src/main/res/layout/activity_linear_equation.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Phương trình bậc nhất một ẩn" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Dạng: ax + b = 0" />
+
+                  <TextView style="@style/FieldLabel" android:text="Hệ số a" />
+                  <EditText android:id="@+id/etA" style="@style/FieldInput" android:hint="Ví dụ: 2" />
+
+                  <TextView style="@style/FieldLabel" android:text="Hệ số b" />
+                  <EditText android:id="@+id/etB" style="@style/FieldInput" android:hint="Ví dụ: -6" />
+
+                  <Button android:id="@+id/btnCalc" style="@style/ActionButton" android:text="Giải phương trình" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_linear_system.xml =====
+          cat > app/src/main/res/layout/activity_linear_system.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Hệ phương trình bậc nhất 2 ẩn" />
+                  <TextView style="@style/ScreenSubtitle" android:text="a1·x + b1·y = c1&#10;a2·x + b2·y = c2" />
+
+                  <TextView style="@style/FieldLabel" android:text="a1" />
+                  <EditText android:id="@+id/etA1" style="@style/FieldInput" />
+                  <TextView style="@style/FieldLabel" android:text="b1" />
+                  <EditText android:id="@+id/etB1" style="@style/FieldInput" />
+                  <TextView style="@style/FieldLabel" android:text="c1" />
+                  <EditText android:id="@+id/etC1" style="@style/FieldInput" />
+
+                  <TextView style="@style/FieldLabel" android:text="a2" />
+                  <EditText android:id="@+id/etA2" style="@style/FieldInput" />
+                  <TextView style="@style/FieldLabel" android:text="b2" />
+                  <EditText android:id="@+id/etB2" style="@style/FieldInput" />
+                  <TextView style="@style/FieldLabel" android:text="c2" />
+                  <EditText android:id="@+id/etC2" style="@style/FieldInput" />
+
+                  <Button android:id="@+id/btnCalc" style="@style/ActionButton" android:text="Giải hệ phương trình" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_menu.xml =====
+          cat > app/src/main/res/layout/activity_menu.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <TextView style="@style/ScreenTitle" android:text="Toán Học THCS - THPT" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Chọn chuyên đề để giải" />
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Máy tính" />
+                  <Button android:id="@+id/btnCalculator" style="@style/MenuButton" android:text="🖩  Máy tính khoa học (sin, cos, log, √...)" />
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Lớp 6 - 7: Số học và Đại số cơ bản" />
+                  <Button android:id="@+id/btnInteger" style="@style/MenuButton" android:text="🔢  Số nguyên • Ước – Bội (ƯCLN, BCNN)" />
+                  <Button android:id="@+id/btnFraction" style="@style/MenuButton" android:text="➗  Phân số (rút gọn, cộng trừ nhân chia)" />
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Lớp 8 - 9: Phương trình và Đa thức" />
+                  <Button android:id="@+id/btnLinearEq" style="@style/MenuButton" android:text="📐  Phương trình bậc nhất một ẩn (ax+b=0)" />
+                  <Button android:id="@+id/btnQuadraticEq" style="@style/MenuButton" android:text="📐  Phương trình bậc hai (ax²+bx+c=0)" />
+                  <Button android:id="@+id/btnLinearSystem" style="@style/MenuButton" android:text="🔗  Hệ phương trình bậc nhất hai ẩn" />
+                  <Button android:id="@+id/btnPolynomial" style="@style/MenuButton" android:text="✖️  Đa thức (cộng, trừ, nhân đa thức)" />
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Lớp 10 - 11: Vectơ, Dãy số, Thống kê" />
+                  <Button android:id="@+id/btnVector" style="@style/MenuButton" android:text="➡️  Vectơ 2D/3D (cộng, trừ, tích vô hướng)" />
+                  <Button android:id="@+id/btnSequence" style="@style/MenuButton" android:text="🔁  Cấp số cộng – Cấp số nhân" />
+                  <Button android:id="@+id/btnStats" style="@style/MenuButton" android:text="📊  Thống kê • Tổ hợp – Chỉnh hợp – Xác suất" />
+
+                  <TextView style="@style/MenuCategoryTitle" android:text="Lớp 12: Giải tích, Số phức, Hình không gian" />
+                  <Button android:id="@+id/btnCalculus" style="@style/MenuButton" android:text="∫  Đạo hàm – Nguyên hàm của đa thức" />
+                  <Button android:id="@+id/btnComplex" style="@style/MenuButton" android:text="ⅈ  Số phức (cộng, trừ, nhân, chia)" />
+                  <Button android:id="@+id/btnGeometry" style="@style/MenuButton" android:text="🧊  Hình học không gian (thể tích, tọa độ)" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_polynomial.xml =====
+          cat > app/src/main/res/layout/activity_polynomial.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Đa thức" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Nhập hệ số từ bậc cao đến thấp, cách nhau bởi dấu phẩy.&#10;Ví dụ: x² − 3x + 2  →  nhập: 1, -3, 2" />
+
+                  <TextView style="@style/FieldLabel" android:text="Đa thức 1" />
+                  <EditText android:id="@+id/etPoly1" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 1, -3, 2" />
+
+                  <TextView style="@style/FieldLabel" android:text="Đa thức 2" />
+                  <EditText android:id="@+id/etPoly2" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 1, 1" />
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="14dp">
+                      <Button android:id="@+id/btnAdd" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Cộng" />
+                      <Button android:id="@+id/btnSub" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Trừ" />
+                      <Button android:id="@+id/btnMul" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Nhân" />
+                  </LinearLayout>
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_quadratic_equation.xml =====
+          cat > app/src/main/res/layout/activity_quadratic_equation.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Phương trình bậc hai" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Dạng: ax² + bx + c = 0" />
+
+                  <TextView style="@style/FieldLabel" android:text="Hệ số a" />
+                  <EditText android:id="@+id/etA" style="@style/FieldInput" android:hint="Ví dụ: 1" />
+
+                  <TextView style="@style/FieldLabel" android:text="Hệ số b" />
+                  <EditText android:id="@+id/etB" style="@style/FieldInput" android:hint="Ví dụ: -3" />
+
+                  <TextView style="@style/FieldLabel" android:text="Hệ số c" />
+                  <EditText android:id="@+id/etC" style="@style/FieldInput" android:hint="Ví dụ: 2" />
+
+                  <Button android:id="@+id/btnCalc" style="@style/ActionButton" android:text="Giải phương trình" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_sequence.xml =====
+          cat > app/src/main/res/layout/activity_sequence.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Cấp số cộng – Cấp số nhân" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Nhập số hạng đầu u1, công sai d (hoặc công bội q), và n" />
+
+                  <TextView style="@style/FieldLabel" android:text="Số hạng đầu u1" />
+                  <EditText android:id="@+id/etU1" style="@style/FieldInput" android:hint="Ví dụ: 2" />
+
+                  <TextView style="@style/FieldLabel" android:text="Công sai d (cấp số cộng) hoặc công bội q (cấp số nhân)" />
+                  <EditText android:id="@+id/etD" style="@style/FieldInput" android:hint="Ví dụ: 3" />
+
+                  <TextView style="@style/FieldLabel" android:text="Vị trí n (tính đến số hạng thứ n)" />
+                  <EditText android:id="@+id/etN" style="@style/FieldInput" android:inputType="number" android:hint="Ví dụ: 10" />
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="14dp">
+                      <Button android:id="@+id/btnArithmetic" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Cấp số cộng" />
+                      <Button android:id="@+id/btnGeometric" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="Cấp số nhân" />
+                  </LinearLayout>
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_stats.xml =====
+          cat > app/src/main/res/layout/activity_stats.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Thống kê • Tổ hợp • Xác suất" />
+
+                  <TextView style="@style/FieldLabel" android:text="Dãy số liệu (cách nhau bởi dấu phẩy)" />
+                  <EditText android:id="@+id/etData" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 4, 8, 6, 5, 7" />
+                  <Button android:id="@+id/btnStats" style="@style/ActionButton" android:text="Tính trung bình, phương sai, độ lệch chuẩn" />
+
+                  <TextView style="@style/FieldLabel" android:text="n (tổng số phần tử)" />
+                  <EditText android:id="@+id/etN" style="@style/FieldInput" android:inputType="number" android:hint="Ví dụ: 10" />
+                  <TextView style="@style/FieldLabel" android:text="r (số phần tử chọn)" />
+                  <EditText android:id="@+id/etR" style="@style/FieldInput" android:inputType="number" android:hint="Ví dụ: 3" />
+                  <Button android:id="@+id/btnCombo" style="@style/ActionButton" android:text="Tính Tổ hợp Cₙʳ, Chỉnh hợp Aₙʳ, n!" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/layout/activity_vector.xml =====
+          cat > app/src/main/res/layout/activity_vector.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_root">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="18dp">
+
+                  <Button android:id="@+id/btnBack" style="@style/BackButton" android:text="◀ Quay lại" />
+                  <TextView style="@style/ScreenTitle" android:text="Vectơ 2D / 3D" />
+                  <TextView style="@style/ScreenSubtitle" android:text="Nhập tọa độ cách nhau bởi dấu phẩy: x, y  (hoặc x, y, z cho 3D)" />
+
+                  <TextView style="@style/FieldLabel" android:text="Vectơ A" />
+                  <EditText android:id="@+id/etVA" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 1, 2, 3" />
+
+                  <TextView style="@style/FieldLabel" android:text="Vectơ B" />
+                  <EditText android:id="@+id/etVB" style="@style/FieldInput" android:inputType="text" android:hint="Ví dụ: 4, -1, 2" />
+
+                  <TextView style="@style/FieldLabel" android:text="Hệ số k (dùng cho phép nhân vô hướng với số)" />
+                  <EditText android:id="@+id/etK" style="@style/FieldInput" android:hint="Ví dụ: 2" />
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="14dp">
+                      <Button android:id="@+id/btnAdd" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="A + B" />
+                      <Button android:id="@+id/btnSub" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="A − B" />
+                  </LinearLayout>
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal">
+                      <Button android:id="@+id/btnDot" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="A · B" />
+                      <Button android:id="@+id/btnScale" style="@style/ActionButton" android:layout_width="0dp" android:layout_weight="1" android:layout_margin="4dp" android:text="k · A" />
+                  </LinearLayout>
+                  <Button android:id="@+id/btnLength" style="@style/ActionButton" android:text="Độ dài |A| và |B|" />
+
+                  <TextView android:id="@+id/tvResult" style="@style/ResultText" android:text="" />
+
+              </LinearLayout>
+          </ScrollView>
+
+          EOF
+
+          # ===== app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml =====
+          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+
+          EOF
+
+          # ===== app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml =====
+          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/ic_launcher_background" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+
+          EOF
+
+          # ===== app/src/main/res/values/colors.xml =====
+          cat > app/src/main/res/values/colors.xml <<'EOF'
+          <resources>
+              <color name="ic_launcher_background">#6C2BD9</color>
+              <color name="key_bg">#120C1A</color>
+              <color name="key_border">#A66BFF</color>
+              <color name="accent_bg">#3D1F73</color>
+              <color name="accent_border">#C9A2FF</color>
+              <color name="bg_root">#050308</color>
+              <color name="text_main">#FFFFFF</color>
+              <color name="text_muted">#D9B3FF</color>
+          </resources>
+
+          EOF
+
+          # ===== app/src/main/res/values/strings.xml =====
+          cat > app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Toán Học THCS-THPT</string>
+          </resources>
+
+          EOF
+
+          # ===== app/src/main/res/values/styles.xml =====
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <!-- ===== Style cho bàn phím máy tính khoa học ===== -->
+              <style name="RowStyle">
+                  <item name="android:orientation">horizontal</item>
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">0dp</item>
+                  <item name="android:layout_weight">1</item>
+                  <item name="android:weightSum">4</item>
+              </style>
+
+              <style name="RowStyle5">
+                  <item name="android:orientation">horizontal</item>
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">0dp</item>
+                  <item name="android:layout_weight">0.72</item>
+                  <item name="android:weightSum">5</item>
+              </style>
+
+              <style name="SciButton">
+                  <item name="android:layout_width">0dp</item>
+                  <item name="android:layout_height">match_parent</item>
+                  <item name="android:layout_weight">1</item>
+                  <item name="android:layout_margin">4dp</item>
+                  <item name="android:textSize">15sp</item>
+                  <item name="android:textStyle">bold</item>
+                  <item name="android:stateListAnimator">@null</item>
+                  <item name="android:elevation">2dp</item>
+                  <item name="android:background">@drawable/btn_key_dark</item>
+                  <item name="android:textColor">#D9B3FF</item>
+              </style>
+
+              <style name="BaseButton">
+                  <item name="android:layout_width">0dp</item>
+                  <item name="android:layout_height">match_parent</item>
+                  <item name="android:layout_weight">1</item>
+                  <item name="android:layout_margin">5dp</item>
+                  <item name="android:textSize">24sp</item>
+                  <item name="android:textStyle">bold</item>
+                  <item name="android:stateListAnimator">@null</item>
+                  <item name="android:elevation">2dp</item>
+              </style>
+
+              <style name="NumButton" parent="BaseButton">
+                  <item name="android:background">@drawable/btn_key_dark</item>
+                  <item name="android:textColor">#FFFFFF</item>
+              </style>
+
+              <style name="FuncButton" parent="BaseButton">
+                  <item name="android:background">@drawable/btn_key_dark</item>
+                  <item name="android:textColor">#D9B3FF</item>
+              </style>
+
+              <style name="OpButton" parent="BaseButton">
+                  <item name="android:background">@drawable/btn_key_accent</item>
+                  <item name="android:textColor">#FFFFFF</item>
+              </style>
+
+              <style name="EqualButton" parent="BaseButton">
+                  <item name="android:layout_weight">2</item>
+                  <item name="android:background">@drawable/btn_key_accent</item>
+                  <item name="android:textColor">#FFFFFF</item>
+              </style>
+
+              <!-- ===== Style dùng chung cho các màn hình công cụ giải toán ===== -->
+              <style name="ScreenTitle">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:textSize">22sp</item>
+                  <item name="android:textStyle">bold</item>
+                  <item name="android:textColor">#FFFFFF</item>
+                  <item name="android:layout_marginBottom">4dp</item>
+              </style>
+
+              <style name="ScreenSubtitle">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:textSize">13sp</item>
+                  <item name="android:textColor">#D9B3FF</item>
+                  <item name="android:layout_marginBottom">16dp</item>
+              </style>
+
+              <style name="FieldLabel">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:textSize">14sp</item>
+                  <item name="android:textColor">#D9B3FF</item>
+                  <item name="android:layout_marginTop">10dp</item>
+              </style>
+
+              <style name="FieldInput">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:background">@drawable/edit_bg</item>
+                  <item name="android:textColor">#FFFFFF</item>
+                  <item name="android:textColorHint">#6A5A80</item>
+                  <item name="android:textSize">18sp</item>
+                  <item name="android:padding">12dp</item>
+                  <item name="android:layout_marginTop">4dp</item>
+                  <item name="android:inputType">numberDecimal|numberSigned</item>
+              </style>
+
+              <style name="ActionButton">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:background">@drawable/btn_key_accent</item>
+                  <item name="android:textColor">#FFFFFF</item>
+                  <item name="android:textSize">17sp</item>
+                  <item name="android:textStyle">bold</item>
+                  <item name="android:padding">14dp</item>
+                  <item name="android:layout_marginTop">18dp</item>
+                  <item name="android:stateListAnimator">@null</item>
+              </style>
+
+              <style name="BackButton">
+                  <item name="android:layout_width">wrap_content</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:background">@android:color/transparent</item>
+                  <item name="android:textColor">#D9B3FF</item>
+                  <item name="android:textSize">15sp</item>
+                  <item name="android:padding">6dp</item>
+                  <item name="android:stateListAnimator">@null</item>
+              </style>
+
+              <style name="ResultText">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:background">@drawable/edit_bg</item>
+                  <item name="android:textColor">#FFFFFF</item>
+                  <item name="android:textSize">16sp</item>
+                  <item name="android:padding">14dp</item>
+                  <item name="android:layout_marginTop">18dp</item>
+                  <item name="android:lineSpacingExtra">4dp</item>
+              </style>
+
+              <style name="MenuCategoryTitle">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:textSize">15sp</item>
+                  <item name="android:textStyle">bold</item>
+                  <item name="android:textColor">#A66BFF</item>
+                  <item name="android:layout_marginTop">18dp</item>
+                  <item name="android:layout_marginBottom">6dp</item>
+              </style>
+
+              <style name="MenuButton">
+                  <item name="android:layout_width">match_parent</item>
+                  <item name="android:layout_height">wrap_content</item>
+                  <item name="android:background">@drawable/btn_key_dark</item>
+                  <item name="android:textColor">#FFFFFF</item>
+                  <item name="android:textSize">15sp</item>
+                  <item name="android:gravity">start|center_vertical</item>
+                  <item name="android:padding">14dp</item>
+                  <item name="android:layout_marginBottom">8dp</item>
+                  <item name="android:stateListAnimator">@null</item>
+              </style>
+          </resources>
+
+          EOF
+
+          # ===== app/src/main/res/values/themes.xml =====
+          cat > app/src/main/res/values/themes.xml <<'EOF'
+          <resources>
+              <style name="Theme.Calculator" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                  <item name="colorPrimary">#120C1A</item>
+                  <item name="colorPrimaryDark">#050308</item>
+                  <item name="android:windowBackground">#050308</item>
+              </style>
+          </resources>
+
+          EOF
+
+          # ===== build.gradle =====
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.2.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+          }
+
+          EOF
+
+          # ===== gradle.properties =====
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m
+          android.useAndroidX=true
+          kotlin.code.style=official
+          android.nonTransitiveRClass=true
+
+          EOF
+
+          # ===== settings.gradle =====
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "MathApp"
+          include ':app'
+
+          EOF
+
+      - name: Build debug APK
+        run: gradle assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mathapp-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
