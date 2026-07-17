@@ -2,249 +2,200 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Hậu GHN-Hiệp Hưng browser</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Qrtuxa Scanner</title>
+
 <style>
-  :root {
-    --bg-deep: #120a1f;
-    --bg-panel: #1c1030;
-    --neon-1: #c026ff;
-    --neon-2: #8b2dff;
-    --neon-3: #4d0bff;
-    --neon-soft: #b57bff;
-    --text: #ecdcff;
-  }
-  html, body {
-    margin:0; padding:0; height:100%;
-    font-family: -apple-system, Segoe UI, Arial, sans-serif;
-    background: radial-gradient(circle at 20% 0%, #2a1240 0%, var(--bg-deep) 60%);
-    color: var(--text);
-  }
-  #toolbar {
-    display:flex; align-items:center; gap:8px; padding:10px;
-    background: linear-gradient(180deg, #1c1030, #150b26);
-    border-bottom: 1px solid rgba(192,38,255,0.35);
-    box-shadow: 0 2px 16px rgba(139,45,255,0.25);
-  }
-  #toolbar button {
-    background: linear-gradient(135deg, #2a1548, #1c0f36);
-    color: var(--text); border: 1px solid rgba(192,38,255,0.4);
-    padding:7px 12px; border-radius:8px; cursor:pointer;
-    transition: all .15s ease;
-  }
-  #toolbar button:hover {
-    border-color: var(--neon-1);
-    box-shadow: 0 0 12px rgba(192,38,255,0.6);
-    color: #fff;
-  }
-  #urlbar {
-    flex:1; padding:8px 12px; border-radius:8px;
-    border:1px solid rgba(139,45,255,0.4);
-    background: #0f0819; color: var(--text);
-    outline:none;
-  }
-  #urlbar:focus {
-    border-color: var(--neon-1);
-    box-shadow: 0 0 10px rgba(192,38,255,0.5);
-  }
-  #qrBtn {
-    background: linear-gradient(135deg, var(--neon-1), var(--neon-3));
-    border: none; font-weight:600;
-    box-shadow: 0 0 14px rgba(192,38,255,0.55);
-  }
-  #qrBtn:hover {
-    box-shadow: 0 0 22px rgba(192,38,255,0.9);
-    filter: brightness(1.1);
-  }
-  #webviewWrap { position:relative; height: calc(100% - 56px); }
-  webview { width:100%; height:100%; }
-  #qrPanel {
-    position:absolute; top:14px; right:14px; width:280px;
-    background: linear-gradient(160deg, #1c1030, #120a1f);
-    border:1px solid rgba(192,38,255,0.5);
-    border-radius:14px; padding:16px; display:none; z-index:10;
-    box-shadow: 0 0 30px rgba(139,45,255,0.45), 0 8px 24px rgba(0,0,0,.5);
-  }
-  #qrPanel.show { display:block; }
-  #qrPanel canvas {
-    width:100%; height:auto; background:#fff; border-radius:8px;
-    box-shadow: 0 0 16px rgba(192,38,255,0.4);
-  }
-  #qrLink { font-size:11px; word-break:break-all; color: var(--neon-soft); margin-top:10px; display:block; }
-  #qrStatus { font-size:12px; color:#7effc0; margin-top:8px; }
-  #qrPanel h3 {
-    margin:0 0 10px 0; font-size:14px; letter-spacing:.3px;
-    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
-  #brand {
-    font-weight:700; font-size:14px; white-space:nowrap; margin-right:6px;
-    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    letter-spacing:.2px;
-  }
-  #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
-  #closeQr:hover { color:#fff; }
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#0f172a;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  min-height:100vh;
+}
+
+h1{
+  margin:20px 0 10px;
+  color:#22d3ee;
+}
+
+#reader{
+  width:90vw;
+  max-width:400px;
+  border:3px solid #22d3ee;
+  border-radius:14px;
+  overflow:hidden;
+  background:#000;
+}
+
+#status{
+  margin:15px 0;
+  padding:12px;
+  width:90vw;
+  max-width:400px;
+  background:#111827;
+  border-radius:10px;
+  text-align:center;
+  font-size:14px;
+  line-height:1.4;
+}
+
+button{
+  margin:8px;
+  padding:12px 20px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+#startBtn{ background:#22c55e; color:#fff; }
+#flashBtn{ background:#f59e0b; color:#fff; }
+
+.ok{ color:#4ade80; }
+.err{ color:#f87171; }
 </style>
 </head>
 <body>
-  <div id="toolbar">
-    <span id="brand">Hậu GHN-Hiệp Hưng browser</span>
-    <button id="backBtn">◀</button>
-    <button id="fwdBtn">▶</button>
-    <button id="reloadBtn">⟳</button>
-    <input id="urlbar" value="https://www.google.com" />
-    <button id="goBtn">Đi</button>
-    <button id="qrBtn">📱 Chia sẻ QR</button>
-  </div>
 
-  <div id="webviewWrap">
-    <webview id="wv" src="https://www.google.com" partition="persist:browse"></webview>
+<h1>📷 Qrtuxa Scanner</h1>
 
-    <div id="qrPanel">
-      <span id="closeQr">✕</span>
-      <h3>Quét bằng điện thoại</h3>
-      <canvas id="qrCanvas"></canvas>
-      <a id="qrLink" href="#" target="_blank"></a>
-      <div id="qrStatus">Đang chờ dữ liệu quét...</div>
-    </div>
-  </div>
+<div id="reader"></div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script>
-  window.FIREBASE_CONFIG = {
-    apiKey: "AIzaSyCPwMKElbsQLjOeSVddGAfjNiHnPHV9b1A",
-    authDomain: "qrremod.firebaseapp.com",
-    databaseURL: "https://qrremod-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "qrremod",
-    storageBucket: "qrremod.firebasestorage.app",
-    messagingSenderId: "949360436062",
-    appId: "1:949360436062:web:c9b5b5d47ee4f76fdce5cf"
-  };
-  window.MOBILE_SCAN_URL = "https://trinhconghau22111999-arch.github.io/Qrtuxa/";
+<div id="status">
+Đang kiểm tra phiên làm việc...
+</div>
 
-  const wv = document.getElementById('wv');
-  const urlbar = document.getElementById('urlbar');
+<button id="startBtn">▶ Bắt đầu quét</button>
+<button id="flashBtn">💡 Đèn flash</button>
 
-  function normalizeUrl(v) {
-    v = v.trim();
-    if (!v) return 'https://www.google.com';
-    if (/^https?:\/\//i.test(v)) return v;
-    if (v.includes('.') && !v.includes(' ')) return 'https://' + v;
-    return 'https://www.google.com/search?q=' + encodeURIComponent(v);
-  }
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-  document.getElementById('goBtn').onclick = () => wv.loadURL(normalizeUrl(urlbar.value));
-  urlbar.addEventListener('keydown', e => { if (e.key === 'Enter') wv.loadURL(normalizeUrl(urlbar.value)); });
-  document.getElementById('backBtn').onclick = () => wv.canGoBack() && wv.goBack();
-  document.getElementById('fwdBtn').onclick = () => wv.canGoForward() && wv.goForward();
-  document.getElementById('reloadBtn').onclick = () => wv.reload();
-  wv.addEventListener('did-navigate', e => urlbar.value = e.url);
-  wv.addEventListener('did-navigate-in-page', e => urlbar.value = e.url);
+<script>
+// ===== Firebase =====
+firebase.initializeApp({
+  apiKey: "AIzaSyCPwMKElbsQLjOeSVddGAfjNiHnPHV9b1A",
+  authDomain: "qrremod.firebaseapp.com",
+  databaseURL: "https://qrremod-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "qrremod",
+  storageBucket: "qrremod.firebasestorage.app",
+  messagingSenderId: "949360436062",
+  appId: "1:949360436062:web:c9b5b5d47ee4f76fdce5cf"
+});
 
-  function sanitizeText(text) {
-    if (typeof text !== 'string') return '';
-    return text.replace(/[^\p{L}\p{N}_\s]/gu, '');
-  }
+const db = firebase.database();
+const statusEl = document.getElementById("status");
+const startBtn = document.getElementById("startBtn");
+const flashBtn = document.getElementById("flashBtn");
 
-  function buildInjectionScript(text) {
-    const fn = function (t) {
-      const el = document.activeElement;
-      if (!el) return false;
-      try {
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-          const start = el.selectionStart ?? el.value.length;
-          const end = el.selectionEnd ?? el.value.length;
-          el.setRangeText(t, start, end, 'end');
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        }
-        if (el.isContentEditable) {
-          document.execCommand('insertText', false, t);
-          return true;
-        }
-      } catch (e) {}
-      return false;
-    };
-    return `(${fn.toString()})(${JSON.stringify(text)});`;
-  }
+// ===== Lấy session từ URL =====
+const params = new URLSearchParams(location.search);
+const session = params.get("session");
 
-  function injectIntoWebview(rawText) {
-    const clean = sanitizeText(rawText);
-    if (!clean) return;
-    wv.executeJavaScript(buildInjectionScript(clean))
-      .then(() => sendAutoConfirmKeys())
-      .catch(() => {});
-  }
+if (!session) {
+  statusEl.innerHTML = 
+    '<span class="err">❌ Thiếu mã phiên (session).</span><br>Hãy quét lại QR từ máy tính.';
+  startBtn.disabled = true;
+} else {
+  statusEl.innerHTML = 
+    '<span class="ok">✅ Đã nhận phiên:</span><br>' + session;
+}
 
-  // ====== Tu dong bam Alt+Enter, neu khong duoc thi bam Enter ======
-  function sendAutoConfirmKeys() {
-    try {
-      wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['alt'] });
-      wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['alt'] });
+let scanner = null;
+let flashOn = false;
 
-      setTimeout(() => {
-        wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
-        wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
-      }, 120);
-    } catch (e) {}
-  }
-
-  firebase.initializeApp(window.FIREBASE_CONFIG);
-  const db = firebase.database();
-
-  let currentSession = null;
-  let sessionRef = null;
-  let lastTs = 0;
-
-  function genSessionId() {
-    return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-  }
-
-  const qrPanel = document.getElementById('qrPanel');
-  const qrCanvas = document.getElementById('qrCanvas');
-  const qrLink = document.getElementById('qrLink');
-  const qrStatus = document.getElementById('qrStatus');
-
-  document.getElementById('qrBtn').onclick = () => startSession();
-  document.getElementById('closeQr').onclick = () => stopSession();
-
-  function startSession() {
-    stopSession();
-    currentSession = genSessionId();
-    const link = `${window.MOBILE_SCAN_URL}?session=${currentSession}`;
-
-    QRCode.toCanvas(qrCanvas, link, { width: 250, margin: 1 }, () => {});
-    qrLink.href = link;
-    qrLink.textContent = link;
-    qrStatus.textContent = 'Đang chờ dữ liệu quét...';
-    qrPanel.classList.add('show');
-
-    sessionRef = db.ref('sessions/' + currentSession);
-    sessionRef.set({ createdAt: firebase.database.ServerValue.TIMESTAMP });
-
-    sessionRef.child('data').on('value', snap => {
-      const val = snap.val();
-      if (!val || !val.text) return;
-      if (val.ts && val.ts === lastTs) return;
-      lastTs = val.ts || Date.now();
-      qrStatus.textContent = 'Đã nhận: ' + sanitizeText(val.text).slice(0, 40);
-      injectIntoWebview(val.text);
+// ===== Gửi dữ liệu lên Firebase =====
+async function sendData(text) {
+  try {
+    await db.ref('sessions/' + session + '/data').set({
+      text: text,
+      ts: Date.now()
     });
-  }
 
-  function stopSession() {
-    if (sessionRef) {
-      sessionRef.child('data').off();
-      sessionRef.remove().catch(() => {});
+    statusEl.innerHTML = 
+      '<span class="ok">✅ Đã gửi thành công</span><br><b>' + text + '</b>';
+
+    // Dừng camera sau khi gửi
+    if (scanner) {
+      try { await scanner.stop(); } catch(e) {}
     }
-    sessionRef = null;
-    currentSession = null;
-    lastTs = 0;
-    qrPanel.classList.remove('show');
+
+    // Tự đóng tab sau 1.5 giây (nếu trình duyệt cho phép)
+    setTimeout(() => {
+      try { window.close(); } catch(e) {}
+    }, 1500);
+
+  } catch (err) {
+    statusEl.innerHTML = '<span class="err">❌ Lỗi gửi dữ liệu</span>';
+    console.error(err);
   }
-  </script>
+}
+
+// ===== Bắt đầu quét =====
+startBtn.onclick = async () => {
+  if (!session) return;
+
+  startBtn.disabled = true;
+  statusEl.innerHTML = '📷 Đang mở camera...';
+
+  scanner = new Html5Qrcode("reader");
+
+  try {
+    await scanner.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ]
+      },
+      (decodedText) => {
+        sendData(decodedText);
+      },
+      () => {}
+    );
+
+    statusEl.innerHTML = '🔍 Đưa camera vào mã QR hoặc mã vạch';
+
+  } catch (err) {
+    statusEl.innerHTML = '<span class="err">❌ Không mở được camera</span>';
+    startBtn.disabled = false;
+    console.error(err);
+  }
+};
+
+// ===== Đèn flash =====
+flashBtn.onclick = async () => {
+  if (!scanner) return;
+
+  try {
+    const track = scanner.getRunningTrackSettings ? true : false;
+    if (!track) return;
+
+    flashOn = !flashOn;
+    await scanner.applyVideoConstraints({
+      advanced: [{ torch: flashOn }]
+    });
+
+    flashBtn.textContent = flashOn ? '💡 Tắt đèn' : '💡 Đèn flash';
+  } catch (e) {
+    alert('Thiết bị không hỗ trợ đèn flash');
+  }
+};
+</script>
+
 </body>
 </html>
