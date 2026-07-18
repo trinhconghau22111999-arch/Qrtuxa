@@ -165,7 +165,15 @@ if (!session) {
   function tryStart(cameraConfig) {
     return qr.start(
       cameraConfig,
-      { fps: 12, qrbox: { width: 260, height: 260 } },
+      {
+        fps: 15,
+        qrbox: { width: 260, height: 260 },
+        videoConstraints: {
+          ...cameraConfig,
+          width: { ideal: 720 },
+          height: { ideal: 720 }
+        }
+      },
       onScanSuccess,
       () => {}
     ).then(markStarted);
