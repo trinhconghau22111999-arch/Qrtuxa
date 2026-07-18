@@ -19,16 +19,23 @@
     backdrop-filter: blur(2px);
   }
   #flashBtn.on { background:#ffd93d; color:#111; border-color:#ffd93d; font-weight:600; }
+  #startBtn {
+    margin-top:20px; padding:16px 32px; border-radius:28px; border:none;
+    background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff; font-size:16px;
+    font-weight:600; cursor:pointer; box-shadow:0 0 20px rgba(192,38,255,0.5);
+  }
+  #readerWrap, #flashRow { display:none; }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <h2>📷 Đưa camera vào mã QR / mã vạch</h2>
+  <h2>📷 Quét mã QR / mã vạch</h2>
   <div id="readerWrap">
     <div id="reader"></div>
-    <button id="flashBtn">💡</button>
+    <button id="flashBtn">⚡</button>
   </div>
-  <div id="status">Đang khởi động camera...</div>
+  <button id="startBtn">▶ Bắt đầu quét</button>
+  <div id="status"></div>
   <div id="err"></div>
 </div>
 
@@ -49,10 +56,12 @@ const params = new URLSearchParams(location.search);
 const session = params.get('session');
 const statusEl = document.getElementById('status');
 const errEl = document.getElementById('err');
+const startBtn = document.getElementById('startBtn');
+const readerWrap = document.getElementById('readerWrap');
 
 if (!session) {
-  statusEl.textContent = '';
   errEl.textContent = 'Thiếu mã phiên (session). Hãy quét lại link/QR do máy tính tạo ra.';
+  startBtn.style.display = 'none';
 } else {
   try {
     firebase.initializeApp(window.FIREBASE_CONFIG);
@@ -64,21 +73,26 @@ if (!session) {
 
   let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
 
-  // ====== Doc to "Ớ" khi gui du lieu thanh cong (1 lan duy nhat) ======
-  ['click', 'touchstart'].forEach(evt => {
-    document.addEventListener(evt, () => {
-      // "danh thuc" speech synthesis som de lan doc dau tien khong bi cham/im lang
-      try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch (e) {}
-    }, { once: true });
-  });
+  // ====== Doc to "Ớ" khi gui du lieu thanh cong ======
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+      // Noi mot cau rong de "mo khoa" speechSynthesis ngay trong cu cham cua nguoi dung
+      const warm = new SpeechSynthesisUtterance('');
+      warm.volume = 0;
+      window.speechSynthesis.speak(warm);
+    } catch (e) {}
+  }
 
   function playBeep() {
     try {
       if (!window.speechSynthesis) return;
-      window.speechSynthesis.cancel(); // huy cau doc dang cho, tranh chong tieng
+      window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance('Ớ');
       utter.lang = 'vi-VN';
-      utter.rate = 1;
+      utter.rate = 2;
       utter.pitch = 1.1;
       utter.volume = 1;
       window.speechSynthesis.speak(utter);
@@ -86,7 +100,7 @@ if (!session) {
   }
 
   function onScanSuccess(decodedText) {
-    if (decodedText === lastText) return; // trung voi ma vua quet ngay truoc, bo qua
+    if (decodedText === lastText) return;
     lastText = decodedText;
 
     dataRef.set({ text: decodedText, ts: Date.now() })
@@ -115,21 +129,15 @@ if (!session) {
     ]
   });
   let started = false;
-
-  const stallTimer = setTimeout(() => {
-    if (!started) {
-      errEl.textContent = 'Camera không phản hồi. Hãy kiểm tra: (1) đã cho phép quyền Camera cho trang này trong Cài đặt trình duyệt, (2) không có app khác đang chiếm camera, (3) thử tải lại trang.';
-    }
-  }, 8000);
+  let stallTimer = null;
 
   function markStarted() {
     started = true;
-    clearTimeout(stallTimer);
+    if (stallTimer) clearTimeout(stallTimer);
     statusEl.textContent = 'Sẵn sàng quét...';
     setupFlashButton();
   }
 
-  // ====== Dieu khien den flash ======
   const flashBtn = document.getElementById('flashBtn');
   let flashOn = false;
 
@@ -140,7 +148,6 @@ if (!session) {
         flashBtn.style.display = 'inline-block';
       }
     } catch (e) {
-      // Thiet bi/trinh duyet khong ho tro doc torch capability, an nut di
       flashBtn.style.display = 'none';
     }
   }
@@ -148,11 +155,9 @@ if (!session) {
   flashBtn.onclick = () => {
     flashOn = !flashOn;
     qr.applyVideoConstraints({ advanced: [{ torch: flashOn }] })
-      .then(() => {
-        flashBtn.classList.toggle('on', flashOn);
-      })
+      .then(() => { flashBtn.classList.toggle('on', flashOn); })
       .catch(e => {
-        flashOn = !flashOn; // hoan tac neu that bai
+        flashOn = !flashOn;
         errEl.textContent = 'Không bật/tắt được đèn flash: ' + (e && e.message ? e.message : e);
       });
   };
@@ -166,13 +171,28 @@ if (!session) {
     ).then(markStarted);
   }
 
-  tryStart({ facingMode: 'environment' })
-    .catch(() => tryStart({ facingMode: 'user' }))
-    .catch(e => {
-      clearTimeout(stallTimer);
-      errEl.textContent = 'Không mở được camera: ' + (e && e.message ? e.message : e) +
-        '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
-    });
+  // Chi bat dau moi thu (camera + mo khoa am thanh) sau khi nguoi dung bam nut,
+  // dam bao trinh duyet cho phep phat giong noi tu dong sau nay.
+  startBtn.onclick = () => {
+    unlockAudio();
+    startBtn.style.display = 'none';
+    readerWrap.style.display = 'block';
+    statusEl.textContent = 'Đang khởi động camera...';
+
+    stallTimer = setTimeout(() => {
+      if (!started) {
+        errEl.textContent = 'Camera không phản hồi. Hãy kiểm tra: (1) đã cho phép quyền Camera cho trang này trong Cài đặt trình duyệt, (2) không có app khác đang chiếm camera, (3) thử tải lại trang.';
+      }
+    }, 8000);
+
+    tryStart({ facingMode: 'environment' })
+      .catch(() => tryStart({ facingMode: 'user' }))
+      .catch(e => {
+        if (stallTimer) clearTimeout(stallTimer);
+        errEl.textContent = 'Không mở được camera: ' + (e && e.message ? e.message : e) +
+          '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
+      });
+  };
 }
 </script>
 </body>
