@@ -69,7 +69,16 @@
     width:100%; height:auto; background:#fff; border-radius:8px;
     box-shadow: 0 0 16px rgba(192,38,255,0.4);
   }
-  #qrLink { font-size:11px; word-break:break-all; color: var(--neon-soft); margin-top:10px; display:block; }
+  #qrLinkRow { display:flex; align-items:center; gap:6px; margin-top:10px; }
+  #qrLink { font-size:11px; word-break:break-all; color: var(--neon-soft); flex:1; min-width:0; }
+  #copyLinkBtn {
+    flex-shrink:0; width:28px; height:28px; border-radius:6px;
+    border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
+    color: var(--neon-soft); cursor:pointer; font-size:13px; display:flex;
+    align-items:center; justify-content:center; transition: all .15s ease;
+  }
+  #copyLinkBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
+  #copyLinkBtn.copied { background:#2fbf71; border-color:#2fbf71; color:#fff; }
   #qrStatus { font-size:12px; color:#7effc0; margin-top:8px; }
   #qrPanel h3 {
     margin:0 0 10px 0; font-size:14px; letter-spacing:.3px;
@@ -104,7 +113,10 @@
       <span id="closeQr">✕</span>
       <h3>Quét bằng điện thoại</h3>
       <canvas id="qrCanvas"></canvas>
-      <a id="qrLink" href="#" target="_blank"></a>
+      <div id="qrLinkRow">
+        <a id="qrLink" href="#" target="_blank"></a>
+        <button id="copyLinkBtn" title="Sao chép đường dẫn">⧉</button>
+      </div>
       <div id="qrStatus">Đang chờ dữ liệu quét...</div>
     </div>
   </div>
@@ -210,6 +222,7 @@
   const qrPanel = document.getElementById('qrPanel');
   const qrCanvas = document.getElementById('qrCanvas');
   const qrLink = document.getElementById('qrLink');
+  const copyLinkBtn = document.getElementById('copyLinkBtn');
   const qrStatus = document.getElementById('qrStatus');
 
   document.getElementById('qrBtn').onclick = () => startSession();
@@ -243,6 +256,18 @@
       });
       qrLink.href = link;
       qrLink.textContent = link;
+      copyLinkBtn.onclick = () => {
+        navigator.clipboard.writeText(link).then(() => {
+          copyLinkBtn.classList.add('copied');
+          copyLinkBtn.textContent = '✓';
+          setTimeout(() => {
+            copyLinkBtn.classList.remove('copied');
+            copyLinkBtn.textContent = '⧉';
+          }, 1200);
+        }).catch(() => {
+          qrStatus.textContent = 'Không sao chép được, hãy tự chọn và copy link.';
+        });
+      };
       qrStatus.textContent = 'Đang chờ dữ liệu quét...';
       qrPanel.classList.add('show');
 
