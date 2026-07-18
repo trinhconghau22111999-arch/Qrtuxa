@@ -190,16 +190,12 @@
       .catch(() => {});
   }
 
-  // ====== Tu dong bam Alt+Enter, neu khong duoc thi bam Enter ======
+  // ====== Tu dong bam Enter sau khi go xong (bo Alt+Enter vi gay tac dung phu
+  // nhu bat/tat toan man hinh trong Chromium, lam giat/khong muot) ======
   function sendAutoConfirmKeys() {
     try {
-      wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['alt'] });
-      wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['alt'] });
-
-      setTimeout(() => {
-        wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
-        wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
-      }, 120);
+      wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+      wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
     } catch (e) {}
   }
 
