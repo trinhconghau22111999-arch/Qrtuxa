@@ -93,6 +93,8 @@
   }
   #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
   #closeQr:hover { color:#fff; }
+  #refreshQr { position:absolute; top:10px; right:34px; cursor:pointer; color:#c7a8ff; }
+  #refreshQr:hover { color:#fff; }
 </style>
 </head>
 <body>
@@ -102,7 +104,6 @@
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
     <input id="urlbar" value="https://www.google.com" />
-    <button id="goBtn">Đi</button>
     <button id="qrBtn">📱 Chia sẻ QR</button>
   </div>
 
@@ -110,6 +111,7 @@
     <webview id="wv" src="https://www.google.com" partition="persist:browse"></webview>
 
     <div id="qrPanel">
+      <span id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">⟳</span>
       <span id="closeQr">✕</span>
       <h3>Quét bằng điện thoại</h3>
       <canvas id="qrCanvas"></canvas>
@@ -146,7 +148,6 @@
     return 'https://www.google.com/search?q=' + encodeURIComponent(v);
   }
 
-  document.getElementById('goBtn').onclick = () => wv.loadURL(normalizeUrl(urlbar.value));
   urlbar.addEventListener('keydown', e => { if (e.key === 'Enter') wv.loadURL(normalizeUrl(urlbar.value)); });
   document.getElementById('backBtn').onclick = () => wv.canGoBack() && wv.goBack();
   document.getElementById('fwdBtn').onclick = () => wv.canGoForward() && wv.goForward();
@@ -221,8 +222,19 @@
   const copyLinkBtn = document.getElementById('copyLinkBtn');
   const qrStatus = document.getElementById('qrStatus');
 
-  document.getElementById('qrBtn').onclick = () => startSession();
-  document.getElementById('closeQr').onclick = () => stopSession();
+  document.getElementById('qrBtn').onclick = () => {
+    if (currentSession && sessionRef) {
+      qrPanel.classList.add('show'); // session cu van con song, chi mo lai khung
+    } else {
+      startSession();
+    }
+  };
+  document.getElementById('closeQr').onclick = () => hideQrPanel();
+  document.getElementById('refreshQr').onclick = () => startSession();
+
+  function hideQrPanel() {
+    qrPanel.classList.remove('show'); // chi an giao dien, KHONG xoa session tren Firebase
+  }
 
   function startSession() {
     try {
