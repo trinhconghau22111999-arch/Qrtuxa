@@ -29,7 +29,15 @@
     background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff; font-size:16px;
     font-weight:600; cursor:pointer; box-shadow:0 0 20px rgba(192,38,255,0.5);
   }
-  #readerWrap, #flashRow { display:none; }
+  #readerWrap { display:none; }
+  /* Lam nhat vien mo (shaded region) cua thu vien html5-qrcode, cho no sat gan
+     vung quet hon thay vi phu mot lop toi day len toan bo khung hinh. */
+  #reader #qr-shaded-region > div {
+    background: rgba(0,0,0,0.25) !important;
+  }
+  #reader #qr-shaded-region {
+    border: none !important;
+  }
 </style>
 </head>
 <body>
@@ -74,12 +82,18 @@ if (!session) {
   } catch (e) {
     errEl.textContent = 'Lỗi khởi tạo Firebase: ' + e.message;
   }
-  const db = firebase.database();
-  const dataRef = db.ref('sessions/' + session + '/data');
+  let db;
+  try {
+    db = firebase.database();
+  } catch (e) {
+    errEl.textContent = 'Lỗi khởi tạo Firebase Database: ' + e.message;
+    startBtn.style.display = 'none';
+  }
+  const dataRef = db && db.ref('sessions/' + session + '/data');
 
   // "Lam nong" ket noi WebSocket ngay tu dau, khong cho toi luc quet moi ket noi
   // -> lan quet dau tien cung nhanh nhu cac lan sau, khong bi tre do bat tay ket noi
-  db.ref('.info/connected').on('value', () => {});
+  if (db) db.ref('.info/connected').on('value', () => {});
 
   let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
 
@@ -87,7 +101,7 @@ if (!session) {
   const scanFlash = document.getElementById('scanFlash');
   function flashEffect() {
     // Rung 1 phat ngan (khong block, khong await)
-    try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
 
     // Nhay man hinh: bat opacity ngay, roi cho CSS tu fade ve 0 (khong dung setTimeout de tranh giu luong)
     scanFlash.style.transition = 'none';
@@ -104,6 +118,7 @@ if (!session) {
   }
 
   function onScanSuccess(decodedText) {
+    if (!dataRef) return;
     if (!isAllowedText(decodedText)) return; // ma chua ky tu khong hop le -> bo qua hoan toan, coi nhu chua quet
     if (decodedText === lastText) return;
     lastText = decodedText;
@@ -188,10 +203,10 @@ if (!session) {
       cameraConfig,
       {
         fps: 10, // giam ve 10 nhu cu, du nhanh de bat ma va nhe cho moi may
-        // Vung quet vua phai (khong quet toan khung nua) de xu ly nhanh hon,
-        // ty le theo kich thuoc khung hinh thuc te nen luon phu hop moi man hinh.
+        // Vung quet to hon truoc (khong quet toan khung), phinh ra tu tam nen
+        // tu nhien lan gan len phia tren, gan nut den flash hon.
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+          const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.85);
           return { width: size, height: size };
         },
         videoConstraints: {
