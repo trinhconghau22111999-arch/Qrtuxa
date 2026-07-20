@@ -171,12 +171,21 @@
           el.setRangeText(t, start, end, 'end');
           el.dispatchEvent(new Event('input', { bubbles: true }));
           el.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        }
-        if (el.isContentEditable) {
+        } else if (el.isContentEditable) {
           document.execCommand('insertText', false, t);
-          return true;
+        } else {
+          return false;
         }
+
+        // Ban truc tiep chuoi su kien Enter vao DUNG o vua go, de cac form
+        // tu viet JS lang nghe keydown/keypress tren chinh o do van bat duoc.
+        ['keydown', 'keypress', 'keyup'].forEach(type => {
+          el.dispatchEvent(new KeyboardEvent(type, {
+            key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+            bubbles: true, cancelable: true
+          }));
+        });
+        return true;
       } catch (e) {}
       return false;
     };
@@ -187,12 +196,12 @@
     const clean = sanitizeText(rawText);
     if (!clean) return;
     wv.executeJavaScript(buildInjectionScript(clean))
-      .then(() => sendAutoConfirmKeys())
+      .then(() => sendAutoConfirmKeys()) // du phong: ban them Enter "that" o tang he thong cho form native
       .catch(() => {});
   }
 
-  // ====== Tu dong bam Enter sau khi go xong (bo Alt+Enter vi gay tac dung phu
-  // nhu bat/tat toan man hinh trong Chromium, lam giat/khong muot) ======
+  // ====== Du phong: tu dong bam Enter o tang he thong, cho cac form HTML thuan
+  // (khong co JS rieng) chi phan hoi voi phim that su duoc trinh duyet cong nhan ======
   function sendAutoConfirmKeys() {
     try {
       wv.focus();
