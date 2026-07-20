@@ -22,6 +22,34 @@
     color: var(--text);
   }
   body { display:flex; flex-direction:column; }
+  #titleBar {
+    flex: 0 0 auto;
+    display:flex; align-items:center; gap:10px; height:34px; padding:0 6px 0 12px;
+    background: #000000;
+    border-bottom: 1px solid rgba(192,38,255,0.5);
+    -webkit-app-region: drag; /* cho phep keo di chuyen cua so bang thanh nay */
+  }
+  #titleBar .title-text {
+    flex-shrink:0; font-size:12px; color:#a879e0; white-space:nowrap;
+    -webkit-app-region: drag;
+  }
+  #titleBar #tabsBar {
+    -webkit-app-region: no-drag; /* vung co nut/tab phai tat drag de bam duoc */
+    flex: 1 1 auto; min-width:0;
+    display:flex; align-items:center; gap:4px;
+    overflow-x:auto; white-space:nowrap; height:100%;
+  }
+  #winControls {
+    -webkit-app-region: no-drag;
+    flex:0 0 auto; display:flex; align-items:center; gap:2px;
+  }
+  .win-btn {
+    width:32px; height:26px; display:flex; align-items:center; justify-content:center;
+    background:transparent; border:none; color:#c7a8ff; cursor:pointer; font-size:12px;
+    border-radius:4px; transition: all .15s ease;
+  }
+  .win-btn:hover { background: rgba(192,38,255,0.25); color:#fff; }
+  #winCloseBtn:hover { background:#e0304f; color:#fff; }
   #toolbar {
     flex: 0 0 auto;
     display:flex; align-items:center; gap:6px; padding:5px 8px;
@@ -41,15 +69,6 @@
     box-shadow: 0 0 12px rgba(192,38,255,0.6);
     color: #fff;
   }
-  #tabsBar {
-    flex: 0 0 auto;
-    display:flex; align-items:center; gap:4px; padding:4px 8px;
-    background: #000000;
-    border-bottom: 1px solid rgba(192,38,255,0.5);
-    overflow-x:auto; white-space:nowrap;
-  }
-  #tabsBar::-webkit-scrollbar { height:4px; }
-  #tabsBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
   .tab-item {
     display:flex; align-items:center; gap:6px;
     max-width:150px;
@@ -65,6 +84,8 @@
     box-shadow: 0 0 10px rgba(192,38,255,0.55);
     background: rgba(192,38,255,0.12);
   }
+  #titleBar #tabsBar::-webkit-scrollbar { height:3px; }
+  #titleBar #tabsBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
   .tab-close {
     width:15px; height:15px; border-radius:50%; display:flex;
     align-items:center; justify-content:center; font-size:10px; flex-shrink:0;
@@ -194,6 +215,7 @@
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   #brand {
+    flex-shrink:0;
     font-weight:700; font-size:14px; white-space:nowrap; margin-right:6px;
     background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
     -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -206,6 +228,18 @@
 </style>
 </head>
 <body>
+  <div id="titleBar">
+    <span class="title-text">QR Remote Browser</span>
+    <div id="tabsBar">
+      <button id="newTabBtn" title="Mở tab mới">＋</button>
+    </div>
+    <div id="winControls">
+      <button class="win-btn" id="winMinBtn" title="Thu nhỏ">─</button>
+      <button class="win-btn" id="winMaxBtn" title="Phóng to">☐</button>
+      <button class="win-btn" id="winCloseBtn" title="Đóng">✕</button>
+    </div>
+  </div>
+
   <div id="toolbar">
     <span id="brand">Hậu-GHN</span>
     <button id="backBtn">◀</button>
@@ -216,10 +250,6 @@
       <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
     </div>
     <button id="qrBtn">📱 Chia sẻ QR</button>
-  </div>
-
-  <div id="tabsBar">
-    <button id="newTabBtn" title="Mở tab mới">＋</button>
   </div>
 
   <div id="bookmarksBar">
@@ -410,6 +440,23 @@
   }
 
   newTabBtn.onclick = () => newTab();
+
+  // ====== Nut dieu khien cua so (thu nho / phong to / dong) tren thanh tieu de tu ve ======
+  // Khong lien quan gi den logic tab hay quet QR; chi goi qua API an toan
+  // ma preload.js da lo ra (window.windowControls), vi contextIsolation dang bat.
+  const winMinBtn = document.getElementById('winMinBtn');
+  const winMaxBtn = document.getElementById('winMaxBtn');
+  const winCloseBtn = document.getElementById('winCloseBtn');
+
+  if (window.windowControls) {
+    winMinBtn.onclick = () => window.windowControls.minimize();
+    winMaxBtn.onclick = () => window.windowControls.toggleMaximize();
+    winCloseBtn.onclick = () => window.windowControls.close();
+    window.windowControls.onMaximizedChange((isMaximized) => {
+      winMaxBtn.textContent = isMaximized ? '❐' : '☐';
+      winMaxBtn.title = isMaximized ? 'Khôi phục' : 'Phóng to';
+    });
+  }
 
   urlbar.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
