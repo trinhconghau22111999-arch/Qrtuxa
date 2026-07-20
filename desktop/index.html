@@ -195,9 +195,12 @@
   // nhu bat/tat toan man hinh trong Chromium, lam giat/khong muot) ======
   function sendAutoConfirmKeys() {
     try {
+      wv.focus();
       wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
       wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
-    } catch (e) {}
+    } catch (e) {
+      qrStatus.textContent = 'Lỗi gửi Enter: ' + e.message;
+    }
   }
 
   let db = null;
