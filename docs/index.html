@@ -24,6 +24,14 @@
     backdrop-filter: blur(2px);
   }
   #flashBtn.on { background:#ffd93d; color:#111; border-color:#ffd93d; font-weight:600; }
+  #zoomRow {
+    position:absolute; bottom:10px; left:10px; right:10px; z-index:20;
+    display:none; align-items:center; gap:8px;
+    background:rgba(0,0,0,0.55); border-radius:20px; padding:6px 14px;
+    backdrop-filter: blur(2px);
+  }
+  #zoomRow span { font-size:13px; }
+  #zoomSlider { flex:1; }
   #startBtn {
     margin-top:20px; padding:16px 32px; border-radius:28px; border:none;
     background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff; font-size:16px;
@@ -39,6 +47,10 @@
     <div id="reader"></div>
     <div id="scanFlash"></div>
     <button id="flashBtn">⚡</button>
+    <div id="zoomRow">
+      <span>🔍</span>
+      <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1" />
+    </div>
   </div>
   <button id="startBtn">▶ Bắt đầu quét</button>
   <div id="status"></div>
@@ -76,6 +88,10 @@ if (!session) {
   }
   const db = firebase.database();
   const dataRef = db.ref('sessions/' + session + '/data');
+
+  // "Lam nong" ket noi WebSocket ngay tu dau, khong cho toi luc quet moi ket noi
+  // -> lan quet dau tien cung nhanh nhu cac lan sau, khong bi tre do bat tay ket noi
+  db.ref('.info/connected').on('value', () => {});
 
   let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
 
@@ -120,7 +136,13 @@ if (!session) {
     });
   }
 
+  // Chi chap nhan chu, so, khoang trang va dau "_". Bat ky ky tu dac biet nao khac -> coi nhu chua quet.
+  function isAllowedText(text) {
+    return /^[\p{L}\p{N}_\s]*$/u.test(text);
+  }
+
   function onScanSuccess(decodedText) {
+    if (!isAllowedText(decodedText)) return; // ma chua ky tu khong hop le -> bo qua hoan toan, coi nhu chua quet
     if (decodedText === lastText) return;
     lastText = decodedText;
     flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
@@ -158,7 +180,33 @@ if (!session) {
     if (stallTimer) clearTimeout(stallTimer);
     statusEl.textContent = 'Sẵn sàng quét...';
     setupFlashButton();
+    setupZoomSlider();
   }
+
+  const zoomRow = document.getElementById('zoomRow');
+  const zoomSlider = document.getElementById('zoomSlider');
+
+  function setupZoomSlider() {
+    try {
+      const capabilities = qr.getRunningTrackCapabilities();
+      if (capabilities && capabilities.zoom) {
+        zoomSlider.min = capabilities.zoom.min || 1;
+        zoomSlider.max = capabilities.zoom.max || 5;
+        zoomSlider.step = capabilities.zoom.step || 0.1;
+        zoomSlider.value = capabilities.zoom.min || 1;
+        zoomRow.style.display = 'flex';
+      } else {
+        zoomRow.style.display = 'none';
+      }
+    } catch (e) {
+      zoomRow.style.display = 'none';
+    }
+  }
+
+  zoomSlider.addEventListener('input', () => {
+    const zoomVal = parseFloat(zoomSlider.value);
+    qr.applyVideoConstraints({ advanced: [{ zoom: zoomVal }] }).catch(() => {});
+  });
 
   const flashBtn = document.getElementById('flashBtn');
   let flashOn = false;
@@ -188,12 +236,14 @@ if (!session) {
     return qr.start(
       cameraConfig,
       {
-        fps: 15,
-        qrbox: { width: 260, height: 260 },
+        fps: 20, // tang toc do phat hien ma, neu may yeu bi giat thi giam lai
+        // Khong dat qrbox co dinh: quet toan bo khung hinh, giup bat duoc ma nho/o xa
+        // xuat hien o bat ky vi tri nao trong khung hinh, khong chi vung giua
         videoConstraints: {
           ...cameraConfig,
-          width: { ideal: 720 },
-          height: { ideal: 720 }
+          width: { ideal: 1920 },
+          height: { ideal: 1920 },
+          advanced: [{ focusMode: 'continuous' }]
         }
       },
       onScanSuccess,
