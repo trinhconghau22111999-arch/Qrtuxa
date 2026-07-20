@@ -19,6 +19,23 @@ function createWindow() {
   });
 
   win.loadFile('index.html');
+
+  // Cho phep cua so popup (vd: xem anh POD) duoc mo va hien thi binh thuong,
+  // thay vi bi Electron chan / tao an khien trang bao loi "Cannot read
+  // properties of null (reading 'document')".
+  win.webContents.on('did-attach-webview', (event, webContents) => {
+    webContents.setWindowOpenHandler(() => ({
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        width: 900,
+        height: 700,
+        webPreferences: {
+          contextIsolation: true,
+          nodeIntegration: false
+        }
+      }
+    }));
+  });
 }
 
 app.whenReady().then(() => {
