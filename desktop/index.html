@@ -238,6 +238,30 @@
   wv.addEventListener('did-navigate', e => urlbar.value = e.url);
   wv.addEventListener('did-navigate-in-page', e => urlbar.value = e.url);
 
+  // ====== Ctrl + lan chuot de phong to/thu nho trang dang xem ======
+  // webview khong chuyen tiep su kien wheel ra ngoai host, nen phai tiem 1 doan
+  // script nho vao CHINH trang dang tai (chi dung DOM/CSS thuan, khong can
+  // quyen Node/Electron ben trong trang khach) va chay lai moi khi trang do tai xong.
+  function buildCtrlWheelZoomScript() {
+    const fn = function () {
+      if (window.__ctrlWheelZoomInstalled) return;
+      window.__ctrlWheelZoomInstalled = true;
+      let zoom = 1;
+      window.addEventListener('wheel', function (e) {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+        const step = 0.1;
+        zoom = e.deltaY < 0 ? Math.min(zoom + step, 3) : Math.max(zoom - step, 0.3);
+        document.documentElement.style.zoom = zoom;
+      }, { passive: false });
+    };
+    return `(${fn.toString()})();`;
+  }
+
+  wv.addEventListener('dom-ready', () => {
+    wv.executeJavaScript(buildCtrlWheelZoomScript()).catch(() => {});
+  });
+
   function sanitizeText(text) {
     if (typeof text !== 'string') return '';
     return text.replace(/[^\p{L}\p{N}_\s]/gu, '');
