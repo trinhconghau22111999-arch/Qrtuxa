@@ -147,7 +147,7 @@ if (!session) {
     lastText = decodedText;
     flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
 
-    dataRef.set({ text: decodedText + '\n', ts: Date.now() })
+    dataRef.set({ text: decodedText, ts: Date.now() })
       .then(() => {
         statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40);
         playBeep();
@@ -186,6 +186,14 @@ if (!session) {
   const zoomRow = document.getElementById('zoomRow');
   const zoomSlider = document.getElementById('zoomSlider');
 
+  // Gom chung trang thai cac thuoc tinh "advanced" (focusMode/torch/zoom).
+  // Vi applyVideoConstraints thay THE TOAN BO mang advanced moi lan goi (khong cong don),
+  // nen phai luon gui du ca 3 thuoc tinh cung luc de khong lam mat cai da dat truoc do.
+  const advancedState = { focusMode: 'continuous', torch: false, zoom: 1 };
+  function applyAdvancedConstraints() {
+    return qr.applyVideoConstraints({ advanced: [advancedState] });
+  }
+
   function setupZoomSlider() {
     try {
       const capabilities = qr.getRunningTrackCapabilities();
@@ -194,6 +202,7 @@ if (!session) {
         zoomSlider.max = capabilities.zoom.max || 5;
         zoomSlider.step = capabilities.zoom.step || 0.1;
         zoomSlider.value = capabilities.zoom.min || 1;
+        advancedState.zoom = parseFloat(zoomSlider.value);
         zoomRow.style.display = 'flex';
       } else {
         zoomRow.style.display = 'none';
@@ -204,8 +213,8 @@ if (!session) {
   }
 
   zoomSlider.addEventListener('input', () => {
-    const zoomVal = parseFloat(zoomSlider.value);
-    qr.applyVideoConstraints({ advanced: [{ zoom: zoomVal }] }).catch(() => {});
+    advancedState.zoom = parseFloat(zoomSlider.value);
+    applyAdvancedConstraints().catch(() => {});
   });
 
   const flashBtn = document.getElementById('flashBtn');
@@ -223,11 +232,12 @@ if (!session) {
   }
 
   flashBtn.onclick = () => {
-    flashOn = !flashOn;
-    qr.applyVideoConstraints({ advanced: [{ torch: flashOn }] })
-      .then(() => { flashBtn.classList.toggle('on', flashOn); })
+    const newFlashOn = !flashOn;
+    advancedState.torch = newFlashOn;
+    applyAdvancedConstraints()
+      .then(() => { flashOn = newFlashOn; flashBtn.classList.toggle('on', flashOn); })
       .catch(e => {
-        flashOn = !flashOn;
+        advancedState.torch = flashOn; // hoan tac trang thai neu that bai
         errEl.textContent = 'Không bật/tắt được đèn flash: ' + (e && e.message ? e.message : e);
       });
   };
