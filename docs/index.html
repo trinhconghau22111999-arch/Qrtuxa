@@ -24,14 +24,6 @@
     backdrop-filter: blur(2px);
   }
   #flashBtn.on { background:#ffd93d; color:#111; border-color:#ffd93d; font-weight:600; }
-  #zoomRow {
-    position:absolute; bottom:10px; left:10px; right:10px; z-index:20;
-    display:none; align-items:center; gap:8px;
-    background:rgba(0,0,0,0.55); border-radius:20px; padding:6px 14px;
-    backdrop-filter: blur(2px);
-  }
-  #zoomRow span { font-size:13px; }
-  #zoomSlider { flex:1; }
   #startBtn {
     margin-top:20px; padding:16px 32px; border-radius:28px; border:none;
     background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff; font-size:16px;
@@ -47,10 +39,6 @@
     <div id="reader"></div>
     <div id="scanFlash"></div>
     <button id="flashBtn">⚡</button>
-    <div id="zoomRow">
-      <span>🔍</span>
-      <input type="range" id="zoomSlider" min="1" max="5" step="0.1" value="1" />
-    </div>
   </div>
   <button id="startBtn">▶ Bắt đầu quét</button>
   <div id="status"></div>
@@ -95,33 +83,7 @@ if (!session) {
 
   let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
 
-  // ====== Doc to "Ớ" khi gui du lieu thanh cong ======
-  let audioUnlocked = false;
-  function unlockAudio() {
-    if (audioUnlocked) return;
-    audioUnlocked = true;
-    try {
-      // Noi mot cau rong de "mo khoa" speechSynthesis ngay trong cu cham cua nguoi dung
-      const warm = new SpeechSynthesisUtterance('');
-      warm.volume = 0;
-      window.speechSynthesis.speak(warm);
-    } catch (e) {}
-  }
-
-  function playBeep() {
-    try {
-      if (!window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance('Ớ');
-      utter.lang = 'vi-VN';
-      utter.rate = 2;
-      utter.pitch = 1.1;
-      utter.volume = 1;
-      window.speechSynthesis.speak(utter);
-    } catch (e) {}
-  }
-
-  // ====== Hieu ung nhay tim neon + rung, chay tren GPU nen khong lam cham vong quet ======
+  // ====== Hieu ung nhay tim neon + rung khi quet thanh cong ======
   const scanFlash = document.getElementById('scanFlash');
   function flashEffect() {
     // Rung 1 phat ngan (khong block, khong await)
@@ -147,12 +109,10 @@ if (!session) {
     lastText = decodedText;
     flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
 
+    // Gui thang, khong cho .then() lam cham hien thi trang thai
     dataRef.set({ text: decodedText, ts: Date.now() })
-      .then(() => {
-        statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40);
-        playBeep();
-      })
       .catch(e => { errEl.textContent = 'Lỗi gửi dữ liệu: ' + e.message; });
+    statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40);
   }
 
   const qr = new Html5Qrcode('reader', {
@@ -180,42 +140,20 @@ if (!session) {
     if (stallTimer) clearTimeout(stallTimer);
     statusEl.textContent = 'Sẵn sàng quét...';
     setupFlashButton();
-    setupZoomSlider();
+    applyFocusMode();
   }
 
-  const zoomRow = document.getElementById('zoomRow');
-  const zoomSlider = document.getElementById('zoomSlider');
-
-  // Gom chung trang thai cac thuoc tinh "advanced" (focusMode/torch/zoom).
-  // Vi applyVideoConstraints thay THE TOAN BO mang advanced moi lan goi (khong cong don),
-  // nen phai luon gui du ca 3 thuoc tinh cung luc de khong lam mat cai da dat truoc do.
-  const advancedState = { focusMode: 'continuous', torch: false, zoom: 1 };
-  function applyAdvancedConstraints() {
-    return qr.applyVideoConstraints({ advanced: [advancedState] });
+  // Tach rieng focusMode va torch: moi thu tu goi applyVideoConstraints RIENG,
+  // vi mot so trinh duyet/thiet bi bao "Unsupported constraint" khi gop chung
+  // 2 thuoc tinh vao cung mot mang advanced. Tach ra de loi cua ben nay
+  // (vd. khong ho tro focusMode) khong lam hong ben kia (vd. torch).
+  function applyFocusMode() {
+    qr.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
   }
 
-  function setupZoomSlider() {
-    try {
-      const capabilities = qr.getRunningTrackCapabilities();
-      if (capabilities && capabilities.zoom) {
-        zoomSlider.min = capabilities.zoom.min || 1;
-        zoomSlider.max = capabilities.zoom.max || 5;
-        zoomSlider.step = capabilities.zoom.step || 0.1;
-        zoomSlider.value = capabilities.zoom.min || 1;
-        advancedState.zoom = parseFloat(zoomSlider.value);
-        zoomRow.style.display = 'flex';
-      } else {
-        zoomRow.style.display = 'none';
-      }
-    } catch (e) {
-      zoomRow.style.display = 'none';
-    }
+  function applyTorch(on) {
+    return qr.applyVideoConstraints({ advanced: [{ torch: on }] });
   }
-
-  zoomSlider.addEventListener('input', () => {
-    advancedState.zoom = parseFloat(zoomSlider.value);
-    applyAdvancedConstraints().catch(() => {});
-  });
 
   const flashBtn = document.getElementById('flashBtn');
   let flashOn = false;
@@ -223,8 +161,13 @@ if (!session) {
   function setupFlashButton() {
     try {
       const capabilities = qr.getRunningTrackCapabilities();
+      // Chi hien nut flash neu thiet bi bao co ho tro torch.
+      // Mot so trang/thiet bi khong bao gio bao co torch trong capabilities
+      // (du phan cung co den) -> nut se an, tranh nguoi dung bam vao loi.
       if (capabilities && capabilities.torch) {
         flashBtn.style.display = 'inline-block';
+      } else {
+        flashBtn.style.display = 'none';
       }
     } catch (e) {
       flashBtn.style.display = 'none';
@@ -233,12 +176,10 @@ if (!session) {
 
   flashBtn.onclick = () => {
     const newFlashOn = !flashOn;
-    advancedState.torch = newFlashOn;
-    applyAdvancedConstraints()
+    applyTorch(newFlashOn)
       .then(() => { flashOn = newFlashOn; flashBtn.classList.toggle('on', flashOn); })
       .catch(e => {
-        advancedState.torch = flashOn; // hoan tac trang thai neu that bai
-        errEl.textContent = 'Không bật/tắt được đèn flash: ' + (e && e.message ? e.message : e);
+        errEl.textContent = 'Không bật/tắt được đèn flash trên trang/thiết bị này: ' + (e && e.message ? e.message : e);
       });
   };
 
@@ -246,14 +187,19 @@ if (!session) {
     return qr.start(
       cameraConfig,
       {
-        fps: 15, // toc do nhan dien ma
-        // Khong dat qrbox co dinh: quet toan bo khung hinh, giup bat duoc ma nho/o xa
-        // xuat hien o bat ky vi tri nao trong khung hinh, khong chi vung giua
+        fps: 10, // giam ve 10 nhu cu, du nhanh de bat ma va nhe cho moi may
+        // Vung quet vua phai (khong quet toan khung nua) de xu ly nhanh hon,
+        // ty le theo kich thuoc khung hinh thuc te nen luon phu hop moi man hinh.
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+          return { width: size, height: size };
+        },
         videoConstraints: {
           ...cameraConfig,
-          width: { ideal: 4096 },  // dat rat cao de trinh duyet tu chon do phan giai TOI DA camera ho tro
-          height: { ideal: 4096 },
-          advanced: [{ focusMode: 'continuous' }] // lay net tu dong lien tuc
+          // Do phan giai o muc chuan (720p), du net de doc ma va chay muot tren moi may,
+          // khong doi 4K nen camera khoi mat thoi gian thuong luong/khoi dong lau.
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
       },
       onScanSuccess,
@@ -261,10 +207,9 @@ if (!session) {
     ).then(markStarted);
   }
 
-  // Chi bat dau moi thu (camera + mo khoa am thanh) sau khi nguoi dung bam nut,
-  // dam bao trinh duyet cho phep phat giong noi tu dong sau nay.
+  // Bat dau camera ngay khi nguoi dung bam nut, khong lam gi thua truoc do
+  // de camera mo nhanh nhat co the.
   startBtn.onclick = () => {
-    unlockAudio();
     startBtn.style.display = 'none';
     readerWrap.style.display = 'block';
     statusEl.textContent = 'Đang khởi động camera...';
