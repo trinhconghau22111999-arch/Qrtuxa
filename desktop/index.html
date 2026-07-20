@@ -36,6 +36,35 @@
     box-shadow: 0 0 12px rgba(192,38,255,0.6);
     color: #fff;
   }
+  #bookmarksBar {
+    display:flex; align-items:center; gap:6px; padding:6px 10px;
+    background: #170c29;
+    border-bottom: 1px solid rgba(139,45,255,0.25);
+    overflow-x:auto; white-space:nowrap;
+  }
+  #bookmarksBar::-webkit-scrollbar { height:4px; }
+  #bookmarksBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
+  .bm-item {
+    display:flex; align-items:center; gap:6px;
+    background: rgba(139,45,255,0.12);
+    border:1px solid rgba(139,45,255,0.35);
+    border-radius:16px; padding:4px 6px 4px 12px;
+    font-size:12px; color: var(--text); cursor:pointer;
+    transition: all .15s ease; flex-shrink:0;
+  }
+  .bm-item:hover { border-color: var(--neon-1); box-shadow:0 0 8px rgba(192,38,255,0.4); }
+  .bm-item .bm-del {
+    width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#c7a8ff; font-size:11px; line-height:1;
+  }
+  .bm-item .bm-del:hover { color:#fff; background:rgba(255,60,90,0.6); }
+  #addBookmarkBtn {
+    flex-shrink:0; width:26px; height:26px; border-radius:50%;
+    border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
+    color: var(--neon-soft); cursor:pointer; font-size:14px; display:flex;
+    align-items:center; justify-content:center; transition: all .15s ease;
+  }
+  #addBookmarkBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
   #urlbar {
     flex:1; padding:8px 12px; border-radius:8px;
     border:1px solid rgba(139,45,255,0.4);
@@ -55,7 +84,7 @@
     box-shadow: 0 0 22px rgba(192,38,255,0.9);
     filter: brightness(1.1);
   }
-  #webviewWrap { position:relative; height: calc(100% - 56px); }
+  #webviewWrap { position:relative; height: calc(100% - 94px); }
   webview { width:100%; height:100%; }
   #qrPanel {
     position:absolute; top:14px; right:14px; width:280px;
@@ -105,6 +134,10 @@
     <button id="reloadBtn">⟳</button>
     <input id="urlbar" value="https://www.google.com" />
     <button id="qrBtn">📱 Chia sẻ QR</button>
+  </div>
+
+  <div id="bookmarksBar">
+    <button id="addBookmarkBtn" title="Thêm trang hiện tại vào dấu trang">＋</button>
   </div>
 
   <div id="webviewWrap">
@@ -196,17 +229,10 @@
   function sendAutoConfirmKeys() {
     try {
       wv.focus();
-      // Cho 1 khung hinh de focus thuc su chuyen vao webview truoc khi gui phim,
-      // tranh truong hop gui qua som khi focus chua kip on dinh.
-      requestAnimationFrame(() => {
-        try {
-          wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
-          wv.sendInputEvent({ type: 'char', keyCode: 'Enter' });
-          wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
-        } catch (e2) {
-          qrStatus.textContent = 'Lỗi gửi Enter: ' + e2.message;
-        }
-      });
+      // Gui ngay, khong cho them 1 khung hinh nua -> giam do tre cam nhan duoc.
+      wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+      wv.sendInputEvent({ type: 'char', keyCode: 'Enter' });
+      wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
     } catch (e) {
       qrStatus.textContent = 'Lỗi gửi Enter: ' + e.message;
     }
@@ -321,6 +347,84 @@
     lastTs = 0;
     qrPanel.classList.remove('show');
   }
+
+  // ====== Thanh dau trang cho may tinh ======
+  const BOOKMARKS_KEY = 'ghn_browser_bookmarks';
+  const bookmarksBar = document.getElementById('bookmarksBar');
+  const addBookmarkBtn = document.getElementById('addBookmarkBtn');
+
+  function loadBookmarks() {
+    try {
+      const raw = localStorage.getItem(BOOKMARKS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveBookmarks(list) {
+    try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  function shortTitle(title, url) {
+    const t = (title || '').trim();
+    if (t) return t.length > 22 ? t.slice(0, 22) + '…' : t;
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch (e) {
+      return url.slice(0, 22);
+    }
+  }
+
+  function renderBookmarks() {
+    const list = loadBookmarks();
+    bookmarksBar.querySelectorAll('.bm-item').forEach(el => el.remove());
+    list.forEach((bm, idx) => {
+      const item = document.createElement('div');
+      item.className = 'bm-item';
+      item.title = bm.url;
+
+      const label = document.createElement('span');
+      label.textContent = shortTitle(bm.title, bm.url);
+      item.appendChild(label);
+
+      const del = document.createElement('span');
+      del.className = 'bm-del';
+      del.textContent = '✕';
+      del.title = 'Xóa dấu trang';
+      del.onclick = (e) => {
+        e.stopPropagation();
+        const cur = loadBookmarks();
+        cur.splice(idx, 1);
+        saveBookmarks(cur);
+        renderBookmarks();
+      };
+      item.appendChild(del);
+
+      item.onclick = () => {
+        wv.loadURL(bm.url);
+        urlbar.value = bm.url;
+      };
+
+      bookmarksBar.insertBefore(item, addBookmarkBtn);
+    });
+  }
+
+  addBookmarkBtn.onclick = () => {
+    const url = wv.getURL ? (wv.getURL() || urlbar.value) : urlbar.value;
+    if (!url) return;
+    const list = loadBookmarks();
+    if (list.some(b => b.url === url)) return; // da co san, khong them trung
+    let pageTitle = '';
+    try { pageTitle = (wv.getTitle && wv.getTitle()) || ''; } catch (e) {}
+    const suggested = shortTitle(pageTitle, url);
+    const title = window.prompt('Tên dấu trang:', suggested) ?? suggested;
+    list.push({ title: title || suggested, url });
+    saveBookmarks(list);
+    renderBookmarks();
+  };
+
+  renderBookmarks();
   </script>
 </body>
 </html>
