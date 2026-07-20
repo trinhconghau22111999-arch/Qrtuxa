@@ -13,13 +13,17 @@
     --neon-soft: #d9b3ff;
     --text: #ffffff;
   }
+  * { box-sizing: border-box; }
   html, body {
     margin:0; padding:0; height:100%;
+    overflow: hidden;
     font-family: -apple-system, Segoe UI, Arial, sans-serif;
     background: #000000;
     color: var(--text);
   }
+  body { display:flex; flex-direction:column; }
   #toolbar {
+    flex: 0 0 auto;
     display:flex; align-items:center; gap:6px; padding:5px 8px;
     background: #000000;
     border-bottom: 1px solid var(--neon-1);
@@ -37,7 +41,44 @@
     box-shadow: 0 0 12px rgba(192,38,255,0.6);
     color: #fff;
   }
+  #tabsBar {
+    flex: 0 0 auto;
+    display:flex; align-items:center; gap:4px; padding:4px 8px;
+    background: #000000;
+    border-bottom: 1px solid rgba(192,38,255,0.5);
+    overflow-x:auto; white-space:nowrap;
+  }
+  #tabsBar::-webkit-scrollbar { height:4px; }
+  #tabsBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
+  .tab-item {
+    display:flex; align-items:center; gap:6px;
+    max-width:150px;
+    background:#000000; border:1px solid rgba(192,38,255,0.4);
+    border-radius:8px; padding:4px 6px 4px 10px;
+    font-size:11px; color:#c7a8ff; cursor:pointer; flex-shrink:0;
+    transition: all .15s ease;
+  }
+  .tab-item .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tab-item:hover { border-color: var(--neon-1); }
+  .tab-item.active {
+    border-color: var(--neon-1); color:#fff;
+    box-shadow: 0 0 10px rgba(192,38,255,0.55);
+    background: rgba(192,38,255,0.12);
+  }
+  .tab-close {
+    width:15px; height:15px; border-radius:50%; display:flex;
+    align-items:center; justify-content:center; font-size:10px; flex-shrink:0;
+  }
+  .tab-close:hover { color:#fff; background:rgba(255,60,90,0.6); }
+  #newTabBtn {
+    flex-shrink:0; width:22px; height:22px; border-radius:6px;
+    border:1px solid var(--neon-1); background:#000000; color:var(--neon-soft);
+    cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;
+    transition: all .15s ease;
+  }
+  #newTabBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
   #bookmarksBar {
+    flex: 0 0 auto;
     display:flex; align-items:center; gap:5px; padding:3px 8px;
     background: #000000;
     border-bottom: 1px solid rgba(192,38,255,0.5);
@@ -121,7 +162,8 @@
     box-shadow: 0 0 22px rgba(192,38,255,0.9);
     filter: brightness(1.1);
   }
-  #webviewWrap { position:relative; height: calc(100% - 62px); }
+  #webviewWrap { position:relative; flex: 1 1 auto; min-height:0; }
+  #webviewsContainer { width:100%; height:100%; }
   webview { width:100%; height:100%; }
   #qrPanel {
     position:absolute; top:14px; right:14px; width:280px;
@@ -171,13 +213,17 @@
     <button id="reloadBtn">⟳</button>
     <div id="urlbarWrap">
       <input id="urlbar" value="https://www.google.com" />
-      <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">＋</button>
+      <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
     </div>
     <button id="qrBtn">📱 Chia sẻ QR</button>
   </div>
 
+  <div id="tabsBar">
+    <button id="newTabBtn" title="Mở tab mới">＋</button>
+  </div>
+
   <div id="bookmarksBar">
-    <span id="bookmarksEmpty">Chưa có dấu trang nào — bấm ＋ ở thanh địa chỉ để lưu.</span>
+    <span id="bookmarksEmpty">Chưa có dấu trang nào — bấm ★ ở thanh địa chỉ để lưu.</span>
   </div>
 
   <div id="bookmarkModalOverlay">
@@ -192,7 +238,7 @@
   </div>
 
   <div id="webviewWrap">
-    <webview id="wv" src="https://www.google.com" partition="persist:browse"></webview>
+    <div id="webviewsContainer"></div>
 
     <div id="qrPanel">
       <span id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">⟳</span>
@@ -221,7 +267,9 @@
   };
   window.MOBILE_SCAN_URL = "https://trinhconghau22111999-arch.github.io/Qrtuxa/";
 
-  const wv = document.getElementById('wv');
+  const webviewsContainer = document.getElementById('webviewsContainer');
+  const tabsBar = document.getElementById('tabsBar');
+  const newTabBtn = document.getElementById('newTabBtn');
   const urlbar = document.getElementById('urlbar');
 
   function normalizeUrl(v) {
@@ -231,13 +279,6 @@
     if (v.includes('.') && !v.includes(' ')) return 'https://' + v;
     return 'https://www.google.com/search?q=' + encodeURIComponent(v);
   }
-
-  urlbar.addEventListener('keydown', e => { if (e.key === 'Enter') wv.loadURL(normalizeUrl(urlbar.value)); });
-  document.getElementById('backBtn').onclick = () => wv.canGoBack() && wv.goBack();
-  document.getElementById('fwdBtn').onclick = () => wv.canGoForward() && wv.goForward();
-  document.getElementById('reloadBtn').onclick = () => wv.reload();
-  wv.addEventListener('did-navigate', e => urlbar.value = e.url);
-  wv.addEventListener('did-navigate-in-page', e => urlbar.value = e.url);
 
   // ====== Ctrl + lan chuot de phong to/thu nho trang dang xem ======
   // webview khong chuyen tiep su kien wheel ra ngoai host, nen phai tiem 1 doan
@@ -259,9 +300,135 @@
     return `(${fn.toString()})();`;
   }
 
-  wv.addEventListener('dom-ready', () => {
-    wv.executeJavaScript(buildCtrlWheelZoomScript()).catch(() => {});
+  // ====== Quan ly da tab ======
+  // Moi tab la 1 <webview> rieng. Chi 1 webview hien thi (display:block) tai 1 thoi diem.
+  // Toan bo logic quet QR / dieu huong / dau trang deu thao tac tren "tab dang active",
+  // qua ham getActiveWebview() ben duoi, nen KHONG bi doi khi chuyen tab qua lai.
+  const tabs = new Map(); // id -> { id, webview, url, title }
+  let activeTabId = null;
+
+  function getActiveWebview() {
+    const t = tabs.get(activeTabId);
+    return t ? t.webview : null;
+  }
+
+  function findTabByWebview(el) {
+    for (const t of tabs.values()) if (t.webview === el) return t;
+    return null;
+  }
+
+  function createWebviewElement(url) {
+    const el = document.createElement('webview');
+    el.setAttribute('src', url);
+    el.setAttribute('partition', 'persist:browse');
+    el.setAttribute('allowpopups', '');
+    el.style.display = 'none';
+    webviewsContainer.appendChild(el);
+
+    el.addEventListener('dom-ready', () => {
+      el.executeJavaScript(buildCtrlWheelZoomScript()).catch(() => {});
+    });
+    el.addEventListener('did-navigate', e => onTabNavigate(el, e.url));
+    el.addEventListener('did-navigate-in-page', e => onTabNavigate(el, e.url));
+    el.addEventListener('page-title-updated', e => onTabTitle(el, e.title));
+
+    return el;
+  }
+
+  function onTabNavigate(webviewEl, url) {
+    const tab = findTabByWebview(webviewEl);
+    if (!tab) return;
+    tab.url = url;
+    if (tab.id === activeTabId) urlbar.value = url;
+    renderTabs();
+  }
+
+  function onTabTitle(webviewEl, title) {
+    const tab = findTabByWebview(webviewEl);
+    if (!tab) return;
+    tab.title = title;
+    renderTabs();
+  }
+
+  function newTab(url) {
+    url = url || 'https://www.google.com';
+    const id = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    const webview = createWebviewElement(url);
+    tabs.set(id, { id, webview, url, title: 'Trang mới' });
+    switchTab(id);
+    return id;
+  }
+
+  function switchTab(id) {
+    const tab = tabs.get(id);
+    if (!tab) return;
+    tabs.forEach(t => { t.webview.style.display = (t.id === id ? 'block' : 'none'); });
+    activeTabId = id;
+    urlbar.value = tab.url || '';
+    renderTabs();
+  }
+
+  function closeTab(id) {
+    const tab = tabs.get(id);
+    if (!tab) return;
+    tab.webview.remove();
+    tabs.delete(id);
+    if (activeTabId === id) {
+      const remaining = [...tabs.keys()];
+      if (remaining.length) {
+        switchTab(remaining[remaining.length - 1]);
+        return;
+      }
+      activeTabId = null;
+      newTab(); // luon giu it nhat 1 tab
+      return;
+    }
+    renderTabs();
+  }
+
+  function renderTabs() {
+    tabsBar.querySelectorAll('.tab-item').forEach(el => el.remove());
+    tabs.forEach(tab => {
+      const item = document.createElement('div');
+      item.className = 'tab-item' + (tab.id === activeTabId ? ' active' : '');
+
+      const label = document.createElement('span');
+      label.className = 'tab-label';
+      label.textContent = shortTitle(tab.title, tab.url);
+      item.appendChild(label);
+
+      const close = document.createElement('span');
+      close.className = 'tab-close';
+      close.textContent = '✕';
+      close.title = 'Đóng tab';
+      close.onclick = (e) => { e.stopPropagation(); closeTab(tab.id); };
+      item.appendChild(close);
+
+      item.onclick = () => switchTab(tab.id);
+      tabsBar.insertBefore(item, newTabBtn);
+    });
+  }
+
+  newTabBtn.onclick = () => newTab();
+
+  urlbar.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const wv = getActiveWebview();
+      if (wv) wv.loadURL(normalizeUrl(urlbar.value));
+    }
   });
+  document.getElementById('backBtn').onclick = () => {
+    const wv = getActiveWebview();
+    if (wv && wv.canGoBack()) wv.goBack();
+  };
+  document.getElementById('fwdBtn').onclick = () => {
+    const wv = getActiveWebview();
+    if (wv && wv.canGoForward()) wv.goForward();
+  };
+  document.getElementById('reloadBtn').onclick = () => {
+    const wv = getActiveWebview();
+    if (wv) wv.reload();
+  };
 
   function sanitizeText(text) {
     if (typeof text !== 'string') return '';
@@ -294,6 +461,8 @@
   function injectIntoWebview(rawText) {
     const clean = sanitizeText(rawText);
     if (!clean) return;
+    const wv = getActiveWebview();
+    if (!wv) return;
     wv.executeJavaScript(buildInjectionScript(clean))
       .then(() => sendAutoConfirmKeys())
       .catch(() => {});
@@ -303,6 +472,8 @@
   // khong phai su kien JS gia) ======
   function sendAutoConfirmKeys() {
     try {
+      const wv = getActiveWebview();
+      if (!wv) return;
       wv.focus();
       // Gui ngay, khong cho them 1 khung hinh nua -> giam do tre cam nhan duoc.
       wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
@@ -518,7 +689,8 @@
       item.appendChild(del);
 
       item.onclick = () => {
-        wv.loadURL(bm.url);
+        const wv = getActiveWebview();
+        if (wv) wv.loadURL(bm.url);
         urlbar.value = bm.url;
       };
 
@@ -530,13 +702,14 @@
   let pendingBookmarkUrl = null;
 
   function openBookmarkModal() {
-    const url = (wv.getURL && wv.getURL()) || urlbar.value;
+    const wv = getActiveWebview();
+    const url = (wv && wv.getURL && wv.getURL()) || urlbar.value;
     if (!url) return;
     if (loadBookmarks().some(b => b.url === url)) return; // da co san, khong them trung
 
     pendingBookmarkUrl = url;
     let pageTitle = '';
-    try { pageTitle = (wv.getTitle && wv.getTitle()) || ''; } catch (e) {}
+    try { pageTitle = (wv && wv.getTitle && wv.getTitle()) || ''; } catch (e) {}
     bookmarkNameInput.value = shortTitle(pageTitle, url);
     bookmarkModalOverlay.classList.add('show');
     bookmarkNameInput.focus();
@@ -570,6 +743,7 @@
   });
 
   renderBookmarks();
+  newTab('https://www.google.com'); // mo san 1 tab dau tien khi khoi dong app
   </script>
 </body>
 </html>
