@@ -147,7 +147,7 @@ if (!session) {
     lastText = decodedText;
     flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
 
-    dataRef.set({ text: decodedText, ts: Date.now() })
+    dataRef.set({ text: decodedText + '\n', ts: Date.now() })
       .then(() => {
         statusEl.textContent = 'Đã gửi: ' + decodedText.slice(0, 40);
         playBeep();
@@ -236,14 +236,14 @@ if (!session) {
     return qr.start(
       cameraConfig,
       {
-        fps: 20, // tang toc do phat hien ma, neu may yeu bi giat thi giam lai
+        fps: 15, // toc do nhan dien ma
         // Khong dat qrbox co dinh: quet toan bo khung hinh, giup bat duoc ma nho/o xa
         // xuat hien o bat ky vi tri nao trong khung hinh, khong chi vung giua
         videoConstraints: {
           ...cameraConfig,
-          width: { ideal: 1920 },
-          height: { ideal: 1920 },
-          advanced: [{ focusMode: 'continuous' }]
+          width: { ideal: 4096 },  // dat rat cao de trinh duyet tu chon do phan giai TOI DA camera ho tro
+          height: { ideal: 4096 },
+          advanced: [{ focusMode: 'continuous' }] // lay net tu dong lien tuc
         }
       },
       onScanSuccess,
