@@ -184,8 +184,12 @@
     filter: brightness(1.1);
   }
   #webviewWrap { position:relative; flex: 1 1 auto; min-height:0; }
-  #webviewsContainer { width:100%; height:100%; }
-  webview { width:100%; height:100%; }
+  #webviewsContainer { position:relative; width:100%; height:100%; }
+  webview {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    z-index:1; visibility:hidden; pointer-events:none;
+  }
+  webview.active-tab { z-index:2; visibility:visible; pointer-events:auto; }
   #qrPanel {
     position:absolute; top:14px; right:14px; width:280px;
     background: #000000;
@@ -352,7 +356,9 @@
     el.setAttribute('src', url);
     el.setAttribute('partition', 'persist:browse');
     el.setAttribute('allowpopups', '');
-    el.style.display = 'none';
+    // Khong dung display:none o day nua: CSS mac dinh da an webview qua
+    // visibility+z-index (xem .active-tab). Dieu nay tranh loi webview
+    // "dung hinh" khi bi toggle display:none/block luc chuyen tab.
     webviewsContainer.appendChild(el);
 
     el.addEventListener('dom-ready', () => {
@@ -392,7 +398,7 @@
   function switchTab(id) {
     const tab = tabs.get(id);
     if (!tab) return;
-    tabs.forEach(t => { t.webview.style.display = (t.id === id ? 'block' : 'none'); });
+    tabs.forEach(t => { t.webview.classList.toggle('active-tab', t.id === id); });
     activeTabId = id;
     urlbar.value = tab.url || '';
     renderTabs();
