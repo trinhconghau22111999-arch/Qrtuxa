@@ -326,8 +326,13 @@
       window.addEventListener('wheel', function (e) {
         if (!e.ctrlKey) return;
         e.preventDefault();
-        const step = 0.1;
-        zoom = e.deltaY < 0 ? Math.min(zoom + step, 3) : Math.max(zoom - step, 0.3);
+        // Gioi han muc thay doi theo TUNG su kien wheel (thay vi buoc co dinh 0.1),
+        // vi trackpad co the ban ra hang chuc su kien wheel/giay khi giu Ctrl,
+        // truoc day lam zoom tut rat nhanh xuong toi thieu -> trang bi "thu gon"
+        // ngay lap tuc. Ngoai ra nang san toi thieu tu 0.3 len 0.5 de trang khong
+        // bi co qua nho du bi cuon lien tuc.
+        const delta = Math.max(-1, Math.min(1, -e.deltaY)) * 0.03;
+        zoom = Math.min(3, Math.max(0.5, zoom + delta));
         document.documentElement.style.zoom = zoom;
       }, { passive: false });
     };
