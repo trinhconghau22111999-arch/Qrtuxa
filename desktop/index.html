@@ -5,30 +5,31 @@
 <title>QR Remote Browser</title>
 <style>
   :root {
-    --bg-deep: #120a1f;
-    --bg-panel: #1c1030;
+    --bg-deep: #000000;
+    --bg-panel: #000000;
     --neon-1: #c026ff;
     --neon-2: #8b2dff;
     --neon-3: #4d0bff;
-    --neon-soft: #b57bff;
-    --text: #ecdcff;
+    --neon-soft: #d9b3ff;
+    --text: #ffffff;
   }
   html, body {
     margin:0; padding:0; height:100%;
     font-family: -apple-system, Segoe UI, Arial, sans-serif;
-    background: radial-gradient(circle at 20% 0%, #2a1240 0%, var(--bg-deep) 60%);
+    background: #000000;
     color: var(--text);
   }
   #toolbar {
-    display:flex; align-items:center; gap:8px; padding:10px;
-    background: linear-gradient(180deg, #1c1030, #150b26);
-    border-bottom: 1px solid rgba(192,38,255,0.35);
-    box-shadow: 0 2px 16px rgba(139,45,255,0.25);
+    display:flex; align-items:center; gap:6px; padding:5px 8px;
+    background: #000000;
+    border-bottom: 1px solid var(--neon-1);
+    box-shadow: 0 0 12px rgba(192,38,255,0.4);
   }
   #toolbar button {
-    background: linear-gradient(135deg, #2a1548, #1c0f36);
-    color: var(--text); border: 1px solid rgba(192,38,255,0.4);
-    padding:7px 12px; border-radius:8px; cursor:pointer;
+    background: #000000;
+    color: var(--text); border: 1px solid var(--neon-1);
+    padding:4px 9px; border-radius:6px; cursor:pointer;
+    font-size:12px;
     transition: all .15s ease;
   }
   #toolbar button:hover {
@@ -37,21 +38,21 @@
     color: #fff;
   }
   #bookmarksBar {
-    display:flex; align-items:center; gap:6px; padding:6px 10px;
-    background: #170c29;
-    border-bottom: 1px solid rgba(139,45,255,0.25);
+    display:flex; align-items:center; gap:5px; padding:3px 8px;
+    background: #000000;
+    border-bottom: 1px solid rgba(192,38,255,0.5);
     overflow-x:auto; white-space:nowrap;
-    min-height:14px;
+    min-height:10px;
   }
   #bookmarksBar::-webkit-scrollbar { height:4px; }
   #bookmarksBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
-  #bookmarksEmpty { font-size:11px; color:#6c5a8c; }
+  #bookmarksEmpty { font-size:10px; color:#a879e0; }
   .bm-item {
     display:flex; align-items:center; gap:6px;
-    background: rgba(139,45,255,0.12);
-    border:1px solid rgba(139,45,255,0.35);
-    border-radius:16px; padding:4px 6px 4px 12px;
-    font-size:12px; color: var(--text); cursor:pointer;
+    background: #000000;
+    border:1px solid rgba(192,38,255,0.5);
+    border-radius:14px; padding:3px 5px 3px 10px;
+    font-size:11px; color: var(--text); cursor:pointer;
     transition: all .15s ease; flex-shrink:0;
   }
   .bm-item:hover { border-color: var(--neon-1); box-shadow:0 0 8px rgba(192,38,255,0.4); }
@@ -63,10 +64,10 @@
   #urlbarWrap { position:relative; flex:1; display:flex; align-items:center; }
   #urlbarWrap #urlbar { flex:1; padding-right:36px; }
   #addBookmarkBtn {
-    position:absolute; right:5px; top:50%; transform:translateY(-50%);
-    width:26px; height:26px; border-radius:50%;
-    border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
-    color: var(--neon-soft); cursor:pointer; font-size:14px; display:flex;
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    width:20px; height:20px; border-radius:50%;
+    border:1px solid var(--neon-1); background:#000000;
+    color: var(--neon-soft); cursor:pointer; font-size:12px; display:flex;
     align-items:center; justify-content:center; transition: all .15s ease;
   }
   #addBookmarkBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
@@ -77,10 +78,10 @@
   #bookmarkModalOverlay.show { display:flex; }
   #bookmarkModal {
     margin-top:64px; width:280px;
-    background: linear-gradient(160deg, #1c1030, #120a1f);
-    border:1px solid rgba(192,38,255,0.5);
+    background: #000000;
+    border:1px solid var(--neon-1);
     border-radius:14px; padding:16px;
-    box-shadow: 0 0 30px rgba(139,45,255,0.45), 0 8px 24px rgba(0,0,0,.5);
+    box-shadow: 0 0 30px rgba(192,38,255,0.5), 0 8px 24px rgba(0,0,0,.5);
   }
   #bookmarkModal h3 {
     margin:0 0 10px 0; font-size:14px;
@@ -89,7 +90,7 @@
   }
   #bookmarkNameInput {
     width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px;
-    border:1px solid rgba(139,45,255,0.4); background:#0f0819; color:var(--text);
+    border:1px solid rgba(192,38,255,0.5); background:#000000; color:var(--text);
     outline:none; font-size:13px;
   }
   #bookmarkNameInput:focus { border-color: var(--neon-1); box-shadow:0 0 10px rgba(192,38,255,0.5); }
@@ -102,10 +103,10 @@
     background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); border:none; color:#fff; font-weight:600;
   }
   #urlbar {
-    flex:1; padding:8px 12px; border-radius:8px;
-    border:1px solid rgba(139,45,255,0.4);
-    background: #0f0819; color: var(--text);
-    outline:none;
+    flex:1; padding:5px 10px; border-radius:6px;
+    border:1px solid var(--neon-1);
+    background: #000000; color: var(--text);
+    outline:none; font-size:12px;
   }
   #urlbar:focus {
     border-color: var(--neon-1);
@@ -120,14 +121,14 @@
     box-shadow: 0 0 22px rgba(192,38,255,0.9);
     filter: brightness(1.1);
   }
-  #webviewWrap { position:relative; height: calc(100% - 92px); }
+  #webviewWrap { position:relative; height: calc(100% - 62px); }
   webview { width:100%; height:100%; }
   #qrPanel {
     position:absolute; top:14px; right:14px; width:280px;
-    background: linear-gradient(160deg, #1c1030, #120a1f);
-    border:1px solid rgba(192,38,255,0.5);
+    background: #000000;
+    border:1px solid var(--neon-1);
     border-radius:14px; padding:16px; display:none; z-index:10;
-    box-shadow: 0 0 30px rgba(139,45,255,0.45), 0 8px 24px rgba(0,0,0,.5);
+    box-shadow: 0 0 30px rgba(192,38,255,0.5), 0 8px 24px rgba(0,0,0,.5);
   }
   #qrPanel.show { display:block; }
   #qrPanel canvas {
@@ -164,7 +165,7 @@
 </head>
 <body>
   <div id="toolbar">
-    <span id="brand">Hậu GHN-Hiệp Hưng browser</span>
+    <span id="brand">Hậu-GHN</span>
     <button id="backBtn">◀</button>
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
