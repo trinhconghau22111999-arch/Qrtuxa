@@ -96,6 +96,7 @@ if (!session) {
   if (db) db.ref('.info/connected').on('value', () => {});
 
   let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
+  let repeatCount = 0; // so lan da gui LIEN TIEP cho lastText (toi da 2, tu lan thu 3 bi chan)
 
   // ====== Hieu ung nhay tim neon + rung khi quet thanh cong ======
   const scanFlash = document.getElementById('scanFlash');
@@ -120,8 +121,18 @@ if (!session) {
   function onScanSuccess(decodedText) {
     if (!dataRef) return;
     if (!isAllowedText(decodedText)) return; // ma chua ky tu khong hop le -> bo qua hoan toan, coi nhu chua quet
-    if (decodedText === lastText) return;
-    lastText = decodedText;
+
+    if (decodedText === lastText) {
+      // Cung 1 du lieu, LIEN TIEP (chua co ma nao khac chen giua):
+      // cho phep toi da 2 lan gui, tu lan thu 3 tro di thi chan.
+      if (repeatCount >= 2) return;
+      repeatCount++;
+    } else {
+      // Ma moi (khac lan truoc) -> coi nhu "cach nhau", reset lai bo dem.
+      lastText = decodedText;
+      repeatCount = 1;
+    }
+
     flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
 
     // Gui thang, khong cho .then() lam cham hien thi trang thai
