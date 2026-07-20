@@ -41,9 +41,11 @@
     background: #170c29;
     border-bottom: 1px solid rgba(139,45,255,0.25);
     overflow-x:auto; white-space:nowrap;
+    min-height:14px;
   }
   #bookmarksBar::-webkit-scrollbar { height:4px; }
   #bookmarksBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
+  #bookmarksEmpty { font-size:11px; color:#6c5a8c; }
   .bm-item {
     display:flex; align-items:center; gap:6px;
     background: rgba(139,45,255,0.12);
@@ -58,13 +60,47 @@
     color:#c7a8ff; font-size:11px; line-height:1;
   }
   .bm-item .bm-del:hover { color:#fff; background:rgba(255,60,90,0.6); }
+  #urlbarWrap { position:relative; flex:1; display:flex; align-items:center; }
+  #urlbarWrap #urlbar { flex:1; padding-right:36px; }
   #addBookmarkBtn {
-    flex-shrink:0; width:26px; height:26px; border-radius:50%;
+    position:absolute; right:5px; top:50%; transform:translateY(-50%);
+    width:26px; height:26px; border-radius:50%;
     border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
     color: var(--neon-soft); cursor:pointer; font-size:14px; display:flex;
     align-items:center; justify-content:center; transition: all .15s ease;
   }
   #addBookmarkBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
+  #bookmarkModalOverlay {
+    position:fixed; inset:0; background:rgba(8,4,16,0.6); z-index:40; display:none;
+    align-items:flex-start; justify-content:center;
+  }
+  #bookmarkModalOverlay.show { display:flex; }
+  #bookmarkModal {
+    margin-top:64px; width:280px;
+    background: linear-gradient(160deg, #1c1030, #120a1f);
+    border:1px solid rgba(192,38,255,0.5);
+    border-radius:14px; padding:16px;
+    box-shadow: 0 0 30px rgba(139,45,255,0.45), 0 8px 24px rgba(0,0,0,.5);
+  }
+  #bookmarkModal h3 {
+    margin:0 0 10px 0; font-size:14px;
+    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #bookmarkNameInput {
+    width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px;
+    border:1px solid rgba(139,45,255,0.4); background:#0f0819; color:var(--text);
+    outline:none; font-size:13px;
+  }
+  #bookmarkNameInput:focus { border-color: var(--neon-1); box-shadow:0 0 10px rgba(192,38,255,0.5); }
+  #bookmarkModalActions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+  #bookmarkModalActions button {
+    padding:7px 14px; border-radius:8px; cursor:pointer; font-size:12px;
+    border:1px solid rgba(192,38,255,0.4); background: rgba(139,45,255,0.12); color:var(--text);
+  }
+  #saveBookmarkBtn {
+    background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); border:none; color:#fff; font-weight:600;
+  }
   #urlbar {
     flex:1; padding:8px 12px; border-radius:8px;
     border:1px solid rgba(139,45,255,0.4);
@@ -84,7 +120,7 @@
     box-shadow: 0 0 22px rgba(192,38,255,0.9);
     filter: brightness(1.1);
   }
-  #webviewWrap { position:relative; height: calc(100% - 94px); }
+  #webviewWrap { position:relative; height: calc(100% - 92px); }
   webview { width:100%; height:100%; }
   #qrPanel {
     position:absolute; top:14px; right:14px; width:280px;
@@ -132,12 +168,26 @@
     <button id="backBtn">◀</button>
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
-    <input id="urlbar" value="https://www.google.com" />
+    <div id="urlbarWrap">
+      <input id="urlbar" value="https://www.google.com" />
+      <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">＋</button>
+    </div>
     <button id="qrBtn">📱 Chia sẻ QR</button>
   </div>
 
   <div id="bookmarksBar">
-    <button id="addBookmarkBtn" title="Thêm trang hiện tại vào dấu trang">＋</button>
+    <span id="bookmarksEmpty">Chưa có dấu trang nào — bấm ＋ ở thanh địa chỉ để lưu.</span>
+  </div>
+
+  <div id="bookmarkModalOverlay">
+    <div id="bookmarkModal">
+      <h3>Lưu dấu trang</h3>
+      <input id="bookmarkNameInput" type="text" placeholder="Tên dấu trang" />
+      <div id="bookmarkModalActions">
+        <button id="cancelBookmarkBtn">Hủy</button>
+        <button id="saveBookmarkBtn">Lưu</button>
+      </div>
+    </div>
   </div>
 
   <div id="webviewWrap">
@@ -349,11 +399,44 @@
   }
 
   // ====== Thanh dau trang cho may tinh ======
+  // Uu tien luu xuong 1 file JSON that tren o dia cua may (qua Node fs cua Electron),
+  // de chac chan moi may tinh co danh sach dau trang RIENG, khong lien quan gi den
+  // mang/Firebase va khong bi anh huong boi viec xoa cache trinh duyet.
+  // Neu khong co quyen truy cap Node (vd chay thu trong trinh duyet thuong) thi
+  // tu dong lui ve dung localStorage cua may do.
   const BOOKMARKS_KEY = 'ghn_browser_bookmarks';
+  let nodeFS = null;
+  let bookmarksFilePath = null;
+  try {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const dir = path.join(os.homedir(), '.ghn-browser');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    bookmarksFilePath = path.join(dir, 'bookmarks.json');
+    nodeFS = fs;
+  } catch (e) {
+    nodeFS = null; // khong co Node trong renderer nay -> dung localStorage
+  }
+
   const bookmarksBar = document.getElementById('bookmarksBar');
+  const bookmarksEmpty = document.getElementById('bookmarksEmpty');
   const addBookmarkBtn = document.getElementById('addBookmarkBtn');
+  const bookmarkModalOverlay = document.getElementById('bookmarkModalOverlay');
+  const bookmarkNameInput = document.getElementById('bookmarkNameInput');
+  const saveBookmarkBtn = document.getElementById('saveBookmarkBtn');
+  const cancelBookmarkBtn = document.getElementById('cancelBookmarkBtn');
 
   function loadBookmarks() {
+    if (nodeFS && bookmarksFilePath) {
+      try {
+        if (!nodeFS.existsSync(bookmarksFilePath)) return [];
+        const raw = nodeFS.readFileSync(bookmarksFilePath, 'utf8');
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
     try {
       const raw = localStorage.getItem(BOOKMARKS_KEY);
       return raw ? JSON.parse(raw) : [];
@@ -363,6 +446,12 @@
   }
 
   function saveBookmarks(list) {
+    if (nodeFS && bookmarksFilePath) {
+      try {
+        nodeFS.writeFileSync(bookmarksFilePath, JSON.stringify(list, null, 2), 'utf8');
+        return;
+      } catch (e) { /* rơi xuống localStorage nếu ghi file lỗi */ }
+    }
     try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list)); } catch (e) {}
   }
 
@@ -379,6 +468,8 @@
   function renderBookmarks() {
     const list = loadBookmarks();
     bookmarksBar.querySelectorAll('.bm-item').forEach(el => el.remove());
+    bookmarksEmpty.style.display = list.length ? 'none' : 'inline';
+
     list.forEach((bm, idx) => {
       const item = document.createElement('div');
       item.className = 'bm-item';
@@ -406,23 +497,52 @@
         urlbar.value = bm.url;
       };
 
-      bookmarksBar.insertBefore(item, addBookmarkBtn);
+      bookmarksBar.appendChild(item);
     });
   }
 
-  addBookmarkBtn.onclick = () => {
-    const url = wv.getURL ? (wv.getURL() || urlbar.value) : urlbar.value;
+  // ====== Hop thoai dat ten dau trang ======
+  let pendingBookmarkUrl = null;
+
+  function openBookmarkModal() {
+    const url = (wv.getURL && wv.getURL()) || urlbar.value;
     if (!url) return;
-    const list = loadBookmarks();
-    if (list.some(b => b.url === url)) return; // da co san, khong them trung
+    if (loadBookmarks().some(b => b.url === url)) return; // da co san, khong them trung
+
+    pendingBookmarkUrl = url;
     let pageTitle = '';
     try { pageTitle = (wv.getTitle && wv.getTitle()) || ''; } catch (e) {}
-    const suggested = shortTitle(pageTitle, url);
-    const title = window.prompt('Tên dấu trang:', suggested) ?? suggested;
-    list.push({ title: title || suggested, url });
-    saveBookmarks(list);
-    renderBookmarks();
-  };
+    bookmarkNameInput.value = shortTitle(pageTitle, url);
+    bookmarkModalOverlay.classList.add('show');
+    bookmarkNameInput.focus();
+    bookmarkNameInput.select();
+  }
+
+  function closeBookmarkModal() {
+    bookmarkModalOverlay.classList.remove('show');
+    pendingBookmarkUrl = null;
+  }
+
+  function confirmSaveBookmark() {
+    if (!pendingBookmarkUrl) return;
+    const name = bookmarkNameInput.value.trim() || shortTitle('', pendingBookmarkUrl);
+    const list = loadBookmarks();
+    if (!list.some(b => b.url === pendingBookmarkUrl)) {
+      list.push({ title: name, url: pendingBookmarkUrl });
+      saveBookmarks(list);
+      renderBookmarks();
+    }
+    closeBookmarkModal();
+  }
+
+  addBookmarkBtn.onclick = openBookmarkModal;
+  saveBookmarkBtn.onclick = confirmSaveBookmark;
+  cancelBookmarkBtn.onclick = closeBookmarkModal;
+  bookmarkModalOverlay.onclick = (e) => { if (e.target === bookmarkModalOverlay) closeBookmarkModal(); };
+  bookmarkNameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmSaveBookmark();
+    if (e.key === 'Escape') closeBookmarkModal();
+  });
 
   renderBookmarks();
   </script>
