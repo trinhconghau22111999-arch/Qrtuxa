@@ -8,6 +8,11 @@
   html,body{margin:0;height:100%;background:#111;color:#eee;font-family:-apple-system,Segoe UI,Arial,sans-serif;}
   #wrap{display:flex;flex-direction:column;align-items:center;padding:16px;}
   #readerWrap{position:relative;width:100%;max-width:420px;}
+  #scanFlash {
+    position:absolute; inset:0; z-index:30; pointer-events:none;
+    background: radial-gradient(circle, rgba(192,38,255,0.9), rgba(139,45,255,0.6));
+    opacity:0; border-radius:12px;
+  }
   #reader{width:100%;border-radius:12px;overflow:hidden;}
   #status{margin-top:14px;font-size:14px;text-align:center;color:#9ada9a;min-height:20px;}
   #err{color:#f28b8b;font-size:13px;margin-top:8px;text-align:center;}
@@ -32,6 +37,7 @@
   <h2>📷 Quét mã QR / mã vạch</h2>
   <div id="readerWrap">
     <div id="reader"></div>
+    <div id="scanFlash"></div>
     <button id="flashBtn">⚡</button>
   </div>
   <button id="startBtn">▶ Bắt đầu quét</button>
@@ -99,9 +105,25 @@ if (!session) {
     } catch (e) {}
   }
 
+  // ====== Hieu ung nhay tim neon + rung, chay tren GPU nen khong lam cham vong quet ======
+  const scanFlash = document.getElementById('scanFlash');
+  function flashEffect() {
+    // Rung 1 phat ngan (khong block, khong await)
+    try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
+
+    // Nhay man hinh: bat opacity ngay, roi cho CSS tu fade ve 0 (khong dung setTimeout de tranh giu luong)
+    scanFlash.style.transition = 'none';
+    scanFlash.style.opacity = '0.85';
+    requestAnimationFrame(() => {
+      scanFlash.style.transition = 'opacity 220ms ease-out';
+      scanFlash.style.opacity = '0';
+    });
+  }
+
   function onScanSuccess(decodedText) {
     if (decodedText === lastText) return;
     lastText = decodedText;
+    flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
 
     dataRef.set({ text: decodedText, ts: Date.now() })
       .then(() => {
