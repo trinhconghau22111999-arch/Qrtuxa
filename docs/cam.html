@@ -95,7 +95,7 @@ if (!camId) {
   let rafId = null;
   let chunkSeq = 0;
   let sentChunks = 0;
-  const FPS = 20;
+  const FPS = 30;
   const TIMESLICE_MS = 300; // moi 300ms cat 1 doan video gui di - vua nho gon, vua it do tre
 
   // Chon dinh dang video trinh duyet ho tro (uu tien webm/vp8 - Android Chrome;
@@ -173,12 +173,12 @@ if (!camId) {
     statusEl.textContent = 'Đang khởi động camera...';
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } },
+        video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30 } },
         audio: false
       });
     } catch (e) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30 } }, audio: false });
       } catch (e2) {
         errEl.textContent = 'Không mở được camera: ' + (e2 && e2.message ? e2.message : e2) +
           '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
@@ -204,11 +204,11 @@ if (!camId) {
     const takeId = startTake(); // moi lan bam Bat dau = 1 "lan ghi" (take) moi
     chunkSeq = 0; sentChunks = 0;
 
-    // Bitrate tang theo do phan giai de giu chat luong hinh o do net cao (mang manh nen chiu duoc).
+    // Bitrate tang theo do phan giai de giu chat luong hinh o do net cao + 30fps (mang manh nen chiu duoc).
     const pixelCount = w * h;
-    const bitrate = pixelCount > 3_000_000 ? 8_000_000 // ~4K
-      : pixelCount > 1_500_000 ? 5_000_000            // ~1440p/1080p cao
-      : 3_000_000;                                     // 720p tro xuong
+    const bitrate = pixelCount > 3_000_000 ? 12_000_000 // ~4K
+      : pixelCount > 1_500_000 ? 8_000_000              // ~1440p/1080p cao
+      : 4_500_000;                                       // 720p tro xuong
 
     recorder = new MediaRecorder(canvasStream, { mimeType: chosenMime, videoBitsPerSecond: bitrate });
     recorder.ondataavailable = async (e) => {
