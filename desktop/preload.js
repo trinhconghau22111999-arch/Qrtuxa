@@ -12,3 +12,16 @@ contextBridge.exposeInMainWorld('windowControls', {
     ipcRenderer.on('win:maximized-state', (event, isMaximized) => callback(isMaximized));
   }
 });
+
+// Cau noi rieng cho tinh nang "mo lien ket trong tab moi" (giua-click / target=_blank
+// va menu chuot phai kieu Chrome). Chi lo ra dung 3 ham can thiet, khong dung gi
+// den require('electron') thang trong renderer vi contextIsolation dang bat.
+contextBridge.exposeInMainWorld('tabBridge', {
+  onOpenNewTab: (callback) => {
+    ipcRenderer.on('open-new-tab', (event, url) => callback(url));
+  },
+  showContextMenu: (params) => ipcRenderer.send('context-menu:show', params),
+  onContextMenuAction: (callback) => {
+    ipcRenderer.on('context-menu:action', (event, action) => callback(action));
+  }
+});

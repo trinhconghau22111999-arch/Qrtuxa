@@ -86,6 +86,12 @@
   }
   #titleBar #tabsBar::-webkit-scrollbar { height:3px; }
   #titleBar #tabsBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
+  /* Hieu ung khi keo 1 lien ket tu trang dang xem len thanh tab de tha ra mo tab moi,
+     giong hanh vi keo link/tab len thanh tab cua Chrome. */
+  #titleBar.drag-over-new-tab {
+    background: rgba(192,38,255,0.18);
+    box-shadow: inset 0 0 0 2px var(--neon-1);
+  }
   .tab-close {
     width:15px; height:15px; border-radius:50%; display:flex;
     align-items:center; justify-content:center; font-size:10px; flex-shrink:0;
@@ -373,6 +379,17 @@
     el.addEventListener('did-navigate-in-page', e => onTabNavigate(el, e.url));
     el.addEventListener('page-title-updated', e => onTabTitle(el, e.title));
 
+    // Chuot phai vao link/vung chu ben trong trang -> chuyen thong tin sang main.js
+    // de hien menu native (giong bam chuot phai trong Chrome that).
+    el.addEventListener('context-menu', (e) => {
+      if (!window.tabBridge) return;
+      const p = e.params || {};
+      window.tabBridge.showContextMenu({
+        linkURL: p.linkURL || '',
+        selectionText: p.selectionText || ''
+      });
+    });
+
     return el;
   }
 
@@ -451,6 +468,54 @@
   }
 
   newTabBtn.onclick = () => newTab();
+
+  // ====== Mo link trong TAB MOI, giong Chrome ======
+  // 1) Giua-click chuot / ctrl+click / link co target="_blank" ben trong webview:
+  //    main.js da chan khong cho bat cua so Electron moi, thay vao do gui URL ve day.
+  if (window.tabBridge) {
+    window.tabBridge.onOpenNewTab((url) => { if (url) newTab(url); });
+
+    // 2) Ket qua nguoi dung chon tu menu chuot phai (dung Menu native ben main.js).
+    window.tabBridge.onContextMenuAction((action) => {
+      if (!action) return;
+      if (action.action === 'open-new-tab' && action.url) {
+        newTab(action.url);
+      } else if (action.action === 'go-back') {
+        const wv = getActiveWebview();
+        if (wv && wv.canGoBack()) wv.goBack();
+      } else if (action.action === 'go-forward') {
+        const wv = getActiveWebview();
+        if (wv && wv.canGoForward()) wv.goForward();
+      } else if (action.action === 'reload') {
+        const wv = getActiveWebview();
+        if (wv) wv.reload();
+      }
+    });
+  }
+
+  // 3) Keo 1 lien ket tu trang dang xem THA len thanh tieu de/thanh tab phia tren
+  //    de mo no thanh 1 tab moi - giong thao tac keo link/tab len thanh tab cua Chrome.
+  const titleBar = document.getElementById('titleBar');
+  titleBar.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    titleBar.classList.add('drag-over-new-tab');
+  });
+  titleBar.addEventListener('dragleave', (e) => {
+    if (e.target === titleBar) titleBar.classList.remove('drag-over-new-tab');
+  });
+  titleBar.addEventListener('drop', (e) => {
+    e.preventDefault();
+    titleBar.classList.remove('drag-over-new-tab');
+    if (!e.dataTransfer) return;
+    const raw = e.dataTransfer.getData('text/uri-list')
+      || e.dataTransfer.getData('URL')
+      || e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    const url = raw.split('\n').map(s => s.trim()).find(s => s && !s.startsWith('#'));
+    if (url) newTab(normalizeUrl(url));
+  });
 
   // ====== Nut dieu khien cua so (thu nho / phong to / dong) tren thanh tieu de tu ve ======
   // Khong lien quan gi den logic tab hay quet QR; chi goi qua API an toan
