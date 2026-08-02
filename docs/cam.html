@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Cam - Ghi hình gửi về máy tính</title>
+<style>
+  html,body{margin:0;height:100%;background:#111;color:#eee;font-family:-apple-system,Segoe UI,Arial,sans-serif;}
+  #wrap{display:flex;flex-direction:column;align-items:center;padding:16px;box-sizing:border-box;min-height:100%;}
+  h2{font-size:16px;margin:10px 0;text-align:center;}
+  #videoWrap{position:relative;width:100%;max-width:420px;border-radius:12px;overflow:hidden;background:#000;display:none;}
+  video{width:100%;display:block;}
+  #canvas{display:none;}
+  #recDot {
+    position:absolute; top:10px; left:10px; width:12px; height:12px; border-radius:50%;
+    background:#ff3b3b; box-shadow:0 0 8px #ff3b3b; animation:blink 1.1s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  #frameCount {
+    position:absolute; top:8px; right:10px; font-size:11px; padding:4px 8px;
+    background:rgba(0,0,0,0.55); border-radius:10px;
+  }
+  #startBtn {
+    margin-top:20px; padding:16px 32px; border-radius:28px; border:none;
+    background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff; font-size:16px;
+    font-weight:600; cursor:pointer; box-shadow:0 0 20px rgba(192,38,255,0.5);
+  }
+  #stopBtn {
+    margin-top:16px; padding:12px 26px; border-radius:24px; border:1px solid rgba(255,255,255,0.35);
+    background:rgba(0,0,0,0.4); color:#eee; font-size:14px; cursor:pointer; display:none;
+  }
+  #status{margin-top:14px;font-size:13px;text-align:center;color:#9ada9a;min-height:18px;}
+  #err{color:#f28b8b;font-size:13px;margin-top:8px;text-align:center;}
+  #hint{color:#a879e0;font-size:11px;margin-top:18px;text-align:center;max-width:340px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h2>📷 QR Cam - Ghi hình gửi về máy tính</h2>
+  <div id="videoWrap">
+    <video id="video" playsinline autoplay muted></video>
+    <div id="recDot"></div>
+    <div id="frameCount">0 khung hình</div>
+  </div>
+  <canvas id="canvas"></canvas>
+  <button id="startBtn">▶ Bắt đầu ghi hình</button>
+  <button id="stopBtn">■ Dừng ghi hình</button>
+  <div id="status"></div>
+  <div id="err"></div>
+  <div id="hint">Trang này gửi hình ảnh liên tục về máy tính đang chờ. Bạn có thể tắt màn hình/khoá điện thoại một lúc - hệ thống sẽ tự tiếp tục khi có mạng trở lại. Chỉ cần thoát hẳn trang này khi muốn dừng hẳn.</div>
+</div>
+
+<script src="vendor/firebase-compat.js"></script>
+<script>
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCPwMKElbsQLjOeSVddGAfjNiHnPHV9b1A",
+  authDomain: "qrremod.firebaseapp.com",
+  databaseURL: "https://qrremod-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "qrremod",
+  storageBucket: "qrremod.firebasestorage.app",
+  messagingSenderId: "949360436062",
+  appId: "1:949360436062:web:c9b5b5d47ee4f76fdce5cf"
+};
+
+const params = new URLSearchParams(location.search);
+const camId = params.get('cam');
+const statusEl = document.getElementById('status');
+const errEl = document.getElementById('err');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const videoWrap = document.getElementById('videoWrap');
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const frameCountEl = document.getElementById('frameCount');
+
+if (!camId) {
+  errEl.textContent = 'Thiếu mã (cam). Hãy quét lại mã QR "QR Cam" do máy tính tạo ra.';
+  startBtn.style.display = 'none';
+} else {
+  try { firebase.initializeApp(window.FIREBASE_CONFIG); } catch (e) {
+    errEl.textContent = 'Lỗi khởi tạo Firebase: ' + e.message;
+  }
+  let db;
+  try { db = firebase.database(); } catch (e) {
+    errEl.textContent = 'Lỗi khởi tạo Firebase Database: ' + e.message;
+    startBtn.style.display = 'none';
+  }
+
+  // "Lam nong" ket noi truoc, giong trang quet QR chinh.
+  if (db) db.ref('.info/connected').on('value', () => {});
+
+  const camRef = db && db.ref('sessions/' + camId + '/cam');
+  let stream = null;
+  let recorder = null;
+  let rafId = null;
+  let chunkSeq = 0;
+  let sentChunks = 0;
+  const TARGET_WIDTH = 854; // do phan giai kha (video that, khong phai anh chup roi rac), phu hop mang 4G/5G manh
+  const FPS = 20;
+  const TIMESLICE_MS = 300; // moi 300ms cat 1 doan video gui di - vua nho gon, vua it do tre
+
+  // Chon dinh dang video trinh duyet ho tro (uu tien webm/vp8 - Android Chrome;
+  // may Safari/iOS se tu dong roi xuong mp4/h264).
+  const CANDIDATE_MIME_TYPES = [
+    'video/webm;codecs=vp8',
+    'video/webm;codecs=vp9',
+    'video/webm',
+    'video/mp4;codecs=h264',
+    'video/mp4'
+  ];
+  function pickMimeType() {
+    for (const t of CANDIDATE_MIME_TYPES) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return '';
+  }
+  const chosenMime = pickMimeType();
+  const containerExt = chosenMime.startsWith('video/mp4') ? 'mp4' : 'webm';
+
+  function pad(n, len) { return String(n).padStart(len, '0'); }
+  function formatTimestamp(d) {
+    return `${pad(d.getDate(),2)}/${pad(d.getMonth()+1,2)}/${d.getFullYear()} ${pad(d.getHours(),2)}:${pad(d.getMinutes(),2)}:${pad(d.getSeconds(),2)}`;
+  }
+
+  function drawLoop(ctx, w, h) {
+    if (!stream) return; // da dung -> ngung vong lap ve
+    ctx.drawImage(video, 0, 0, w, h);
+    const label = formatTimestamp(new Date());
+    ctx.font = `${Math.max(16, Math.round(h * 0.045))}px monospace`;
+    const textW = ctx.measureText(label).width;
+    const fontSize = parseInt(ctx.font, 10) || 20;
+    const padX = 8, padY = 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(8, h - fontSize - padY * 2 - 6, textW + padX * 2, fontSize + padY * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label, 8 + padX, h - 6 - padY / 2);
+    rafId = requestAnimationFrame(() => drawLoop(ctx, w, h));
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1] || '');
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function startTake() {
+    const takeId = 'take_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    camRef.child('currentTake').set({ takeId, startedAt: Date.now(), ext: containerExt }).catch(() => {});
+    return takeId;
+  }
+
+  function stopCapture() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (recorder && recorder.state !== 'inactive') { try { recorder.stop(); } catch (e) {} }
+    recorder = null;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    videoWrap.style.display = 'none';
+    startBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    statusEl.textContent = 'Đã dừng ghi hình.';
+  }
+
+  startBtn.onclick = async () => {
+    if (!camRef) return;
+    if (!chosenMime) {
+      errEl.textContent = 'Trình duyệt này không hỗ trợ quay video (MediaRecorder). Hãy thử Chrome/Safari bản mới.';
+      return;
+    }
+    errEl.textContent = '';
+    statusEl.textContent = 'Đang khởi động camera...';
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+    } catch (e) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      } catch (e2) {
+        errEl.textContent = 'Không mở được camera: ' + (e2 && e2.message ? e2.message : e2) +
+          '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
+        statusEl.textContent = '';
+        return;
+      }
+    }
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block';
+    videoWrap.style.display = 'block';
+    statusEl.textContent = 'Đang quay và gửi video về máy tính...';
+
+    const scale = TARGET_WIDTH / (video.videoWidth || TARGET_WIDTH);
+    const w = TARGET_WIDTH;
+    const h = Math.round((video.videoHeight || Math.round(TARGET_WIDTH * 9 / 16)) * scale);
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    drawLoop(ctx, w, h);
+
+    const canvasStream = canvas.captureStream(FPS);
+    const takeId = startTake(); // moi lan bam Bat dau = 1 "lan ghi" (take) moi
+    chunkSeq = 0; sentChunks = 0;
+
+    recorder = new MediaRecorder(canvasStream, { mimeType: chosenMime, videoBitsPerSecond: 2_000_000 });
+    recorder.ondataavailable = async (e) => {
+      if (!e.data || !e.data.size) return;
+      chunkSeq++;
+      const base64 = await blobToBase64(e.data);
+      camRef.child('chunks/' + takeId).push({ b: base64, ts: Date.now(), seq: chunkSeq })
+        .then(() => { sentChunks++; frameCountEl.textContent = sentChunks + ' đoạn video đã gửi'; })
+        .catch(() => {}); // loi mang tam thoi: Firebase da tu xep hang, se tu gui lai khi co mang
+    };
+    recorder.start(TIMESLICE_MS);
+  };
+
+  stopBtn.onclick = () => stopCapture();
+
+  // Neu nguoi dung khoa man hinh/chuyen app, trinh duyet co the tam dung
+  // requestAnimationFrame/MediaRecorder - khi quay lai trang se tu chay tiep
+  // binh thuong, khong can xu ly gi them vi Firebase tu dong bo lai phan con thieu.
+}
+</script>
+</body>
+</html>

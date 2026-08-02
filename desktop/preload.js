@@ -59,3 +59,13 @@ contextBridge.exposeInMainWorld('phishingBridge', {
   setList: (list) => ipcRenderer.send('phishing:set-list', list),
   allowOnce: (host) => ipcRenderer.send('phishing:allow-once', host)
 });
+
+// QR Cam: renderer chi lo viec lang nghe Firebase va nhan khung hinh, con
+// LUU FILE THAT xuong dia thi giao het cho main.js qua day (renderer khong
+// co quyen ghi file truc tiep vi contextIsolation dang bat).
+contextBridge.exposeInMainWorld('camBridge', {
+  newTake: (camId, takeId, ext) => ipcRenderer.send('camrec:new-take', { camId, takeId, ext }),
+  sendChunk: (camId, takeId, ts, dataBase64) => ipcRenderer.send('camrec:chunk', { camId, takeId, ts, dataBase64 }),
+  stopCam: (camId) => ipcRenderer.send('camrec:stop-cam', camId),
+  openFolder: (camId) => ipcRenderer.send('camrec:open-folder', camId)
+});

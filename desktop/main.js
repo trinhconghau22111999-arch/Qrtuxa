@@ -1,5 +1,7 @@
 const { app, BrowserWindow, Menu, ipcMain, clipboard, session, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 // An hoan toan thanh menu File/Edit/View/Window/Help tren moi cua so
 Menu.setApplicationMenu(null);
@@ -146,6 +148,106 @@ function attachRequestFilterOnce() {
     callback({ cancel: false });
   });
 }
+
+// ====== QR Cam: nhan khung hinh tu dien thoai (qua Firebase, do renderer lang
+// nghe) va LUU XUONG DIA O DAY (main process), vi day la noi duy nhat co quyen
+// ghi file that trong app nay. Moi khung hinh la 1 file rieng -> du bi ngat
+// dot ngot (dien thoai rut nguon, mat mang...) thi cac khung da nhan van
+// nguyen ven, khong hong. Khi 1 "lan ghi" (take) ket thuc (dien thoai bat dau
+// 1 lan ghi moi), tu dong ghep cac khung thanh 1 file video .mp4 bang ffmpeg
+// NEU may co san ffmpeg trong PATH; neu khong co thi giu nguyen thu muc anh.
+const CAM_REC_ROOT = path.join(os.homedir(), '.ghn-browser', 'qr-cam-recordings');
+// camId -> { takeId, dir, filePath, fd, chunkCount, startedAt, lastTs }
+const activeTakes = new Map();
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function takeDir(camId, takeId) {
+  return path.join(CAM_REC_ROOT, camId, takeId);
+}
+
+// Cac doan video (chunk) do MediaRecorder ben dien thoai cat ra, khi noi
+// TRUC TIEP theo dung thu tu vao 1 file duy nhat se tao thanh 1 file video
+// lien tuc, xem duoc binh thuong (day la ky thuat pho bien de ghi video
+// truc tiep xuong dia tu 1 phien MediaRecorder duy nhat) - KHONG can ffmpeg
+// hay bat ky buoc ghep noi phuc tap nao khac.
+function finalizeTake(camId) {
+  const entry = activeTakes.get(camId);
+  if (!entry) return;
+  try {
+    if (entry.fd !== null && entry.fd !== undefined) fs.closeSync(entry.fd);
+  } catch (e) {}
+  try {
+    fs.writeFileSync(
+      path.join(entry.dir, 'manifest.json'),
+      JSON.stringify({
+        camId, takeId: entry.takeId, ext: entry.ext,
+        chunkCount: entry.chunkCount, startedAt: entry.startedAt, lastTs: entry.lastTs
+      }, null, 2),
+      'utf8'
+    );
+  } catch (e) {}
+  activeTakes.delete(camId);
+}
+
+ipcMain.on('camrec:new-take', (e, { camId, takeId, ext }) => {
+  if (!camId || !takeId) return;
+  const existing = activeTakes.get(camId);
+  if (existing && existing.takeId === takeId) return; // da biet lan ghi nay roi
+  if (existing) finalizeTake(camId); // dien thoai bat dau lan ghi MOI -> chot lan ghi truoc lai, mo file moi
+  const dir = takeDir(camId, takeId);
+  ensureDir(dir);
+  const safeExt = (ext === 'mp4') ? 'mp4' : 'webm';
+  const filePath = path.join(dir, 'video.' + safeExt);
+  const fd = fs.openSync(filePath, 'w');
+  activeTakes.set(camId, {
+    takeId, dir, filePath, fd, ext: safeExt,
+    chunkCount: 0, startedAt: Date.now(), lastTs: Date.now()
+  });
+});
+
+ipcMain.on('camrec:chunk', (e, { camId, takeId, ts, dataBase64 }) => {
+  if (!camId || !takeId || !dataBase64) return;
+  let entry = activeTakes.get(camId);
+  if (!entry || entry.takeId !== takeId) {
+    // Chua thay currentTake truoc do (vd. race luc moi ket noi) -> tu tao file luon (mac dinh webm).
+    const dir = takeDir(camId, takeId);
+    ensureDir(dir);
+    const filePath = path.join(dir, 'video.webm');
+    const fd = fs.openSync(filePath, 'w');
+    entry = { takeId, dir, filePath, fd, ext: 'webm', chunkCount: 0, startedAt: Date.now(), lastTs: Date.now() };
+    activeTakes.set(camId, entry);
+  }
+  try {
+    // Noi truc tiep (append) doan video moi vao CUOI file hien co, dung thu
+    // tu nhan duoc - moi khi mot doan da duoc ghi an toan xuong dia, du dien
+    // thoai co ngat ket noi dot ngot ngay sau do thi phan da nhan van nguyen ven.
+    fs.writeSync(entry.fd, Buffer.from(dataBase64, 'base64'));
+    entry.chunkCount++;
+    entry.lastTs = ts || Date.now();
+  } catch (err) { /* 1 doan loi ghi khong lam hong ca file, bo qua va tiep tuc doan sau */ }
+});
+
+// Dung han 1 camId (nguoi dung bam "Tao ma QR moi" tren may tinh) -> chot lai
+// lan ghi dang do (neu co) va dong file lai cho an toan, roi ngung theo doi camId do.
+ipcMain.on('camrec:stop-cam', (e, camId) => {
+  if (camId) finalizeTake(camId);
+});
+
+ipcMain.on('camrec:open-folder', (e, camId) => {
+  const dir = camId ? path.join(CAM_REC_ROOT, camId) : CAM_REC_ROOT;
+  ensureDir(dir);
+  shell.openPath(dir);
+});
+
+// Tat han "ca trinh duyet" -> chot lai (dong file an toan) moi lan ghi dang
+// do truoc khi thoat, dung yeu cau "chi huy ket noi khi doi ma QR hoac tat
+// han trinh duyet".
+app.on('before-quit', () => {
+  for (const camId of [...activeTakes.keys()]) finalizeTake(camId);
+});
 
 function createWindow(initialUrl) {
   const win = new BrowserWindow({
