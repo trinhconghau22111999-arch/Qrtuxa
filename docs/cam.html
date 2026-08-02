@@ -95,7 +95,6 @@ if (!camId) {
   let rafId = null;
   let chunkSeq = 0;
   let sentChunks = 0;
-  const TARGET_WIDTH = 854; // do phan giai kha (video that, khong phai anh chup roi rac), phu hop mang 4G/5G manh
   const FPS = 20;
   const TIMESLICE_MS = 300; // moi 300ms cat 1 doan video gui di - vua nho gon, vua it do tre
 
@@ -174,12 +173,12 @@ if (!camId) {
     statusEl.textContent = 'Đang khởi động camera...';
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } },
         audio: false
       });
     } catch (e) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
       } catch (e2) {
         errEl.textContent = 'Không mở được camera: ' + (e2 && e2.message ? e2.message : e2) +
           '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
@@ -194,9 +193,8 @@ if (!camId) {
     videoWrap.style.display = 'block';
     statusEl.textContent = 'Đang quay và gửi video về máy tính...';
 
-    const scale = TARGET_WIDTH / (video.videoWidth || TARGET_WIDTH);
-    const w = TARGET_WIDTH;
-    const h = Math.round((video.videoHeight || Math.round(TARGET_WIDTH * 9 / 16)) * scale);
+    const w = video.videoWidth || 1920;
+    const h = video.videoHeight || 1080;
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
@@ -206,7 +204,13 @@ if (!camId) {
     const takeId = startTake(); // moi lan bam Bat dau = 1 "lan ghi" (take) moi
     chunkSeq = 0; sentChunks = 0;
 
-    recorder = new MediaRecorder(canvasStream, { mimeType: chosenMime, videoBitsPerSecond: 2_000_000 });
+    // Bitrate tang theo do phan giai de giu chat luong hinh o do net cao (mang manh nen chiu duoc).
+    const pixelCount = w * h;
+    const bitrate = pixelCount > 3_000_000 ? 8_000_000 // ~4K
+      : pixelCount > 1_500_000 ? 5_000_000            // ~1440p/1080p cao
+      : 3_000_000;                                     // 720p tro xuong
+
+    recorder = new MediaRecorder(canvasStream, { mimeType: chosenMime, videoBitsPerSecond: bitrate });
     recorder.ondataavailable = async (e) => {
       if (!e.data || !e.data.size) return;
       chunkSeq++;
