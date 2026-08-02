@@ -235,6 +235,148 @@
   #closeQr:hover { color:#fff; }
   #refreshQr { position:absolute; top:10px; right:34px; cursor:pointer; color:#c7a8ff; }
   #refreshQr:hover { color:#fff; }
+
+  /* ====== Nut Cai dat + menu tha xuong ====== */
+  #settingsMenu {
+    display:none; position:absolute; top:32px; right:0; z-index:30;
+    background:#000000; border:1px solid var(--neon-1); border-radius:10px;
+    padding:6px; min-width:190px; box-shadow:0 0 24px rgba(192,38,255,0.45);
+  }
+  #settingsMenu.show { display:block; }
+  .settings-item {
+    padding:8px 10px; border-radius:6px; font-size:12px; color:var(--text);
+    cursor:pointer; white-space:nowrap;
+  }
+  .settings-item:hover { background:rgba(192,38,255,0.25); }
+  .settings-sep { height:1px; background:rgba(192,38,255,0.3); margin:6px 2px; }
+
+  /* ====== Panel Mau giao dien ====== */
+  #themeSlider { width:100%; accent-color: var(--neon-1); margin:6px 0 14px 0; }
+  #themeSwatchGrid { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; }
+  .theme-swatch {
+    width:100%; aspect-ratio:1; border-radius:50%; cursor:pointer;
+    border:2px solid transparent; box-sizing:border-box;
+  }
+  .theme-swatch.active { border-color:#fff; box-shadow:0 0 8px rgba(255,255,255,0.7); }
+  #themeResetBtn {
+    margin-top:16px; width:100%; padding:8px; border-radius:8px; cursor:pointer;
+    border:1px solid rgba(192,38,255,0.4); background:rgba(139,45,255,0.12); color:var(--text); font-size:12px;
+  }
+
+  /* ====== Panel Chan quang cao ====== */
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 4px; }
+  .toggle-row .tr-label { font-size:12px; color:var(--text); }
+  .toggle-row .tr-count { font-size:11px; color:#a879e0; }
+  .switch { position:relative; width:42px; height:22px; flex-shrink:0; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch .slider-track {
+    position:absolute; inset:0; background:rgba(192,38,255,0.25); border-radius:22px;
+    cursor:pointer; transition:.2s;
+  }
+  .switch .slider-track::before {
+    content:''; position:absolute; width:16px; height:16px; left:3px; top:3px;
+    background:#fff; border-radius:50%; transition:.2s;
+  }
+  .switch input:checked + .slider-track { background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); }
+  .switch input:checked + .slider-track::before { transform: translateX(20px); }
+
+  /* ====== Panel Chan web den / lua dao ====== */
+  #phishingAddRow { display:flex; gap:6px; padding:8px 4px 12px 4px; }
+  #phishingAddInput {
+    flex:1; padding:8px 10px; border-radius:8px; border:1px solid rgba(192,38,255,0.4);
+    background:rgba(0,0,0,0.4); color:var(--text); font-size:12px; outline:none;
+  }
+  #phishingAddBtn {
+    padding:8px 12px; border-radius:8px; border:none; cursor:pointer; font-size:12px;
+    background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; font-weight:600;
+  }
+  .sp-note { font-size:11px; color:#a879e0; padding:0 4px 10px 4px; line-height:1.5; }
+
+  /* ====== Trang canh bao web den / lua dao (interstitial) ====== */
+  #phishingWarnOverlay {
+    position:fixed; inset:0; z-index:60; display:none; background:#1a0000;
+    align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:24px;
+  }
+  #phishingWarnOverlay.show { display:flex; }
+  #phishingWarnOverlay h2 { color:#ff5a5a; font-size:20px; margin:0 0 10px 0; }
+  #phishingWarnOverlay p { color:#e0b8b8; font-size:13px; max-width:460px; margin:0 0 20px 0; }
+  #phishingWarnOverlay .pw-actions { display:flex; gap:10px; }
+  #phishingWarnOverlay button {
+    padding:10px 16px; border-radius:8px; cursor:pointer; font-size:12px; border:none;
+  }
+  #pwGoBackBtn { background:#fff; color:#1a0000; font-weight:700; }
+  #pwProceedBtn { background:transparent; color:#e0b8b8; border:1px solid #e0b8b8 !important; }
+
+  /* ====== Panel Tai video/nhac tren trang ====== */
+  .media-item-extra { font-size:10px; color:#a879e0; }
+
+  /* ====== Panel dung chung: Tat ca dau trang / Lich su / Tai xuong / Mat khau ====== */
+  #sidePanelOverlay {
+    position:fixed; inset:0; background:rgba(8,4,16,0.55); z-index:45; display:none;
+    align-items:stretch; justify-content:flex-end;
+  }
+  #sidePanelOverlay.show { display:flex; }
+  #sidePanel {
+    width:360px; max-width:88vw; height:100%; background:#000000;
+    border-left:1px solid var(--neon-1); box-shadow:-10px 0 30px rgba(192,38,255,0.35);
+    display:flex; flex-direction:column;
+  }
+  #sidePanelHeader {
+    flex:0 0 auto; display:flex; align-items:center; gap:10px;
+    padding:14px 14px; border-bottom:1px solid rgba(192,38,255,0.4);
+  }
+  #sidePanelHeader h3 {
+    margin:0; flex:1; font-size:14px;
+    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #sidePanelClear, #sidePanelClose { cursor:pointer; font-size:12px; color:#c7a8ff; }
+  #sidePanelClear:hover, #sidePanelClose:hover { color:#fff; }
+  #sidePanelBody { flex:1 1 auto; overflow-y:auto; padding:8px 10px; }
+  .sp-item {
+    padding:9px 10px; border-radius:8px; border:1px solid rgba(192,38,255,0.25);
+    margin-bottom:6px; font-size:12px; color:var(--text); cursor:pointer;
+    display:flex; align-items:center; gap:8px; transition:all .15s ease;
+  }
+  .sp-item:hover { border-color:var(--neon-1); background:rgba(192,38,255,0.1); }
+  .sp-item .sp-main { flex:1; min-width:0; overflow:hidden; }
+  .sp-item .sp-title { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sp-item .sp-sub { color:#a879e0; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sp-item .sp-del { color:#c7a8ff; flex-shrink:0; }
+  .sp-item .sp-del:hover { color:#fff; }
+  .sp-empty { color:#a879e0; font-size:12px; padding:12px 4px; }
+  .sp-progress { height:4px; background:rgba(192,38,255,0.2); border-radius:2px; margin-top:4px; overflow:hidden; }
+  .sp-progress-fill { height:100%; background:var(--neon-1); }
+
+  /* ====== Modal hoi luu mat khau ====== */
+  #savePasswordOverlay {
+    position:fixed; inset:0; background:rgba(8,4,16,0.6); z-index:46; display:none;
+    align-items:flex-start; justify-content:center;
+  }
+  #savePasswordOverlay.show { display:flex; }
+  #savePasswordModal {
+    margin-top:64px; width:300px; background:#000000; border:1px solid var(--neon-1);
+    border-radius:14px; padding:16px; box-shadow:0 0 30px rgba(192,38,255,0.5);
+  }
+  #savePasswordModal h3 {
+    margin:0 0 6px 0; font-size:14px;
+    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #savePasswordOrigin { font-size:11px; color:#a879e0; word-break:break-all; margin:0 0 12px 0; }
+  #savePasswordActions { display:flex; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+  #savePasswordActions button {
+    padding:6px 10px; border-radius:8px; cursor:pointer; font-size:11px;
+    border:1px solid rgba(192,38,255,0.4); background:rgba(139,45,255,0.12); color:var(--text);
+  }
+  #confirmSavePasswordBtn {
+    background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); border:none; color:#fff; font-weight:600;
+  }
+
+  /* ====== Keo-tha tab: doi vi tri / tach thanh cua so rieng ====== */
+  .tab-item.dragging { opacity:.35; }
+  .tab-item.drag-insert-before { box-shadow: -2px 0 0 0 var(--neon-soft) inset; }
+  .tab-item.drag-insert-after { box-shadow: 2px 0 0 0 var(--neon-soft) inset; }
 </style>
 </head>
 <body>
@@ -259,7 +401,23 @@
       <input id="urlbar" value="https://www.google.com" />
       <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
     </div>
+    <button id="printBtn" title="In trang">🖶</button>
+    <button id="translateBtn" title="Dịch trang">🌐</button>
+    <button id="mediaBtn" title="Tải video/nhạc trên trang">⬇🎬</button>
     <button id="qrBtn">📱 Chia sẻ QR</button>
+    <div id="settingsWrap" style="position:relative;">
+      <button id="settingsBtn" title="Cài đặt">⚙</button>
+      <div id="settingsMenu">
+        <div class="settings-item" data-panel="bookmarks">★ Tất cả dấu trang</div>
+        <div class="settings-item" data-panel="history">🕘 Lịch sử duyệt web</div>
+        <div class="settings-item" data-panel="downloads">⬇ Tải xuống</div>
+        <div class="settings-item" data-panel="passwords">🔑 Mật khẩu đã lưu</div>
+        <div class="settings-sep"></div>
+        <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
+        <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
+        <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
+      </div>
+    </div>
   </div>
 
   <div id="bookmarksBar">
@@ -274,6 +432,38 @@
         <button id="cancelBookmarkBtn">Hủy</button>
         <button id="saveBookmarkBtn">Lưu</button>
       </div>
+    </div>
+  </div>
+
+  <div id="sidePanelOverlay">
+    <div id="sidePanel">
+      <div id="sidePanelHeader">
+        <h3 id="sidePanelTitle">—</h3>
+        <span id="sidePanelClear" title="Xóa tất cả">Xóa hết</span>
+        <span id="sidePanelClose">✕</span>
+      </div>
+      <div id="sidePanelBody"></div>
+    </div>
+  </div>
+
+  <div id="savePasswordOverlay">
+    <div id="savePasswordModal">
+      <h3>Lưu mật khẩu?</h3>
+      <p id="savePasswordOrigin"></p>
+      <div id="savePasswordActions">
+        <button id="neverSavePasswordBtn">Không bao giờ</button>
+        <button id="dismissSavePasswordBtn">Không lưu</button>
+        <button id="confirmSavePasswordBtn">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="phishingWarnOverlay">
+    <h2>⚠ Trang web này có thể không an toàn</h2>
+    <p id="phishingWarnText">Địa chỉ này nằm trong danh sách chặn web đen/lừa đảo do bạn tự thiết lập trong Cài đặt.</p>
+    <div class="pw-actions">
+      <button id="pwGoBackBtn">Quay lại an toàn</button>
+      <button id="pwProceedBtn">Vẫn tiếp tục (không khuyến khích)</button>
     </div>
   </div>
 
@@ -350,6 +540,7 @@
   // Toan bo logic quet QR / dieu huong / dau trang deu thao tac tren "tab dang active",
   // qua ham getActiveWebview() ben duoi, nen KHONG bi doi khi chuyen tab qua lai.
   const tabs = new Map(); // id -> { id, webview, url, title }
+  let tabOrder = []; // thu tu hien thi cac tab, dung de keo-tha doi vi tri
   let activeTabId = null;
 
   function getActiveWebview() {
@@ -367,6 +558,14 @@
     el.setAttribute('src', url);
     el.setAttribute('partition', 'persist:browse');
     el.setAttribute('allowpopups', '');
+    // Bat trinh xem PDF gan san cua Chromium: khi dieu huong toi 1 file .pdf,
+    // webview se tu hien thi bang trinh xem PDF thay vi tai file xuong.
+    el.setAttribute('webpreferences', 'plugins=true');
+    // Preload rieng cho trang khach: chi dung de bat submit form co mat khau
+    // va bao ve day qua sendToHost (xem webview-preload.js).
+    if (window.appPaths && window.appPaths.guestPreload) {
+      el.setAttribute('preload', window.appPaths.guestPreload);
+    }
     // Khong dung display:none o day nua: CSS mac dinh da an webview qua
     // visibility+z-index (xem .active-tab). Dieu nay tranh loi webview
     // "dung hinh" khi bi toggle display:none/block luc chuyen tab.
@@ -374,8 +573,9 @@
 
     el.addEventListener('dom-ready', () => {
       el.executeJavaScript(buildCtrlWheelZoomScript()).catch(() => {});
+      autofillPasswordIfAny(el);
     });
-    el.addEventListener('did-navigate', e => onTabNavigate(el, e.url));
+    el.addEventListener('did-navigate', e => { onTabNavigate(el, e.url); recordHistory(e.url); });
     el.addEventListener('did-navigate-in-page', e => onTabNavigate(el, e.url));
     el.addEventListener('page-title-updated', e => onTabTitle(el, e.title));
 
@@ -388,6 +588,27 @@
         linkURL: p.linkURL || '',
         selectionText: p.selectionText || ''
       });
+    });
+
+    // Nhan du lieu tu webview-preload.js khi nguoi dung submit form co mat khau.
+    el.addEventListener('ipc-message', (e) => {
+      if (e.channel === 'qr-browser:password-capture' && e.args && e.args[0]) {
+        onPasswordCaptured(e.args[0]);
+      }
+    });
+
+    // Trang chinh (mainFrame) bi chan boi danh sach Chan web den/lua dao (main.js
+    // huy request voi cac ma loi ERR_BLOCKED_BY_CLIENT(-20)/ERR_ABORTED(-3)) ->
+    // hien trang canh bao thay vi de webview hien trang loi mang mac dinh.
+    el.addEventListener('did-fail-load', (e) => {
+      if (!e.isMainFrame) return;
+      if (e.errorCode === -20 || e.errorCode === -3) {
+        let host = '';
+        try { host = new URL(e.validatedURL).hostname; } catch (err) {}
+        const list = phishingStore.load().map(d => d.toLowerCase());
+        const isBlocked = host && list.some(d => host.toLowerCase() === d || host.toLowerCase().endsWith('.' + d));
+        if (isBlocked) showPhishingWarning(el, e.validatedURL, host);
+      }
     });
 
     return el;
@@ -406,6 +627,8 @@
     if (!tab) return;
     tab.title = title;
     renderTabs();
+    // Cap nhat lai tieu de cho muc lich su vua ghi (luc navigate title thuong chua kip co).
+    updateLastHistoryTitle(tab.url, title);
   }
 
   function newTab(url) {
@@ -413,6 +636,7 @@
     const id = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
     const webview = createWebviewElement(url);
     tabs.set(id, { id, webview, url, title: 'Trang mới' });
+    tabOrder.push(id);
     switchTab(id);
     return id;
   }
@@ -431,10 +655,10 @@
     if (!tab) return;
     tab.webview.remove();
     tabs.delete(id);
+    tabOrder = tabOrder.filter(tid => tid !== id);
     if (activeTabId === id) {
-      const remaining = [...tabs.keys()];
-      if (remaining.length) {
-        switchTab(remaining[remaining.length - 1]);
+      if (tabOrder.length) {
+        switchTab(tabOrder[tabOrder.length - 1]);
         return;
       }
       activeTabId = null;
@@ -444,11 +668,20 @@
     renderTabs();
   }
 
+  // ====== Keo-tha tab: doi vi tri trong thanh tab / tach thanh cua so rieng /
+  // keo sang thanh tab cua 1 cua so khac cua app - giong Chrome ======
+  let draggingTabId = null;
+  let internalReorderHandled = false;
+
   function renderTabs() {
     tabsBar.querySelectorAll('.tab-item').forEach(el => el.remove());
-    tabs.forEach(tab => {
+    tabOrder.forEach(id => {
+      const tab = tabs.get(id);
+      if (!tab) return;
       const item = document.createElement('div');
       item.className = 'tab-item' + (tab.id === activeTabId ? ' active' : '');
+      item.draggable = true;
+      item.dataset.tabId = tab.id;
 
       const label = document.createElement('span');
       label.className = 'tab-label';
@@ -463,9 +696,78 @@
       item.appendChild(close);
 
       item.onclick = () => switchTab(tab.id);
+
+      item.addEventListener('dragstart', (e) => {
+        draggingTabId = tab.id;
+        internalReorderHandled = false;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('application/x-qrbrowser-tab', tab.id);
+        e.dataTransfer.setData('text/uri-list', tab.url || '');
+        e.dataTransfer.setData('text/plain', tab.url || '');
+        item.classList.add('dragging');
+      });
+
+      item.addEventListener('dragover', (e) => {
+        if (!draggingTabId) return; // chi xu ly khi dang keo 1 tab (khong phai link thuong)
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = item.getBoundingClientRect();
+        const before = (e.clientX - rect.left) < rect.width / 2;
+        item.classList.toggle('drag-insert-before', before);
+        item.classList.toggle('drag-insert-after', !before);
+      });
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-insert-before', 'drag-insert-after');
+      });
+      item.addEventListener('drop', (e) => {
+        item.classList.remove('drag-insert-before', 'drag-insert-after');
+        if (!draggingTabId || !tabs.has(draggingTabId) || draggingTabId === tab.id) return;
+        e.preventDefault();
+        e.stopPropagation(); // khong de titleBar hieu nham day la 1 link roi mo tab trung lap
+        const rect = item.getBoundingClientRect();
+        const before = (e.clientX - rect.left) < rect.width / 2;
+        tabOrder = tabOrder.filter(tid => tid !== draggingTabId);
+        const targetIdx = tabOrder.indexOf(tab.id);
+        tabOrder.splice(before ? targetIdx : targetIdx + 1, 0, draggingTabId);
+        internalReorderHandled = true;
+        renderTabs();
+      });
+
+      item.addEventListener('dragend', (e) => {
+        item.classList.remove('dragging');
+        const effect = e.dataTransfer.dropEffect;
+        if (effect === 'none') {
+          // Khong noi nao nhan cu tha nay -> nguoi dung keo tab ra ngoai =>
+          // tach thanh 1 cua so trinh duyet rieng, giong Chrome.
+          const t = tabs.get(tab.id);
+          if (t && window.tabBridge) window.tabBridge.detachToNewWindow(t.url);
+          closeTab(tab.id);
+        } else if (effect === 'move' && !internalReorderHandled) {
+          // Da duoc 1 noi khac (thanh tab cua 1 cua so app khac) nhan -> dong tab o day.
+          closeTab(tab.id);
+        }
+        draggingTabId = null;
+        internalReorderHandled = false;
+      });
+
       tabsBar.insertBefore(item, newTabBtn);
     });
   }
+
+  // Tha tab/link vao chinh thanh tab (khong trung voi 1 the tab cu the nao) ->
+  // neu la tab tu cua so KHAC thi mo thanh tab moi o day.
+  tabsBar.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = draggingTabId ? 'move' : 'copy';
+  });
+  tabsBar.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const incomingId = e.dataTransfer.getData('application/x-qrbrowser-tab');
+    if (incomingId && tabs.has(incomingId)) return; // da xu ly boi drop tren tung tab-item
+    const raw = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (raw) newTab(normalizeUrl(raw.split('\n')[0].trim()));
+  });
 
   newTabBtn.onclick = () => newTab();
 
@@ -489,6 +791,9 @@
       } else if (action.action === 'reload') {
         const wv = getActiveWebview();
         if (wv) wv.reload();
+      } else if (action.action === 'print') {
+        const wv = getActiveWebview();
+        if (wv) wv.print();
       }
     });
   }
@@ -499,7 +804,7 @@
   titleBar.addEventListener('dragover', (e) => {
     if (!e.dataTransfer) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = draggingTabId ? 'move' : 'copy';
     titleBar.classList.add('drag-over-new-tab');
   });
   titleBar.addEventListener('dragleave', (e) => {
@@ -725,6 +1030,8 @@
   // tu dong lui ve dung localStorage cua may do.
   const BOOKMARKS_KEY = 'ghn_browser_bookmarks';
   let nodeFS = null;
+  let nodePath = null;
+  let dataDir = null;
   let bookmarksFilePath = null;
   try {
     const fs = require('fs');
@@ -734,11 +1041,189 @@
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     bookmarksFilePath = path.join(dir, 'bookmarks.json');
     nodeFS = fs;
+    nodePath = path;
+    dataDir = dir;
   } catch (e) {
     nodeFS = null; // khong co Node trong renderer nay -> dung localStorage
   }
 
+  // Ham dung chung: tao 1 "kho luu tru" JSON, uu tien ghi xuong file that
+  // trong ~/.ghn-browser (giong bookmarks), roi lui ve localStorage neu khong
+  // co quyen Node. Dung lai cho Lich su va Mat khau ben duoi.
+  function makeJsonStore(filename, storageKey, defaultValue) {
+    const filePath = (nodeFS && nodePath && dataDir) ? nodePath.join(dataDir, filename) : null;
+    return {
+      load() {
+        if (nodeFS && filePath) {
+          try {
+            if (!nodeFS.existsSync(filePath)) return defaultValue;
+            const raw = nodeFS.readFileSync(filePath, 'utf8');
+            return raw ? JSON.parse(raw) : defaultValue;
+          } catch (e) { return defaultValue; }
+        }
+        try {
+          const raw = localStorage.getItem(storageKey);
+          return raw ? JSON.parse(raw) : defaultValue;
+        } catch (e) { return defaultValue; }
+      },
+      save(value) {
+        if (nodeFS && filePath) {
+          try { nodeFS.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8'); return; }
+          catch (e) { /* roi xuong localStorage neu ghi file loi */ }
+        }
+        try { localStorage.setItem(storageKey, JSON.stringify(value)); } catch (e) {}
+      }
+    };
+  }
+
+  const historyStore = makeJsonStore('history.json', 'ghn_browser_history', []);
+  const passwordsStore = makeJsonStore('passwords.json', 'ghn_browser_passwords', []);
+  const MAX_HISTORY_ITEMS = 500;
+
+  // Xao tron nhe cho mat khau luu cuc bo (KHONG phai ma hoa manh - chi de
+  // tranh luu thang plain-text de doc bang mat thuong khi mo file .json).
+  // Chrome that dung OS keychain, o day khong the lam duoc dieu tuong tu.
+  const OBFUSCATE_KEY = 'ghn-browser-local-key';
+  function obfuscate(text) {
+    let out = '';
+    for (let i = 0; i < text.length; i++) {
+      out += String.fromCharCode(text.charCodeAt(i) ^ OBFUSCATE_KEY.charCodeAt(i % OBFUSCATE_KEY.length));
+    }
+    try { return btoa(unescape(encodeURIComponent(out))); } catch (e) { return ''; }
+  }
+  function deobfuscate(b64) {
+    try {
+      const out = decodeURIComponent(escape(atob(b64)));
+      let plain = '';
+      for (let i = 0; i < out.length; i++) {
+        plain += String.fromCharCode(out.charCodeAt(i) ^ OBFUSCATE_KEY.charCodeAt(i % OBFUSCATE_KEY.length));
+      }
+      return plain;
+    } catch (e) { return ''; }
+  }
+
+  // ====== Lich su duyet web ======
+  function recordHistory(url) {
+    if (!url || url.startsWith('devtools://') || url.startsWith('chrome-error://')) return;
+    const list = historyStore.load();
+    list.push({ url, title: '', ts: Date.now() });
+    if (list.length > MAX_HISTORY_ITEMS) list.splice(0, list.length - MAX_HISTORY_ITEMS);
+    historyStore.save(list);
+  }
+  function updateLastHistoryTitle(url, title) {
+    if (!url || !title) return;
+    const list = historyStore.load();
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].url === url) { list[i].title = title; break; }
+    }
+    historyStore.save(list);
+  }
+
+  // ====== Mat khau: bat submit tu webview-preload.js, hoi luu, va tu dong dien ======
+  let pendingPassword = null; // { origin, username, password }
+  const savePasswordOverlay = document.getElementById('savePasswordOverlay');
+  const savePasswordOrigin = document.getElementById('savePasswordOrigin');
+
+  function onPasswordCaptured(data) {
+    if (!data || !data.origin || !data.password) return;
+    const list = passwordsStore.load();
+    const existing = list.find(p => p.origin === data.origin && p.username === (data.username || ''));
+    if (existing && deobfuscate(existing.password) === data.password) return; // da luu dung nhu vay roi
+    if (list.some(p => p.origin === data.origin && p.neverSave)) return; // nguoi dung da chon "khong bao gio"
+    pendingPassword = data;
+    savePasswordOrigin.textContent = data.origin + (data.username ? '  •  ' + data.username : '');
+    savePasswordOverlay.classList.add('show');
+  }
+
+  document.getElementById('dismissSavePasswordBtn').onclick = () => {
+    savePasswordOverlay.classList.remove('show');
+    pendingPassword = null;
+  };
+  document.getElementById('neverSavePasswordBtn').onclick = () => {
+    if (pendingPassword) {
+      const list = passwordsStore.load();
+      list.push({ origin: pendingPassword.origin, username: '', password: '', neverSave: true });
+      passwordsStore.save(list);
+    }
+    savePasswordOverlay.classList.remove('show');
+    pendingPassword = null;
+  };
+  document.getElementById('confirmSavePasswordBtn').onclick = () => {
+    if (pendingPassword) {
+      const list = passwordsStore.load().filter(p =>
+        !(p.origin === pendingPassword.origin && p.username === (pendingPassword.username || '') && !p.neverSave)
+      );
+      list.push({
+        origin: pendingPassword.origin,
+        username: pendingPassword.username || '',
+        password: obfuscate(pendingPassword.password),
+        savedAt: Date.now()
+      });
+      passwordsStore.save(list);
+      renderSidePanelIfOpen('passwords');
+    }
+    savePasswordOverlay.classList.remove('show');
+    pendingPassword = null;
+  };
+
+  function autofillPasswordIfAny(webviewEl) {
+    let origin;
+    try { origin = new URL(webviewEl.getURL()).origin; } catch (e) { return; }
+    const match = passwordsStore.load().find(p => p.origin === origin && !p.neverSave && p.password);
+    if (!match) return;
+    const username = match.username || '';
+    const password = deobfuscate(match.password);
+    if (!password) return;
+    const fn = function (u, p) {
+      const pwInput = document.querySelector('input[type="password"]');
+      if (!pwInput) return;
+      pwInput.value = p;
+      pwInput.dispatchEvent(new Event('input', { bubbles: true }));
+      if (u) {
+        const form = pwInput.closest('form');
+        const scope = form || document;
+        const userInput = scope.querySelector('input[type="text"], input[type="email"], input[autocomplete="username"], input:not([type])');
+        if (userInput) {
+          userInput.value = u;
+          userInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+    };
+    webviewEl.executeJavaScript(`(${fn.toString()})(${JSON.stringify(username)}, ${JSON.stringify(password)});`).catch(() => {});
+  }
+
   const bookmarksBar = document.getElementById('bookmarksBar');
+
+  // ====== Trang canh bao web den / lua dao ======
+  const phishingWarnOverlay = document.getElementById('phishingWarnOverlay');
+  const phishingWarnText = document.getElementById('phishingWarnText');
+  let phishingWarnContext = null; // { webview, url, host }
+
+  function showPhishingWarning(webviewEl, url, host) {
+    phishingWarnContext = { webview: webviewEl, url, host };
+    phishingWarnText.textContent = `"${host}" nằm trong danh sách chặn web đen/lừa đảo của bạn. Việc tiếp tục truy cập có thể khiến bạn bị lộ thông tin cá nhân, tài khoản ngân hàng hoặc bị lừa đảo.`;
+    phishingWarnOverlay.classList.add('show');
+  }
+  function hidePhishingWarning() {
+    phishingWarnOverlay.classList.remove('show');
+    phishingWarnContext = null;
+  }
+  document.getElementById('pwGoBackBtn').onclick = () => {
+    if (phishingWarnContext && phishingWarnContext.webview) {
+      phishingWarnContext.webview.loadURL('https://www.google.com');
+    }
+    hidePhishingWarning();
+  };
+  document.getElementById('pwProceedBtn').onclick = () => {
+    if (phishingWarnContext && window.phishingBridge) {
+      window.phishingBridge.allowOnce(phishingWarnContext.host);
+      const ctx = phishingWarnContext;
+      hidePhishingWarning();
+      setTimeout(() => ctx.webview.loadURL(ctx.url), 50);
+    } else {
+      hidePhishingWarning();
+    }
+  };
   const bookmarksEmpty = document.getElementById('bookmarksEmpty');
   const addBookmarkBtn = document.getElementById('addBookmarkBtn');
   const bookmarkModalOverlay = document.getElementById('bookmarkModalOverlay');
@@ -865,8 +1350,430 @@
     if (e.key === 'Escape') closeBookmarkModal();
   });
 
+  // ====== Nut Cai dat + menu tha xuong ======
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsMenu = document.getElementById('settingsMenu');
+  settingsBtn.onclick = (e) => {
+    e.stopPropagation();
+    settingsMenu.classList.toggle('show');
+  };
+  document.addEventListener('click', () => settingsMenu.classList.remove('show'));
+  settingsMenu.querySelectorAll('.settings-item').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      settingsMenu.classList.remove('show');
+      openSidePanel(el.dataset.panel);
+    };
+  });
+
+  // ====== Panel dung chung: Tat ca dau trang / Lich su / Tai xuong / Mat khau ======
+  const sidePanelOverlay = document.getElementById('sidePanelOverlay');
+  const sidePanelTitle = document.getElementById('sidePanelTitle');
+  const sidePanelBody = document.getElementById('sidePanelBody');
+  const sidePanelClose = document.getElementById('sidePanelClose');
+  const sidePanelClear = document.getElementById('sidePanelClear');
+  let currentSidePanel = null;
+  let downloadsList = [];
+
+  const PANEL_TITLES = {
+    bookmarks: '★ Tất cả dấu trang',
+    history: '🕘 Lịch sử duyệt web',
+    downloads: '⬇ Tải xuống',
+    passwords: '🔑 Mật khẩu đã lưu',
+    theme: '🎨 Màu giao diện',
+    adblock: '🛡 Chặn quảng cáo',
+    phishing: '🚫 Chặn web đen/lừa đảo',
+    media: '⬇🎬 Video/nhạc trên trang'
+  };
+
+  function openSidePanel(kind) {
+    currentSidePanel = kind;
+    sidePanelTitle.textContent = PANEL_TITLES[kind] || '';
+    sidePanelOverlay.classList.add('show');
+    renderSidePanel();
+  }
+  function closeSidePanel() {
+    sidePanelOverlay.classList.remove('show');
+    currentSidePanel = null;
+  }
+  function renderSidePanelIfOpen(kind) {
+    if (currentSidePanel === kind) renderSidePanel();
+  }
+  sidePanelClose.onclick = closeSidePanel;
+  sidePanelOverlay.onclick = (e) => { if (e.target === sidePanelOverlay) closeSidePanel(); };
+
+  function fmtBytes(n) {
+    if (!n && n !== 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  function fmtTime(ts) {
+    try { return new Date(ts).toLocaleString('vi-VN'); } catch (e) { return ''; }
+  }
+
+  function renderSidePanel() {
+    sidePanelBody.innerHTML = '';
+
+    if (currentSidePanel === 'bookmarks') {
+      const list = loadBookmarks();
+      sidePanelClear.style.display = list.length ? '' : 'none';
+      if (!list.length) sidePanelBody.innerHTML = '<div class="sp-empty">Chưa có dấu trang nào.</div>';
+      list.forEach((bm, idx) => {
+        const item = document.createElement('div');
+        item.className = 'sp-item';
+        item.innerHTML = `<div class="sp-main"><div class="sp-title"></div><div class="sp-sub"></div></div><span class="sp-del">✕</span>`;
+        item.querySelector('.sp-title').textContent = bm.title || bm.url;
+        item.querySelector('.sp-sub').textContent = bm.url;
+        item.onclick = () => { newTab(bm.url); closeSidePanel(); };
+        item.querySelector('.sp-del').onclick = (e) => {
+          e.stopPropagation();
+          const cur = loadBookmarks(); cur.splice(idx, 1); saveBookmarks(cur);
+          renderBookmarks(); renderSidePanel();
+        };
+        sidePanelBody.appendChild(item);
+      });
+    }
+
+    if (currentSidePanel === 'history') {
+      const list = [...historyStore.load()].reverse();
+      sidePanelClear.style.display = list.length ? '' : 'none';
+      if (!list.length) sidePanelBody.innerHTML = '<div class="sp-empty">Chưa có lịch sử duyệt web.</div>';
+      list.forEach((h) => {
+        const item = document.createElement('div');
+        item.className = 'sp-item';
+        item.innerHTML = `<div class="sp-main"><div class="sp-title"></div><div class="sp-sub"></div></div>`;
+        item.querySelector('.sp-title').textContent = shortTitle(h.title, h.url);
+        item.querySelector('.sp-sub').textContent = fmtTime(h.ts) + ' · ' + h.url;
+        item.onclick = () => { newTab(h.url); closeSidePanel(); };
+        sidePanelBody.appendChild(item);
+      });
+    }
+
+    if (currentSidePanel === 'downloads') {
+      sidePanelClear.style.display = downloadsList.length ? '' : 'none';
+      if (!downloadsList.length) sidePanelBody.innerHTML = '<div class="sp-empty">Chưa có mục tải xuống nào.</div>';
+      downloadsList.forEach((d) => {
+        const item = document.createElement('div');
+        item.className = 'sp-item';
+        const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
+        const stateLabel = d.state === 'completed' ? 'Hoàn tất'
+          : d.state === 'cancelled' ? 'Đã hủy'
+          : d.state === 'interrupted' ? 'Lỗi tải xuống'
+          : `Đang tải… ${pct}%`;
+        item.innerHTML = `<div class="sp-main">
+          <div class="sp-title"></div>
+          <div class="sp-sub"></div>
+          ${d.state === 'progressing' ? `<div class="sp-progress"><div class="sp-progress-fill" style="width:${pct}%"></div></div>` : ''}
+        </div>`;
+        item.querySelector('.sp-title').textContent = d.filename;
+        item.querySelector('.sp-sub').textContent = stateLabel + (d.totalBytes ? ' · ' + fmtBytes(d.totalBytes) : '');
+        item.onclick = () => {
+          if (window.downloadsBridge) {
+            if (d.state === 'completed') window.downloadsBridge.showInFolder(d.path);
+          }
+        };
+        sidePanelBody.appendChild(item);
+      });
+    }
+
+    if (currentSidePanel === 'passwords') {
+      const list = passwordsStore.load().filter(p => !p.neverSave);
+      sidePanelClear.style.display = list.length ? '' : 'none';
+      if (!list.length) sidePanelBody.innerHTML = '<div class="sp-empty">Chưa lưu mật khẩu nào.</div>';
+      list.forEach((p, idx) => {
+        const item = document.createElement('div');
+        item.className = 'sp-item';
+        item.innerHTML = `<div class="sp-main"><div class="sp-title"></div><div class="sp-sub"></div></div><span class="sp-del">✕</span>`;
+        item.querySelector('.sp-title').textContent = p.origin;
+        item.querySelector('.sp-sub').textContent = (p.username || '(không có tên đăng nhập)') + ' · ••••••••';
+        item.onclick = () => { newTab(p.origin); closeSidePanel(); };
+        item.querySelector('.sp-del').onclick = (e) => {
+          e.stopPropagation();
+          const cur = passwordsStore.load();
+          const realIdx = cur.findIndex(x => x === list[idx]);
+          if (realIdx > -1) cur.splice(realIdx, 1);
+          passwordsStore.save(cur);
+          renderSidePanel();
+        };
+        sidePanelBody.appendChild(item);
+      });
+    }
+    if (currentSidePanel === 'theme') {
+      sidePanelClear.style.display = 'none';
+      renderThemePanel();
+    }
+
+    if (currentSidePanel === 'adblock') {
+      sidePanelClear.style.display = 'none';
+      renderAdblockPanel();
+    }
+
+    if (currentSidePanel === 'phishing') {
+      sidePanelClear.style.display = phishingStore.load().length ? '' : 'none';
+      renderPhishingPanel();
+    }
+
+    if (currentSidePanel === 'media') {
+      sidePanelClear.style.display = 'none';
+      renderMediaPanel();
+    }
+  }
+
+  // ====== Panel Mau giao dien: 45 mau + thanh truot hue tuy chinh ======
+  const themeStore = makeJsonStore('theme.json', 'ghn_browser_theme', { hue: 291 });
+  const DEFAULT_HUE = 291; // hue cua tim neon goc (#c026ff)
+
+  function hslStr(h, s, l) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%)`; }
+
+  function applyTheme(hue) {
+    hue = ((hue % 360) + 360) % 360;
+    document.documentElement.style.setProperty('--neon-1', hslStr(hue, 91, 57));
+    document.documentElement.style.setProperty('--neon-2', hslStr(hue + 12, 84, 52));
+    document.documentElement.style.setProperty('--neon-3', hslStr(hue + 28, 100, 54));
+    document.documentElement.style.setProperty('--neon-soft', hslStr(hue, 100, 85));
+  }
+
+  function renderThemePanel() {
+    sidePanelBody.innerHTML = '';
+    const saved = themeStore.load();
+    const hue = typeof saved.hue === 'number' ? saved.hue : DEFAULT_HUE;
+
+    const slider = document.createElement('input');
+    slider.type = 'range'; slider.min = 0; slider.max = 359; slider.value = hue;
+    slider.id = 'themeSlider';
+    slider.oninput = () => {
+      applyTheme(Number(slider.value));
+      themeStore.save({ hue: Number(slider.value) });
+      updateActiveSwatch(Number(slider.value));
+    };
+    sidePanelBody.appendChild(slider);
+
+    const grid = document.createElement('div');
+    grid.id = 'themeSwatchGrid';
+    // Du 45 mau: chia deu 360 do mau thanh 45 diem (moi 8 do 1 mau)
+    for (let i = 0; i < 45; i++) {
+      const h = i * 8;
+      const sw = document.createElement('div');
+      sw.className = 'theme-swatch';
+      sw.dataset.hue = h;
+      sw.style.background = hslStr(h, 90, 55);
+      sw.title = `Màu #${i + 1} (hue ${h}°)`;
+      sw.onclick = () => {
+        slider.value = h;
+        applyTheme(h);
+        themeStore.save({ hue: h });
+        updateActiveSwatch(h);
+      };
+      grid.appendChild(sw);
+    }
+    sidePanelBody.appendChild(grid);
+
+    const resetBtn = document.createElement('button');
+    resetBtn.id = 'themeResetBtn';
+    resetBtn.textContent = 'Đặt lại màu mặc định (tím neon)';
+    resetBtn.onclick = () => {
+      slider.value = DEFAULT_HUE;
+      applyTheme(DEFAULT_HUE);
+      themeStore.save({ hue: DEFAULT_HUE });
+      updateActiveSwatch(DEFAULT_HUE);
+    };
+    sidePanelBody.appendChild(resetBtn);
+
+    updateActiveSwatch(hue);
+  }
+  function updateActiveSwatch(hue) {
+    const closest = Math.round(hue / 8) * 8;
+    document.querySelectorAll('.theme-swatch').forEach(sw => {
+      sw.classList.toggle('active', Number(sw.dataset.hue) === (closest % 360));
+    });
+  }
+
+  // ====== Panel Chan quang cao ======
+  function renderAdblockPanel() {
+    sidePanelBody.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'toggle-row';
+    row.innerHTML = `
+      <div>
+        <div class="tr-label">Chặn quảng cáo &amp; theo dõi</div>
+        <div class="tr-count" id="adblockCountLabel">Đang tải…</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="adblockToggle">
+        <span class="slider-track"></span>
+      </label>`;
+    sidePanelBody.appendChild(row);
+    const note = document.createElement('div');
+    note.className = 'sp-note';
+    note.textContent = 'Dùng danh sách domain quảng cáo/theo dõi phổ biến nhúng sẵn trong app (không phải danh sách EasyList đầy đủ theo thời gian thực), nên có thể không chặn được 100% quảng cáo trên mọi trang.';
+    sidePanelBody.appendChild(note);
+
+    if (window.adblockBridge) {
+      window.adblockBridge.getState().then(state => {
+        document.getElementById('adblockToggle').checked = !!state.enabled;
+        document.getElementById('adblockCountLabel').textContent = `Đã chặn ${state.count} yêu cầu trong phiên này`;
+      });
+      document.getElementById('adblockToggle').onchange = (e) => {
+        window.adblockBridge.toggle(e.target.checked);
+      };
+    }
+  }
+
+  // ====== Panel Chan web den / lua dao (danh sach do nguoi dung tu quan ly) ======
+  const phishingStore = makeJsonStore('phishing-blocklist.json', 'ghn_browser_phishing_blocklist', []);
+  function syncPhishingListToMain() {
+    if (window.phishingBridge) window.phishingBridge.setList(phishingStore.load());
+  }
+  function renderPhishingPanel() {
+    sidePanelBody.innerHTML = '';
+    const note = document.createElement('div');
+    note.className = 'sp-note';
+    note.textContent = 'Danh sách này do bạn tự thêm/quản lý (app không có nguồn dữ liệu lừa đảo cập nhật theo thời gian thực). Bạn có thể tham khảo domain lừa đảo đã được xác nhận từ tinnhiemmang.vn hoặc canhbao.ncsc.gov.vn rồi thêm vào đây.';
+    sidePanelBody.appendChild(note);
+
+    const addRow = document.createElement('div');
+    addRow.id = 'phishingAddRow';
+    addRow.innerHTML = `<input id="phishingAddInput" placeholder="vd: trang-lua-dao.com" /><button id="phishingAddBtn">Thêm</button>`;
+    sidePanelBody.appendChild(addRow);
+
+    const input = addRow.querySelector('#phishingAddInput');
+    const addDomain = () => {
+      const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+      if (!val) return;
+      const list = phishingStore.load();
+      if (!list.includes(val)) { list.push(val); phishingStore.save(list); syncPhishingListToMain(); }
+      input.value = '';
+      renderPhishingPanel();
+    };
+    addRow.querySelector('#phishingAddBtn').onclick = addDomain;
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') addDomain(); });
+
+    const list = phishingStore.load();
+    sidePanelClear.style.display = list.length ? '' : 'none';
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'sp-empty';
+      empty.textContent = 'Chưa có domain nào trong danh sách chặn.';
+      sidePanelBody.appendChild(empty);
+    }
+    list.forEach((domain, idx) => {
+      const item = document.createElement('div');
+      item.className = 'sp-item';
+      item.innerHTML = `<div class="sp-main"><div class="sp-title"></div></div><span class="sp-del">✕</span>`;
+      item.querySelector('.sp-title').textContent = domain;
+      item.querySelector('.sp-del').onclick = (e) => {
+        e.stopPropagation();
+        const cur = phishingStore.load(); cur.splice(idx, 1); phishingStore.save(cur);
+        syncPhishingListToMain(); renderPhishingPanel();
+      };
+      sidePanelBody.appendChild(item);
+    });
+  }
+
+  // ====== Panel Tai video/nhac tren trang dang xem ======
+  function renderMediaPanel() {
+    sidePanelBody.innerHTML = '<div class="sp-empty">Đang quét trang để tìm video/nhạc…</div>';
+    const wv = getActiveWebview();
+    if (!wv) return;
+    const scanFn = function () {
+      const found = [];
+      const seen = new Set();
+      const add = (url, kind) => {
+        if (!url || seen.has(url)) return;
+        if (url.startsWith('blob:') || url.startsWith('data:')) return; // khong the tai truc tiep tu blob/data
+        seen.add(url);
+        found.push({ url, kind });
+      };
+      document.querySelectorAll('video').forEach(v => {
+        add(v.currentSrc || v.src, 'video');
+        v.querySelectorAll('source').forEach(s => add(s.src, 'video'));
+      });
+      document.querySelectorAll('audio').forEach(a => {
+        add(a.currentSrc || a.src, 'audio');
+        a.querySelectorAll('source').forEach(s => add(s.src, 'audio'));
+      });
+      document.querySelectorAll('a[href]').forEach(a => {
+        if (/\.(mp4|webm|mkv|mov|mp3|wav|m4a|ogg)(\?|$)/i.test(a.href)) {
+          add(a.href, /\.(mp3|wav|m4a|ogg)(\?|$)/i.test(a.href) ? 'audio' : 'video');
+        }
+      });
+      return found;
+    };
+    wv.executeJavaScript(`(${scanFn.toString()})()`).then(results => {
+      sidePanelBody.innerHTML = '';
+      if (!results || !results.length) {
+        sidePanelBody.innerHTML = `<div class="sp-empty">Không tìm thấy video/nhạc có link tải trực tiếp trên trang này.<br><br>Lưu ý: các trang stream phân đoạn/DRM như YouTube, Facebook, TikTok, Netflix… sẽ không quét ra được link tải trực tiếp.</div>`;
+        return;
+      }
+      results.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'sp-item';
+        item.innerHTML = `<div class="sp-main"><div class="sp-title"></div><div class="sp-sub media-item-extra"></div></div>`;
+        item.querySelector('.sp-title').textContent = (r.kind === 'audio' ? '🎵 ' : '🎬 ') + decodeURIComponent(r.url.split('/').pop().split('?')[0] || r.url);
+        item.querySelector('.sp-sub').textContent = r.url;
+        item.onclick = () => {
+          const downloadFn = function (url) {
+            const a = document.createElement('a');
+            a.href = url; a.download = '';
+            document.body.appendChild(a); a.click(); a.remove();
+          };
+          wv.executeJavaScript(`(${downloadFn.toString()})(${JSON.stringify(r.url)});`).catch(() => {});
+          openSidePanel('downloads');
+        };
+        sidePanelBody.appendChild(item);
+      });
+    }).catch(() => {
+      sidePanelBody.innerHTML = '<div class="sp-empty">Không quét được trang này.</div>';
+    });
+  }
+
+  sidePanelClear.onclick = () => {
+    if (currentSidePanel === 'bookmarks') { saveBookmarks([]); renderBookmarks(); }
+    else if (currentSidePanel === 'history') { historyStore.save([]); }
+    else if (currentSidePanel === 'downloads') { if (window.downloadsBridge) window.downloadsBridge.clearFinished(); return; }
+    else if (currentSidePanel === 'passwords') { passwordsStore.save([]); }
+    else if (currentSidePanel === 'phishing') { phishingStore.save([]); syncPhishingListToMain(); }
+    renderSidePanel();
+  };
+
+  if (window.downloadsBridge) {
+    window.downloadsBridge.onUpdate((list) => {
+      downloadsList = list || [];
+      renderSidePanelIfOpen('downloads');
+    });
+  }
+
+  // ====== In trang / Dich trang ======
+  document.getElementById('printBtn').onclick = () => {
+    const wv = getActiveWebview();
+    if (wv) wv.print();
+  };
+
+  const TRANSLATE_PREFIX = 'https://translate.google.com/translate?sl=auto&tl=vi&u=';
+  document.getElementById('translateBtn').onclick = () => {
+    const wv = getActiveWebview();
+    if (!wv) return;
+    const current = wv.getURL ? wv.getURL() : urlbar.value;
+    if (current.startsWith(TRANSLATE_PREFIX)) {
+      // Dang o ban dich -> quay lai trang goc
+      const original = decodeURIComponent(current.slice(TRANSLATE_PREFIX.length));
+      wv.loadURL(original);
+    } else {
+      wv.loadURL(TRANSLATE_PREFIX + encodeURIComponent(current));
+    }
+  };
+
+  document.getElementById('mediaBtn').onclick = () => openSidePanel('media');
+
   renderBookmarks();
-  newTab('https://www.google.com'); // mo san 1 tab dau tien khi khoi dong app
+  // Ap mau giao dien da luu (neu co) va dong bo danh sach chan web den xuong main.js
+  applyTheme((themeStore.load().hue));
+  syncPhishingListToMain();
+  // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
+  // truyen URL ban dau qua query string cua chinh trang index.html.
+  const initialUrlFromQuery = new URLSearchParams(location.search).get('initialUrl');
+  newTab(initialUrlFromQuery || 'https://www.google.com'); // mo san 1 tab dau tien khi khoi dong app
   </script>
 </body>
 </html>

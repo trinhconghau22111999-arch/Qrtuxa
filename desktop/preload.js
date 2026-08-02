@@ -1,9 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const path = require('path');
+const { pathToFileURL } = require('url');
 
 // Vi contextIsolation:true nen renderer (index.html) khong the goi thang
-// require('electron'). Preload nay chi lo ra dung 3 lenh dieu khien cua so
-// (thu nho / phong to-khoi phuc / dong) va 1 kenh nhan trang thai maximize,
-// khong dung gi den logic quet QR hay bookmark ca.
+// require('electron'). Preload nay chi lo ra dung nhung ham can thiet.
 contextBridge.exposeInMainWorld('windowControls', {
   minimize: () => ipcRenderer.send('win:minimize'),
   toggleMaximize: () => ipcRenderer.send('win:toggleMaximize'),
@@ -13,9 +13,14 @@ contextBridge.exposeInMainWorld('windowControls', {
   }
 });
 
-// Cau noi rieng cho tinh nang "mo lien ket trong tab moi" (giua-click / target=_blank
-// va menu chuot phai kieu Chrome). Chi lo ra dung 3 ham can thiet, khong dung gi
-// den require('electron') thang trong renderer vi contextIsolation dang bat.
+// Duong dan tuyet doi toi preload rieng cho <webview>, dung de bat su kien
+// submit form co mat khau (phuc vu tinh nang luu mat khau / tu dong dien).
+contextBridge.exposeInMainWorld('appPaths', {
+  guestPreload: pathToFileURL(path.join(__dirname, 'webview-preload.js')).href
+});
+
+// Cau noi cho tinh nang "mo lien ket trong tab moi" (giua-click / target=_blank
+// va menu chuot phai kieu Chrome), va tach tab thanh cua so rieng.
 contextBridge.exposeInMainWorld('tabBridge', {
   onOpenNewTab: (callback) => {
     ipcRenderer.on('open-new-tab', (event, url) => callback(url));
@@ -23,5 +28,34 @@ contextBridge.exposeInMainWorld('tabBridge', {
   showContextMenu: (params) => ipcRenderer.send('context-menu:show', params),
   onContextMenuAction: (callback) => {
     ipcRenderer.on('context-menu:action', (event, action) => callback(action));
+  },
+  detachToNewWindow: (url) => ipcRenderer.send('tab:detach', url)
+});
+
+// Cau noi cho tinh nang Tai xuong (main.js theo doi session tai file va bao
+// trang thai/tien trinh ve day theo thoi gian thuc).
+contextBridge.exposeInMainWorld('downloadsBridge', {
+  onUpdate: (callback) => {
+    ipcRenderer.on('downloads:update', (event, list) => callback(list));
+  },
+  showInFolder: (filePath) => ipcRenderer.send('downloads:show-in-folder', filePath),
+  openFile: (filePath) => ipcRenderer.send('downloads:open-file', filePath),
+  cancel: (id) => ipcRenderer.send('downloads:cancel', id),
+  clearFinished: () => ipcRenderer.send('downloads:clear-finished')
+});
+
+// Chan quang cao: bat/tat + nhan so luong da chan (gop nhieu lan chan lai o main.js).
+contextBridge.exposeInMainWorld('adblockBridge', {
+  getState: () => ipcRenderer.invoke('adblock:get-state'),
+  toggle: (enabled) => ipcRenderer.send('adblock:toggle', enabled),
+  onUpdate: (callback) => {
+    ipcRenderer.on('adblock:update', (event, state) => callback(state));
   }
+});
+
+// Canh bao web den/lua dao: dong bo danh sach do nguoi dung tu quan ly xuong
+// main.js (noi thuc su chan request), va cho phep "van tiep tuc" 1 lan.
+contextBridge.exposeInMainWorld('phishingBridge', {
+  setList: (list) => ipcRenderer.send('phishing:set-list', list),
+  allowOnce: (host) => ipcRenderer.send('phishing:allow-once', host)
 });
