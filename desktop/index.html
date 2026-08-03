@@ -29,9 +29,17 @@
     border-bottom: 1px solid rgba(192,38,255,0.5);
     -webkit-app-region: drag; /* cho phep keo di chuyen cua so bang thanh nay */
   }
-  #titleBar .title-text {
-    flex-shrink:0; font-size:12px; color:#a879e0; white-space:nowrap;
-    -webkit-app-region: drag;
+  #titleBar #settingsWrap {
+    flex-shrink:0;
+    -webkit-app-region: no-drag; /* can bam duoc nen phai tat drag o day */
+  }
+  #titleBar .title-text-btn {
+    font-size:12px; color:#a879e0; white-space:nowrap; cursor:pointer;
+    background:transparent; border:1px solid transparent; border-radius:8px;
+    padding:5px 9px; font-family:inherit; transition:all .15s ease;
+  }
+  #titleBar .title-text-btn:hover {
+    color:#fff; border-color:rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
   }
   #titleBar #tabsBar {
     -webkit-app-region: no-drag; /* vung co nut/tab phai tat drag de bam duoc */
@@ -341,7 +349,7 @@
 
   /* ====== Nut Cai dat + menu tha xuong ====== */
   #settingsMenu {
-    display:none; position:absolute; top:32px; right:0; z-index:30;
+    display:none; position:absolute; top:32px; left:0; z-index:30;
     background:#000000; border:1px solid var(--neon-1); border-radius:10px;
     padding:6px; min-width:190px; box-shadow:0 0 24px rgba(192,38,255,0.45);
   }
@@ -484,7 +492,19 @@
 </head>
 <body>
   <div id="titleBar">
-    <span class="title-text">QR Remote Browser</span>
+    <div id="settingsWrap" style="position:relative;">
+      <button id="settingsBtn" class="title-text-btn" title="Cài đặt">⚙ QR Remote Browser</button>
+      <div id="settingsMenu">
+        <div class="settings-item" data-panel="bookmarks">★ Tất cả dấu trang</div>
+        <div class="settings-item" data-panel="history">🕘 Lịch sử duyệt web</div>
+        <div class="settings-item" data-panel="downloads">⬇ Tải xuống</div>
+        <div class="settings-item" data-panel="passwords">🔑 Mật khẩu đã lưu</div>
+        <div class="settings-sep"></div>
+        <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
+        <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
+        <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
+      </div>
+    </div>
     <div id="tabsBar">
       <button id="newTabBtn" title="Mở tab mới">＋</button>
     </div>
@@ -509,19 +529,6 @@
     <button id="mediaBtn" title="Tải video/nhạc trên trang">⬇🎬</button>
     <button id="qrBtn">📱 Chia sẻ QR</button>
     <button id="camQrBtn">📷 QR Cam</button>
-    <div id="settingsWrap" style="position:relative;">
-      <button id="settingsBtn" title="Cài đặt">⚙</button>
-      <div id="settingsMenu">
-        <div class="settings-item" data-panel="bookmarks">★ Tất cả dấu trang</div>
-        <div class="settings-item" data-panel="history">🕘 Lịch sử duyệt web</div>
-        <div class="settings-item" data-panel="downloads">⬇ Tải xuống</div>
-        <div class="settings-item" data-panel="passwords">🔑 Mật khẩu đã lưu</div>
-        <div class="settings-sep"></div>
-        <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
-        <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
-        <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
-      </div>
-    </div>
   </div>
 
   <div id="bookmarksBar">
