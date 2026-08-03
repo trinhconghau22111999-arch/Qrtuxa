@@ -95,9 +95,11 @@ function attachDownloadListenerOnce() {
   });
 }
 
-// ====== Chan quang cao (danh sach domain quang cao/theo doi pho bien, nhung
-// san trong app - khong phai tai EasyList day du theo thoi gian thuc) ======
-const AD_BLOCK_DOMAINS = [
+// ====== Chan quang cao (danh sach nhung san trong app lam nen tang, cong them
+// tu dong tai ban cap nhat tu docs/adblock-list.json tren GitHub Pages moi khi
+// co mang - de them domain moi KHONG can sua code/build lai app. Neu offline
+// hoac tai loi thi van dung nguyen danh sach nhung san, khong anh huong gi.) ======
+const AD_BLOCK_DOMAINS_BUILTIN = [
   'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
   'google-analytics.com', 'googletagmanager.com', 'googletagservices.com',
   'adservice.google.com', 'pagead2.googlesyndication.com',
@@ -113,12 +115,30 @@ const AD_BLOCK_DOMAINS = [
   // Mang quang cao pho bien tai Viet Nam
   'admicro.vn', 'adtima.vn', 'eclick.vn', 'ants.vn', 'admax.vn'
 ];
+let adBlockDomainsRuntime = [...AD_BLOCK_DOMAINS_BUILTIN];
 let adBlockEnabled = true;
 let adBlockedCount = 0;
 let adBlockBroadcastTimer = null;
 
+const ADBLOCK_REMOTE_URL = 'https://trinhconghau22111999-arch.github.io/Qrtuxa/adblock-list.json';
+function refreshRemoteAdblockList() {
+  if (typeof fetch !== 'function') return; // moi truong Node qua cu khong co fetch san -> bo qua, van dung danh sach nhung san
+  fetch(ADBLOCK_REMOTE_URL, { cache: 'no-store' })
+    .then(res => (res && res.ok) ? res.json() : null)
+    .then(data => {
+      if (data && Array.isArray(data.domains) && data.domains.length) {
+        const merged = new Set([
+          ...AD_BLOCK_DOMAINS_BUILTIN,
+          ...data.domains.map(d => String(d).toLowerCase().trim()).filter(Boolean)
+        ]);
+        adBlockDomainsRuntime = [...merged];
+      }
+    })
+    .catch(() => {}); // offline hoac loi mang -> im lang, giu nguyen danh sach nhung san
+}
+
 function isAdHost(hostAndPath) {
-  return AD_BLOCK_DOMAINS.some(d => hostAndPath.includes(d));
+  return adBlockDomainsRuntime.some(d => hostAndPath.includes(d));
 }
 
 function broadcastAdblockState() {
@@ -497,6 +517,8 @@ ipcMain.on('downloads:clear-finished', () => {
 
 app.whenReady().then(() => {
   createWindow();
+  refreshRemoteAdblockList(); // tai ban cap nhat danh sach chan quang cao (im lang neu offline)
+  setInterval(refreshRemoteAdblockList, 24 * 60 * 60 * 1000); // lam moi lai moi 24h neu app mo lau ngay
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

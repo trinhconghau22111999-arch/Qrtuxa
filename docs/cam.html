@@ -20,6 +20,16 @@
     position:absolute; top:8px; right:10px; font-size:11px; padding:4px 8px;
     background:rgba(0,0,0,0.55); border-radius:10px;
   }
+  #settingsRow {
+    display:flex; flex-direction:column; gap:10px; width:100%; max-width:340px;
+    margin-top:16px; background:rgba(255,255,255,0.05); border-radius:12px; padding:14px;
+  }
+  .setting-line { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .setting-line label { font-size:13px; color:#ccc; }
+  .setting-line select {
+    background:#222; color:#eee; border:1px solid #444; border-radius:8px; padding:6px 8px; font-size:13px;
+  }
+  .setting-line input[type="checkbox"] { width:18px; height:18px; }
   #startBtn {
     margin-top:20px; padding:16px 32px; border-radius:28px; border:none;
     background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff; font-size:16px;
@@ -43,6 +53,28 @@
     <div id="frameCount">0 khung hình</div>
   </div>
   <canvas id="canvas"></canvas>
+  <div id="settingsRow">
+    <div class="setting-line">
+      <label for="resSelect">Độ phân giải</label>
+      <select id="resSelect">
+        <option value="3840x2160" selected>4K (cao nhất máy hỗ trợ)</option>
+        <option value="1920x1080">1080p</option>
+        <option value="1280x720">720p</option>
+      </select>
+    </div>
+    <div class="setting-line">
+      <label for="fpsSelect">Tốc độ khung hình</label>
+      <select id="fpsSelect">
+        <option value="30" selected>30 fps</option>
+        <option value="20">20 fps</option>
+        <option value="15">15 fps</option>
+      </select>
+    </div>
+    <div class="setting-line">
+      <label for="audioCheck">Ghi kèm âm thanh (micro)</label>
+      <input type="checkbox" id="audioCheck" checked>
+    </div>
+  </div>
   <button id="startBtn">▶ Bắt đầu ghi hình</button>
   <button id="stopBtn">■ Dừng ghi hình</button>
   <div id="status"></div>
@@ -72,6 +104,10 @@ const videoWrap = document.getElementById('videoWrap');
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const frameCountEl = document.getElementById('frameCount');
+const settingsRow = document.getElementById('settingsRow');
+const resSelect = document.getElementById('resSelect');
+const fpsSelect = document.getElementById('fpsSelect');
+const audioCheck = document.getElementById('audioCheck');
 
 if (!camId) {
   errEl.textContent = 'Thiếu mã (cam). Hãy quét lại mã QR "QR Cam" do máy tính tạo ra.';
@@ -91,30 +127,35 @@ if (!camId) {
 
   const camRef = db && db.ref('sessions/' + camId + '/cam');
   let stream = null;
+  let micStream = null;
   let recorder = null;
   let rafId = null;
   let chunkSeq = 0;
   let sentChunks = 0;
-  const FPS = 30;
   const TIMESLICE_MS = 300; // moi 300ms cat 1 doan video gui di - vua nho gon, vua it do tre
 
   // Chon dinh dang video trinh duyet ho tro (uu tien webm/vp8 - Android Chrome;
-  // may Safari/iOS se tu dong roi xuong mp4/h264).
-  const CANDIDATE_MIME_TYPES = [
-    'video/webm;codecs=vp8',
-    'video/webm;codecs=vp9',
-    'video/webm',
-    'video/mp4;codecs=h264',
-    'video/mp4'
-  ];
-  function pickMimeType() {
-    for (const t of CANDIDATE_MIME_TYPES) {
+  // may Safari/iOS se tu dong roi xuong mp4/h264). Neu ghi kem am thanh thi
+  // dung bien the co codec am thanh tuong ung.
+  function pickMimeType(withAudio) {
+    const candidates = withAudio ? [
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp9,opus',
+      'video/webm',
+      'video/mp4;codecs=h264,aac',
+      'video/mp4'
+    ] : [
+      'video/webm;codecs=vp8',
+      'video/webm;codecs=vp9',
+      'video/webm',
+      'video/mp4;codecs=h264',
+      'video/mp4'
+    ];
+    for (const t of candidates) {
       if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
     }
     return '';
   }
-  const chosenMime = pickMimeType();
-  const containerExt = chosenMime.startsWith('video/mp4') ? 'mp4' : 'webm';
 
   function pad(n, len) { return String(n).padStart(len, '0'); }
   function formatTimestamp(d) {
@@ -146,9 +187,9 @@ if (!camId) {
     });
   }
 
-  function startTake() {
+  function startTake(mime, ext) {
     const takeId = 'take_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-    camRef.child('currentTake').set({ takeId, startedAt: Date.now(), ext: containerExt }).catch(() => {});
+    camRef.child('currentTake').set({ takeId, startedAt: Date.now(), ext, mime }).catch(() => {});
     return takeId;
   }
 
@@ -157,7 +198,9 @@ if (!camId) {
     if (recorder && recorder.state !== 'inactive') { try { recorder.stop(); } catch (e) {} }
     recorder = null;
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
     videoWrap.style.display = 'none';
+    settingsRow.style.display = 'flex';
     startBtn.style.display = 'inline-block';
     stopBtn.style.display = 'none';
     statusEl.textContent = 'Đã dừng ghi hình.';
@@ -165,20 +208,26 @@ if (!camId) {
 
   startBtn.onclick = async () => {
     if (!camRef) return;
+    const withAudio = audioCheck.checked;
+    const chosenMime = pickMimeType(withAudio);
     if (!chosenMime) {
       errEl.textContent = 'Trình duyệt này không hỗ trợ quay video (MediaRecorder). Hãy thử Chrome/Safari bản mới.';
       return;
     }
+    const containerExt = chosenMime.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const [resW, resH] = resSelect.value.split('x').map(Number);
+    const FPS = Number(fpsSelect.value) || 30;
+
     errEl.textContent = '';
     statusEl.textContent = 'Đang khởi động camera...';
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30 } },
+        video: { facingMode: 'environment', width: { ideal: resW }, height: { ideal: resH }, frameRate: { ideal: FPS } },
         audio: false
       });
     } catch (e) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30 } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: resW }, height: { ideal: resH }, frameRate: { ideal: FPS } }, audio: false });
       } catch (e2) {
         errEl.textContent = 'Không mở được camera: ' + (e2 && e2.message ? e2.message : e2) +
           '. Hãy vào Cài đặt trình duyệt → Quyền trang web → cho phép Camera, rồi tải lại trang.';
@@ -186,25 +235,38 @@ if (!camId) {
         return;
       }
     }
+
+    if (withAudio) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        micStream = null; // khong xin duoc quyen mic -> im lang, ghi hinh khong tieng thay vi chan luon ca video
+      }
+    }
+
     video.srcObject = stream;
     await video.play().catch(() => {});
     startBtn.style.display = 'none';
+    settingsRow.style.display = 'none';
     stopBtn.style.display = 'inline-block';
     videoWrap.style.display = 'block';
     statusEl.textContent = 'Đang quay và gửi video về máy tính...';
 
-    const w = video.videoWidth || 1920;
-    const h = video.videoHeight || 1080;
+    const w = video.videoWidth || resW;
+    const h = video.videoHeight || resH;
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     drawLoop(ctx, w, h);
 
     const canvasStream = canvas.captureStream(FPS);
-    const takeId = startTake(); // moi lan bam Bat dau = 1 "lan ghi" (take) moi
+    if (micStream && micStream.getAudioTracks().length) {
+      canvasStream.addTrack(micStream.getAudioTracks()[0]);
+    }
+    const takeId = startTake(chosenMime, containerExt); // moi lan bam Bat dau = 1 "lan ghi" (take) moi
     chunkSeq = 0; sentChunks = 0;
 
-    // Bitrate tang theo do phan giai de giu chat luong hinh o do net cao + 30fps (mang manh nen chiu duoc).
+    // Bitrate tang theo do phan giai de giu chat luong hinh o do net cao (mang manh nen chiu duoc).
     const pixelCount = w * h;
     const bitrate = pixelCount > 3_000_000 ? 12_000_000 // ~4K
       : pixelCount > 1_500_000 ? 8_000_000              // ~1440p/1080p cao
