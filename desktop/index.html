@@ -503,6 +503,9 @@
         <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
         <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
+        <div class="settings-sep"></div>
+        <div class="settings-item" data-panel="camrecordings">🎬 Quản lý bản ghi QR Cam</div>
+        <div class="settings-item" data-panel="camretention">🗑 Tự động xoá bản ghi cũ</div>
       </div>
     </div>
     <div id="tabsBar">
@@ -1336,11 +1339,22 @@
       if (window.camBridge) window.camBridge.sendChunk(slot.camId, takeId, val.ts || Date.now(), val.b);
 
       // Neu dang mo man hinh xem truc tiep -> giu lai doan nay de dung video cho o tuong ung.
+      // CHI giu header (doan dau tien, chua thong tin WebM can de phat duoc)
+      // + toi da ~60 giay gan nhat (200 doan x 300ms/doan) - tranh RAM phinh
+      // to vo han khi ghi hinh nhieu gio lien tuc va mo xem truc tiep lau.
+      // File luu tren dia (o main.js) KHONG bi anh huong boi gioi han nay,
+      // van day du 100% tu dau den cuoi.
       if (camLiveOpen && takeId === slot.activeTakeId) {
         try {
           const res = await fetch('data:application/octet-stream;base64,' + val.b);
           const buf = await res.arrayBuffer();
           slot.liveChunks.push(buf);
+          const MAX_LIVE_CHUNKS = 200;
+          if (slot.liveChunks.length > MAX_LIVE_CHUNKS) {
+            const header = slot.liveChunks[0];
+            const recent = slot.liveChunks.slice(-(MAX_LIVE_CHUNKS - 1));
+            slot.liveChunks = [header, ...recent];
+          }
           slot.liveNeedsRefresh = true;
           const tile = camLiveTiles[i];
           tile.querySelector('.cam-tile-meta').textContent =
@@ -1436,56 +1450,44 @@
   // mang/Firebase va khong bi anh huong boi viec xoa cache trinh duyet.
   // Neu khong co quyen truy cap Node (vd chay thu trong trinh duyet thuong) thi
   // tu dong lui ve dung localStorage cua may do.
-  const BOOKMARKS_KEY = 'ghn_browser_bookmarks';
-  let nodeFS = null;
-  let nodePath = null;
-  let dataDir = null;
-  let bookmarksFilePath = null;
-  try {
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
-    const dir = path.join(os.homedir(), '.ghn-browser');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    bookmarksFilePath = path.join(dir, 'bookmarks.json');
-    nodeFS = fs;
-    nodePath = path;
-    dataDir = dir;
-  } catch (e) {
-    nodeFS = null; // khong co Node trong renderer nay -> dung localStorage
-  }
+  // ====== Kho luu tru CUC BO tren may (dau trang / lich su / mat khau / mau
+  // giao dien / danh sach chan web den / so ngay tu dong xoa ban ghi QR Cam) ======
+  // SUA LOI THAT SU cua ban truoc: renderer nay chay voi contextIsolation:true +
+  // nodeIntegration:false nen KHONG THE tu goi require('fs') (du co try/catch,
+  // no luon that bai va am tham roi xuong localStorage - khong phai file that
+  // nhu comment cu tung noi). Gio moi thao tac doc/ghi file THAT deu do
+  // main.js dam nhiem qua IPC (window.localStoreBridge), dung 1 file .json
+  // rieng cho tung loai du lieu trong ~/.ghn-browser/ tren CHINH may nay -
+  // KHONG dong bo qua may nao khac, khong dam may nao ca.
+  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days'];
+  const localStoreCache = {};
+  let localStoreReady = null; // Promise, resolve khi da doc xong du lieu tu file luc khoi dong
 
-  // Ham dung chung: tao 1 "kho luu tru" JSON, uu tien ghi xuong file that
-  // trong ~/.ghn-browser (giong bookmarks), roi lui ve localStorage neu khong
-  // co quyen Node. Dung lai cho Lich su va Mat khau ben duoi.
-  function makeJsonStore(filename, storageKey, defaultValue) {
-    const filePath = (nodeFS && nodePath && dataDir) ? nodePath.join(dataDir, filename) : null;
+  function makeJsonStore(key, defaultValue) {
     return {
       load() {
-        if (nodeFS && filePath) {
-          try {
-            if (!nodeFS.existsSync(filePath)) return defaultValue;
-            const raw = nodeFS.readFileSync(filePath, 'utf8');
-            return raw ? JSON.parse(raw) : defaultValue;
-          } catch (e) { return defaultValue; }
-        }
-        try {
-          const raw = localStorage.getItem(storageKey);
-          return raw ? JSON.parse(raw) : defaultValue;
-        } catch (e) { return defaultValue; }
+        const v = localStoreCache[key];
+        return (v === undefined || v === null) ? defaultValue : v;
       },
       save(value) {
-        if (nodeFS && filePath) {
-          try { nodeFS.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8'); return; }
-          catch (e) { /* roi xuong localStorage neu ghi file loi */ }
-        }
-        try { localStorage.setItem(storageKey, JSON.stringify(value)); } catch (e) {}
+        localStoreCache[key] = value;
+        if (window.localStoreBridge) window.localStoreBridge.set(key, value); // ghi xuong file that, khong can cho
       }
     };
   }
 
-  const historyStore = makeJsonStore('history.json', 'ghn_browser_history', []);
-  const passwordsStore = makeJsonStore('passwords.json', 'ghn_browser_passwords', []);
+  function initLocalStores() {
+    if (!window.localStoreBridge) return Promise.resolve();
+    return window.localStoreBridge.getAll(LOCAL_STORE_KEYS)
+      .then(all => { Object.assign(localStoreCache, all || {}); })
+      .catch(() => {});
+  }
+  localStoreReady = initLocalStores();
+
+  const bookmarksStore = makeJsonStore('bookmarks', []);
+  const historyStore = makeJsonStore('history', []);
+  const passwordsStore = makeJsonStore('passwords', []);
+  const camRetentionStore = makeJsonStore('cam-retention-days', 0); // 0 = khong bao gio tu xoa
   const MAX_HISTORY_ITEMS = 500;
 
   // Xao tron nhe cho mat khau luu cuc bo (KHONG phai ma hoa manh - chi de
@@ -1640,31 +1642,11 @@
   const cancelBookmarkBtn = document.getElementById('cancelBookmarkBtn');
 
   function loadBookmarks() {
-    if (nodeFS && bookmarksFilePath) {
-      try {
-        if (!nodeFS.existsSync(bookmarksFilePath)) return [];
-        const raw = nodeFS.readFileSync(bookmarksFilePath, 'utf8');
-        return raw ? JSON.parse(raw) : [];
-      } catch (e) {
-        return [];
-      }
-    }
-    try {
-      const raw = localStorage.getItem(BOOKMARKS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
+    return bookmarksStore.load();
   }
 
   function saveBookmarks(list) {
-    if (nodeFS && bookmarksFilePath) {
-      try {
-        nodeFS.writeFileSync(bookmarksFilePath, JSON.stringify(list, null, 2), 'utf8');
-        return;
-      } catch (e) { /* rơi xuống localStorage nếu ghi file lỗi */ }
-    }
-    try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list)); } catch (e) {}
+    bookmarksStore.save(list);
   }
 
   function shortTitle(title, url) {
@@ -1791,7 +1773,9 @@
     theme: '🎨 Màu giao diện',
     adblock: '🛡 Chặn quảng cáo',
     phishing: '🚫 Chặn web đen/lừa đảo',
-    media: '⬇🎬 Video/nhạc trên trang'
+    media: '⬇🎬 Video/nhạc trên trang',
+    camrecordings: '🎬 Quản lý bản ghi QR Cam',
+    camretention: '🗑 Tự động xoá bản ghi cũ'
   };
 
   function openSidePanel(kind) {
@@ -1926,10 +1910,20 @@
       sidePanelClear.style.display = 'none';
       renderMediaPanel();
     }
+
+    if (currentSidePanel === 'camrecordings') {
+      sidePanelClear.style.display = 'none';
+      renderCamRecordingsPanel();
+    }
+
+    if (currentSidePanel === 'camretention') {
+      sidePanelClear.style.display = 'none';
+      renderCamRetentionPanel();
+    }
   }
 
   // ====== Panel Mau giao dien: 45 mau + thanh truot hue tuy chinh ======
-  const themeStore = makeJsonStore('theme.json', 'ghn_browser_theme', { hue: 291 });
+  const themeStore = makeJsonStore('theme', { hue: 291 });
   const DEFAULT_HUE = 291; // hue cua tim neon goc (#c026ff)
 
   function hslStr(h, s, l) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%)`; }
@@ -2029,7 +2023,7 @@
   }
 
   // ====== Panel Chan web den / lua dao (danh sach do nguoi dung tu quan ly) ======
-  const phishingStore = makeJsonStore('phishing-blocklist.json', 'ghn_browser_phishing_blocklist', []);
+  const phishingStore = makeJsonStore('phishing-blocklist', []);
   function syncPhishingListToMain() {
     if (window.phishingBridge) window.phishingBridge.setList(phishingStore.load());
   }
@@ -2136,6 +2130,79 @@
     });
   }
 
+  // ====== Panel Quan ly ban ghi QR Cam (xem/mo/xoa ngay trong app) ======
+  function fmtDuration(startedAt, lastTs) {
+    if (!startedAt || !lastTs) return '';
+    const sec = Math.max(0, Math.round((lastTs - startedAt) / 1000));
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return `${m} phút ${s} giây`;
+  }
+  function renderCamRecordingsPanel() {
+    sidePanelBody.innerHTML = '<div class="sp-empty">Đang tải danh sách bản ghi…</div>';
+    if (!window.camBridge) return;
+    window.camBridge.list().then(list => {
+      sidePanelBody.innerHTML = '';
+      if (!list || !list.length) {
+        sidePanelBody.innerHTML = '<div class="sp-empty">Chưa có bản ghi QR Cam nào.</div>';
+        return;
+      }
+      list.forEach(rec => {
+        const item = document.createElement('div');
+        item.className = 'sp-item';
+        item.innerHTML = `<div class="sp-main"><div class="sp-title"></div><div class="sp-sub"></div></div><span class="sp-del">✕</span>`;
+        item.querySelector('.sp-title').textContent =
+          (rec.isActive ? '🔴 Đang ghi · ' : '') + new Date(rec.mtime || Date.now()).toLocaleString('vi-VN');
+        item.querySelector('.sp-sub').textContent =
+          fmtBytes(rec.sizeBytes) + (rec.files.length > 1 ? ` · ${rec.files.length} phần (mỗi phần tối đa 60 phút)` : '');
+        item.onclick = () => {
+          if (rec.mainFile && window.camBridge) window.camBridge.openFile(rec.mainFile);
+        };
+        item.querySelector('.sp-del').onclick = (e) => {
+          e.stopPropagation();
+          if (window.camBridge) window.camBridge.delete(rec.camId, rec.takeId);
+          setTimeout(renderCamRecordingsPanel, 200);
+        };
+        sidePanelBody.appendChild(item);
+      });
+    }).catch(() => {
+      sidePanelBody.innerHTML = '<div class="sp-empty">Không tải được danh sách bản ghi.</div>';
+    });
+  }
+
+  // ====== Panel Tu dong xoa ban ghi QR Cam cu (theo thoi gian ban chon) ======
+  const CAM_RETENTION_OPTIONS = [
+    { days: 0, label: 'Không bao giờ tự xoá' },
+    { days: 1, label: 'Sau 1 ngày' },
+    { days: 3, label: 'Sau 3 ngày' },
+    { days: 7, label: 'Sau 7 ngày' },
+    { days: 14, label: 'Sau 14 ngày' },
+    { days: 30, label: 'Sau 30 ngày' },
+    { days: 90, label: 'Sau 90 ngày' }
+  ];
+  function renderCamRetentionPanel() {
+    sidePanelBody.innerHTML = '';
+    const note = document.createElement('div');
+    note.className = 'sp-note';
+    note.textContent = 'Bản ghi QR Cam đang được ghi sẽ KHÔNG BAO GIỜ bị tự động xoá dù đã chọn thời gian bên dưới - chỉ áp dụng cho các bản ghi đã kết thúc.';
+    sidePanelBody.appendChild(note);
+
+    const current = camRetentionStore.load() || 0;
+    CAM_RETENTION_OPTIONS.forEach(opt => {
+      const item = document.createElement('div');
+      item.className = 'sp-item';
+      item.style.display = 'flex';
+      item.style.alignItems = 'center';
+      item.style.justifyContent = 'space-between';
+      item.innerHTML = `<span>${opt.label}</span><span class="cam-retention-check">${opt.days === current ? '✓' : ''}</span>`;
+      item.onclick = () => {
+        camRetentionStore.save(opt.days);
+        if (window.camBridge) window.camBridge.setRetentionDays(opt.days);
+        renderCamRetentionPanel();
+      };
+      sidePanelBody.appendChild(item);
+    });
+  }
+
   sidePanelClear.onclick = () => {
     if (currentSidePanel === 'bookmarks') { saveBookmarks([]); renderBookmarks(); }
     else if (currentSidePanel === 'history') { historyStore.save([]); }
@@ -2174,14 +2241,20 @@
 
   document.getElementById('mediaBtn').onclick = () => openSidePanel('media');
 
-  renderBookmarks();
-  // Ap mau giao dien da luu (neu co) va dong bo danh sach chan web den xuong main.js
-  applyTheme((themeStore.load().hue));
-  syncPhishingListToMain();
-  // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
-  // truyen URL ban dau qua query string cua chinh trang index.html.
-  const initialUrlFromQuery = new URLSearchParams(location.search).get('initialUrl');
-  newTab(initialUrlFromQuery || 'https://www.google.com'); // mo san 1 tab dau tien khi khoi dong app
+  // Cho doc xong du lieu THAT tu file (qua main.js) roi moi ve giao dien,
+  // tranh truong hop hien tam thoi gia tri mac dinh/rong roi lai "nhay" sang
+  // du lieu that ngay sau do.
+  localStoreReady.then(() => {
+    renderBookmarks();
+    // Ap mau giao dien da luu (neu co) va dong bo danh sach chan web den xuong main.js
+    applyTheme((themeStore.load().hue));
+    syncPhishingListToMain();
+    if (window.camBridge) window.camBridge.setRetentionDays(camRetentionStore.load());
+    // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
+    // truyen URL ban dau qua query string cua chinh trang index.html.
+    const initialUrlFromQuery = new URLSearchParams(location.search).get('initialUrl');
+    newTab(initialUrlFromQuery || 'https://www.google.com'); // mo san 1 tab dau tien khi khoi dong app
+  });
   </script>
 </body>
 </html>

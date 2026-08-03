@@ -6,6 +6,49 @@ const os = require('os');
 // An hoan toan thanh menu File/Edit/View/Window/Help tren moi cua so
 Menu.setApplicationMenu(null);
 
+// ====== Kho luu tru CUC BO tren may (bookmarks/history/passwords/theme/
+// phishing-blocklist...) - LUU FILE THAT trong main process, vi renderer
+// (index.html) chay voi contextIsolation:true + nodeIntegration:false nen
+// KHONG THE tu goi require('fs') duoc (du code renderer co try/catch, no
+// luon roi vao nhanh loi va am tham chuyen sang localStorage - day la loi
+// that su cua ban build truoc, gio sua triet de bang cach nay).
+// Moi may tinh co du lieu RIENG, KHONG dong bo qua may nao khac/dam may nao ca.
+const APP_DATA_DIR = path.join(os.homedir(), '.ghn-browser');
+function localStoreFile(key) {
+  // chi cho phep ky tu chu/so/gach ngang trong ten key, tranh path traversal
+  const safeKey = String(key).replace(/[^a-zA-Z0-9_-]/g, '');
+  return path.join(APP_DATA_DIR, safeKey + '.json');
+}
+ipcMain.handle('localstore:get', (e, key) => {
+  try {
+    ensureDirSafe(APP_DATA_DIR);
+    const file = localStoreFile(key);
+    if (!fs.existsSync(file)) return null;
+    const raw = fs.readFileSync(file, 'utf8');
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) { return null; }
+});
+ipcMain.handle('localstore:get-all', (e, keys) => {
+  const result = {};
+  for (const key of keys || []) {
+    try {
+      ensureDirSafe(APP_DATA_DIR);
+      const file = localStoreFile(key);
+      result[key] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8') || 'null') : null;
+    } catch (err) { result[key] = null; }
+  }
+  return result;
+});
+ipcMain.on('localstore:set', (e, { key, value }) => {
+  try {
+    ensureDirSafe(APP_DATA_DIR);
+    fs.writeFileSync(localStoreFile(key), JSON.stringify(value, null, 2), 'utf8');
+  } catch (err) { /* 1 lan ghi loi khong lam sap app, bo qua */ }
+});
+function ensureDirSafe(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
 // ====== Theo doi Tai xuong (dung chung cho moi cua so vi cac webview deu
 // dung chung 1 partition 'persist:browse') ======
 const DOWNLOAD_PARTITION = 'persist:browse';
@@ -157,8 +200,9 @@ function attachRequestFilterOnce() {
 // 1 lan ghi moi), tu dong ghep cac khung thanh 1 file video .mp4 bang ffmpeg
 // NEU may co san ffmpeg trong PATH; neu khong co thi giu nguyen thu muc anh.
 const CAM_REC_ROOT = path.join(os.homedir(), '.ghn-browser', 'qr-cam-recordings');
-// camId -> { takeId, dir, filePath, fd, chunkCount, startedAt, lastTs }
+// camId -> { takeId, dir, filePath, fd, ext, chunkCount, startedAt, partStartedAt, partNumber, lastTs }
 const activeTakes = new Map();
+const CAM_SPLIT_MS = 60 * 60 * 1000; // tu dong tach file video moi 60 phut/lan ghi
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -168,11 +212,21 @@ function takeDir(camId, takeId) {
   return path.join(CAM_REC_ROOT, camId, takeId);
 }
 
+function openNewPart(entry) {
+  try { if (entry.fd !== null && entry.fd !== undefined) fs.closeSync(entry.fd); } catch (e) {}
+  entry.partNumber++;
+  const filename = entry.partNumber === 1 ? `video.${entry.ext}` : `video_part${entry.partNumber}.${entry.ext}`;
+  entry.filePath = path.join(entry.dir, filename);
+  entry.fd = fs.openSync(entry.filePath, 'w');
+  entry.partStartedAt = Date.now();
+}
+
 // Cac doan video (chunk) do MediaRecorder ben dien thoai cat ra, khi noi
 // TRUC TIEP theo dung thu tu vao 1 file duy nhat se tao thanh 1 file video
 // lien tuc, xem duoc binh thuong (day la ky thuat pho bien de ghi video
 // truc tiep xuong dia tu 1 phien MediaRecorder duy nhat) - KHONG can ffmpeg
-// hay bat ky buoc ghep noi phuc tap nao khac.
+// hay bat ky buoc ghep noi phuc tap nao khac. Cu moi 60 phut se tu dong mo
+// 1 file moi (video_part2.webm, part3...) thay vi de 1 file khong lo mai.
 function finalizeTake(camId) {
   const entry = activeTakes.get(camId);
   if (!entry) return;
@@ -183,7 +237,7 @@ function finalizeTake(camId) {
     fs.writeFileSync(
       path.join(entry.dir, 'manifest.json'),
       JSON.stringify({
-        camId, takeId: entry.takeId, ext: entry.ext,
+        camId, takeId: entry.takeId, ext: entry.ext, parts: entry.partNumber,
         chunkCount: entry.chunkCount, startedAt: entry.startedAt, lastTs: entry.lastTs
       }, null, 2),
       'utf8'
@@ -200,12 +254,12 @@ ipcMain.on('camrec:new-take', (e, { camId, takeId, ext }) => {
   const dir = takeDir(camId, takeId);
   ensureDir(dir);
   const safeExt = (ext === 'mp4') ? 'mp4' : 'webm';
-  const filePath = path.join(dir, 'video.' + safeExt);
-  const fd = fs.openSync(filePath, 'w');
-  activeTakes.set(camId, {
-    takeId, dir, filePath, fd, ext: safeExt,
-    chunkCount: 0, startedAt: Date.now(), lastTs: Date.now()
-  });
+  const entry = {
+    takeId, dir, filePath: null, fd: null, ext: safeExt,
+    chunkCount: 0, startedAt: Date.now(), partStartedAt: Date.now(), partNumber: 0, lastTs: Date.now()
+  };
+  openNewPart(entry);
+  activeTakes.set(camId, entry);
 });
 
 ipcMain.on('camrec:chunk', (e, { camId, takeId, ts, dataBase64 }) => {
@@ -215,10 +269,14 @@ ipcMain.on('camrec:chunk', (e, { camId, takeId, ts, dataBase64 }) => {
     // Chua thay currentTake truoc do (vd. race luc moi ket noi) -> tu tao file luon (mac dinh webm).
     const dir = takeDir(camId, takeId);
     ensureDir(dir);
-    const filePath = path.join(dir, 'video.webm');
-    const fd = fs.openSync(filePath, 'w');
-    entry = { takeId, dir, filePath, fd, ext: 'webm', chunkCount: 0, startedAt: Date.now(), lastTs: Date.now() };
+    entry = { takeId, dir, filePath: null, fd: null, ext: 'webm', chunkCount: 0, startedAt: Date.now(), partStartedAt: Date.now(), partNumber: 0, lastTs: Date.now() };
+    openNewPart(entry);
     activeTakes.set(camId, entry);
+  }
+  // Da ghi lien tuc du 60 phut cho phan hien tai -> tu dong mo file moi
+  // (video_part2, part3...) de tranh 1 file qua khong lo.
+  if (Date.now() - entry.partStartedAt >= CAM_SPLIT_MS) {
+    openNewPart(entry);
   }
   try {
     // Noi truc tiep (append) doan video moi vao CUOI file hien co, dung thu
@@ -241,6 +299,66 @@ ipcMain.on('camrec:open-folder', (e, camId) => {
   ensureDir(dir);
   shell.openPath(dir);
 });
+
+// ====== Danh sach quan ly ban ghi ngay trong app (xem/mo/xoa) ======
+function listCamRecordings() {
+  const results = [];
+  try {
+    ensureDir(CAM_REC_ROOT);
+    for (const camId of fs.readdirSync(CAM_REC_ROOT)) {
+      const camDir = path.join(CAM_REC_ROOT, camId);
+      if (!fs.statSync(camDir).isDirectory()) continue;
+      for (const takeId of fs.readdirSync(camDir)) {
+        const dir = path.join(camDir, takeId);
+        if (!fs.statSync(dir).isDirectory()) continue;
+        let totalSize = 0;
+        let mtime = 0;
+        let files = [];
+        try {
+          files = fs.readdirSync(dir).filter(f => f.startsWith('video'));
+          for (const f of files) {
+            const st = fs.statSync(path.join(dir, f));
+            totalSize += st.size;
+            if (st.mtimeMs > mtime) mtime = st.mtimeMs;
+          }
+        } catch (e) {}
+        const isActive = activeTakes.has(camId) && activeTakes.get(camId).takeId === takeId;
+        const mainFile = files.length ? path.join(dir, files[0]) : null;
+        results.push({ camId, takeId, dir, files, mainFile, sizeBytes: totalSize, mtime, isActive });
+      }
+    }
+  } catch (e) {}
+  results.sort((a, b) => b.mtime - a.mtime);
+  return results;
+}
+ipcMain.handle('camrec:list', () => listCamRecordings());
+ipcMain.on('camrec:delete', (e, { camId, takeId }) => {
+  if (!camId || !takeId) return;
+  const active = activeTakes.get(camId);
+  if (active && active.takeId === takeId) finalizeTake(camId); // dang ghi do -> chot lai truoc roi moi xoa
+  try { fs.rmSync(takeDir(camId, takeId), { recursive: true, force: true }); } catch (e) {}
+});
+ipcMain.on('camrec:open-file', (e, filePath) => {
+  if (filePath) shell.openPath(filePath);
+});
+
+// ====== Tu dong xoa ban ghi cu theo thoi gian nguoi dung chon (0 = khong bao gio) ======
+let camRetentionDays = 0;
+function runCamRetentionCleanup() {
+  if (!camRetentionDays) return;
+  const cutoff = Date.now() - camRetentionDays * 24 * 60 * 60 * 1000;
+  for (const rec of listCamRecordings()) {
+    if (rec.isActive) continue; // dang ghi do thi khong bao gio tu xoa
+    if (rec.mtime && rec.mtime < cutoff) {
+      try { fs.rmSync(rec.dir, { recursive: true, force: true }); } catch (e) {}
+    }
+  }
+}
+ipcMain.on('camrec:set-retention', (e, days) => {
+  camRetentionDays = Number(days) || 0;
+  runCamRetentionCleanup();
+});
+setInterval(runCamRetentionCleanup, 60 * 60 * 1000); // kiem tra lai moi gio, phong khi app mo nhieu ngay lien
 
 // Tat han "ca trinh duyet" -> chot lai (dong file an toan) moi lan ghi dang
 // do truoc khi thoat, dung yeu cau "chi huy ket noi khi doi ma QR hoac tat
