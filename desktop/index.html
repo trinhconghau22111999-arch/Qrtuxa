@@ -188,6 +188,50 @@
     border-color: var(--neon-1);
     box-shadow: 0 0 10px rgba(192,38,255,0.5);
   }
+
+  /* ====== Panel Cai dat: nhan tieu de nho + hang nut lua chon 2 o (dung chung
+     cho "Nen vung phia tren" va "Ngon ngu mac dinh") ====== */
+  .sp-section-label { font-size:12px; color:#a879e0; margin:10px 0 6px; }
+  #topBgRow, #defaultLangRow { display:flex; gap:8px; margin-bottom:10px; }
+  .topbg-choice {
+    flex:1; padding:9px 0; border-radius:8px; cursor:pointer; font-size:13px;
+    background:#000000; color:var(--text); border:1px solid rgba(192,38,255,0.4);
+    transition: all .15s ease;
+  }
+  .topbg-choice:hover { border-color: var(--neon-1); }
+  .topbg-choice.active {
+    border-color: var(--neon-1); color:#fff;
+    background: rgba(192,38,255,0.18); box-shadow: 0 0 10px rgba(192,38,255,0.45);
+  }
+
+  /* ====== Nen vung phia tren mau TRANG (mac dinh la DEN) - bat qua Cai dat >
+     Mau giao dien > "Nen vung phia tren". Ghi de nguyen vung #titleBar +
+     #toolbar + #bookmarksBar (tab, thanh dia chi, cac nut, dau trang ghim)
+     sang nen trang + chu/vien mau toi de doc duoc - MOI THU KHAC cua app
+     (panel Cai dat, popup dich...) van giu nguyen nen toi nhu cu, chi rieng
+     vung nay doi thoi. ====== */
+  body.top-bg-white #titleBar,
+  body.top-bg-white #toolbar,
+  body.top-bg-white #bookmarksBar { background: #ffffff; }
+  body.top-bg-white #titleBar .title-text-btn { color:#6b4a99; }
+  body.top-bg-white #titleBar .title-text-btn:hover { color:#1a0033; background:rgba(192,38,255,0.12); }
+  body.top-bg-white .win-btn { color:#7a4fae; }
+  body.top-bg-white .win-btn:hover { color:#1a0033; }
+  body.top-bg-white #winCloseBtn:hover { color:#fff; }
+  body.top-bg-white #toolbar button { background:#ffffff; color:#1a0033; }
+  body.top-bg-white #toolbar button:hover { color:#000; }
+  body.top-bg-white .tab-item { background:#ffffff; color:#6b4a99; }
+  body.top-bg-white .tab-item.active { color:#1a0033; }
+  body.top-bg-white .tab-close:hover { color:#fff; }
+  body.top-bg-white #newTabBtn { background:#ffffff; }
+  body.top-bg-white #bookmarksEmpty { color:#6b4a99; }
+  body.top-bg-white .bm-item { background:#ffffff; color:#1a0033; }
+  body.top-bg-white .bm-item .bm-del { color:#7a4fae; }
+  body.top-bg-white .bm-item .bm-del:hover { color:#fff; }
+  body.top-bg-white #urlbar { background:#ffffff; color:#1a0033; }
+  body.top-bg-white #addBookmarkBtn { background:#ffffff; }
+  body.top-bg-white #addBookmarkBtn:hover { color:#fff; }
+
   #qrBtn {
     background: linear-gradient(135deg, var(--neon-1), var(--neon-3));
     border: none; font-weight:600;
@@ -448,6 +492,8 @@
   }
   #translatePopup button:first-child { border-right:1px solid var(--neon-1); }
   #translatePopup button:hover { background:rgba(192,38,255,0.2); color:#fff; }
+  #translatePopup button.default-lang { font-weight:700; color:#fff; }
+  #translatePopup button.default-lang::after { content:' ★'; font-size:10px; }
 
   /* ====== Panel dung chung: Tat ca dau trang / Lich su / Tai xuong / Mat khau ====== */
   #sidePanelOverlay {
@@ -529,6 +575,7 @@
         <div class="settings-item" data-panel="passwords">🔑 Mật khẩu đã lưu</div>
         <div class="settings-sep"></div>
         <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
+        <div class="settings-item" data-panel="language">🌐 Ngôn ngữ mặc định</div>
         <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
         <div class="settings-sep"></div>
@@ -1062,6 +1109,13 @@
       const wv = getActiveWebview();
       if (wv) wv.loadURL(normalizeUrl(urlbar.value));
     }
+  });
+
+  // Nhap 2 lan lien tuc (double-click) vao thanh dia chi -> quet chon TOAN BO
+  // noi dung, thay vi hanh vi mac dinh cua input (chi chon 1 tu tai vi tri
+  // bam) - tien loi khi muon xoa/thay het link dang go dang xem.
+  urlbar.addEventListener('dblclick', () => {
+    urlbar.select();
   });
   document.getElementById('backBtn').onclick = () => {
     const wv = getActiveWebview();
@@ -1654,7 +1708,7 @@
   // main.js dam nhiem qua IPC (window.localStoreBridge), dung 1 file .json
   // rieng cho tung loai du lieu trong ~/.ghn-browser/ tren CHINH may nay -
   // KHONG dong bo qua may nao khac, khong dam may nao ca.
-  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days'];
+  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'defaultlang'];
   const localStoreCache = {};
   let localStoreReady = null; // Promise, resolve khi da doc xong du lieu tu file luc khoi dong
 
@@ -1966,6 +2020,7 @@
     downloads: '⬇ Tải xuống',
     passwords: '🔑 Mật khẩu đã lưu',
     theme: '🎨 Màu giao diện',
+    language: '🌐 Ngôn ngữ mặc định',
     adblock: '🛡 Chặn quảng cáo',
     phishing: '🚫 Chặn web đen/lừa đảo',
     camrecordings: '🎬 Quản lý bản ghi QR Cam',
@@ -2090,6 +2145,11 @@
       renderThemePanel();
     }
 
+    if (currentSidePanel === 'language') {
+      sidePanelClear.style.display = 'none';
+      renderLanguagePanel();
+    }
+
     if (currentSidePanel === 'adblock') {
       sidePanelClear.style.display = 'none';
       renderAdblockPanel();
@@ -2112,8 +2172,9 @@
   }
 
   // ====== Panel Mau giao dien: 45 mau + thanh truot hue tuy chinh ======
-  const themeStore = makeJsonStore('theme', { hue: 291 });
+  const themeStore = makeJsonStore('theme', { hue: 291, topBg: 'black' });
   const DEFAULT_HUE = 291; // hue cua tim neon goc (#c026ff)
+  const defaultLangStore = makeJsonStore('defaultlang', { lang: 'vi' });
 
   function hslStr(h, s, l) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%)`; }
 
@@ -2123,6 +2184,12 @@
     document.documentElement.style.setProperty('--neon-2', hslStr(hue + 12, 84, 52));
     document.documentElement.style.setProperty('--neon-3', hslStr(hue + 28, 100, 54));
     document.documentElement.style.setProperty('--neon-soft', hslStr(hue, 100, 85));
+  }
+
+  // Nen vung phia tren (thanh tab + thanh dia chi + thanh dau trang ghim) - den
+  // (mac dinh) hoac trang, xem CSS ".top-bg-white" va renderThemePanel() ben duoi.
+  function applyTopBg(color) {
+    document.body.classList.toggle('top-bg-white', color === 'white');
   }
 
   function renderThemePanel() {
@@ -2135,7 +2202,7 @@
     slider.id = 'themeSlider';
     slider.oninput = () => {
       applyTheme(Number(slider.value));
-      themeStore.save({ hue: Number(slider.value) });
+      themeStore.save({ ...themeStore.load(), hue: Number(slider.value) });
       updateActiveSwatch(Number(slider.value));
     };
     sidePanelBody.appendChild(slider);
@@ -2153,7 +2220,7 @@
       sw.onclick = () => {
         slider.value = h;
         applyTheme(h);
-        themeStore.save({ hue: h });
+        themeStore.save({ ...themeStore.load(), hue: h });
         updateActiveSwatch(h);
       };
       grid.appendChild(sw);
@@ -2166,12 +2233,68 @@
     resetBtn.onclick = () => {
       slider.value = DEFAULT_HUE;
       applyTheme(DEFAULT_HUE);
-      themeStore.save({ hue: DEFAULT_HUE });
+      themeStore.save({ ...themeStore.load(), hue: DEFAULT_HUE });
       updateActiveSwatch(DEFAULT_HUE);
     };
     sidePanelBody.appendChild(resetBtn);
 
+    // Nen vung phia tren (tab/thanh dia chi/dau trang ghim): Den (mac dinh) / Trang.
+    const topBgLabel = document.createElement('div');
+    topBgLabel.className = 'sp-section-label';
+    topBgLabel.textContent = 'Nền vùng phía trên (thanh tab, thanh địa chỉ)';
+    sidePanelBody.appendChild(topBgLabel);
+
+    const topBgRow = document.createElement('div');
+    topBgRow.id = 'topBgRow';
+    const currentTopBg = saved.topBg || 'black';
+    const mkTopBgBtn = (value, label) => {
+      const b = document.createElement('button');
+      b.className = 'topbg-choice' + (currentTopBg === value ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        applyTopBg(value);
+        themeStore.save({ ...themeStore.load(), topBg: value });
+        topBgRow.querySelectorAll('.topbg-choice').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+      };
+      return b;
+    };
+    topBgRow.appendChild(mkTopBgBtn('black', '⬛ Đen'));
+    topBgRow.appendChild(mkTopBgBtn('white', '⬜ Trắng'));
+    sidePanelBody.appendChild(topBgRow);
+
     updateActiveSwatch(hue);
+  }
+
+  function renderLanguagePanel() {
+    sidePanelBody.innerHTML = '';
+    const label = document.createElement('div');
+    label.className = 'sp-section-label';
+    label.textContent = 'Ngôn ngữ mặc định khi dịch trang (nút 🌐 trên thanh công cụ)';
+    sidePanelBody.appendChild(label);
+
+    const row = document.createElement('div');
+    row.id = 'defaultLangRow';
+    const current = defaultLangStore.load().lang || 'vi';
+    const mkLangBtn = (value, label) => {
+      const b = document.createElement('button');
+      b.className = 'topbg-choice' + (current === value ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        defaultLangStore.save({ lang: value });
+        row.querySelectorAll('.topbg-choice').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+      };
+      return b;
+    };
+    row.appendChild(mkLangBtn('en', 'Tiếng Anh'));
+    row.appendChild(mkLangBtn('vi', 'Tiếng Việt'));
+    sidePanelBody.appendChild(row);
+
+    const note = document.createElement('div');
+    note.className = 'sp-empty';
+    note.textContent = 'Ngôn ngữ này sẽ được đánh dấu sẵn khi bấm nút Dịch trang - vẫn có thể chọn ngôn ngữ còn lại cho từng lần dịch.';
+    sidePanelBody.appendChild(note);
   }
   function updateActiveSwatch(hue) {
     const closest = Math.round(hue / 8) * 8;
@@ -2381,6 +2504,11 @@
   }
   document.getElementById('translateBtn').onclick = (e) => {
     e.stopPropagation();
+    // Danh dau san nut khop voi "Ngon ngu mac dinh" da chon trong Cai dat, moi
+    // lan mo popup (phong khi nguoi dung vua doi trong Cai dat luc app dang mo).
+    const defLang = defaultLangStore.load().lang || 'vi';
+    document.getElementById('translateEnBtn').classList.toggle('default-lang', defLang === 'en');
+    document.getElementById('translateViBtn').classList.toggle('default-lang', defLang === 'vi');
     translatePopup.classList.toggle('hidden');
   };
   document.getElementById('translateEnBtn').onclick = () => doTranslate('en');
@@ -2399,6 +2527,7 @@
     renderBookmarks();
     // Ap mau giao dien da luu (neu co) va dong bo danh sach chan web den xuong main.js
     applyTheme((themeStore.load().hue));
+    applyTopBg(themeStore.load().topBg || 'black');
     syncPhishingListToMain();
     if (window.camBridge) window.camBridge.setRetentionDays(camRetentionStore.load());
     // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
