@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, clipboard, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, clipboard, session, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -352,6 +352,28 @@ function listCamRecordings() {
   return results;
 }
 ipcMain.handle('camrec:list', () => listCamRecordings());
+
+// Chup anh trang web: renderer da tu chup xong (webview.capturePage() ->
+// dataURL), o day chi lo hien hop thoai "Luu thanh..." de nguoi dung chon
+// noi luu, roi ghi file PNG that xuong dung cho do (renderer khong co quyen
+// ghi file truc tiep vi contextIsolation dang bat).
+ipcMain.handle('screenshot:save', async (e, dataUrl) => {
+  try {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    const defaultName = `screenshot-${Date.now()}.png`;
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Lưu ảnh chụp trang web',
+      defaultPath: path.join(app.getPath('pictures'), defaultName),
+      filters: [{ name: 'Ảnh PNG', extensions: ['png'] }]
+    });
+    if (result.canceled || !result.filePath) return { ok: false };
+    const base64 = String(dataUrl || '').replace(/^data:image\/png;base64,/, '');
+    fs.writeFileSync(result.filePath, Buffer.from(base64, 'base64'));
+    return { ok: true, filePath: result.filePath };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
 ipcMain.on('camrec:delete', (e, { camId, takeId }) => {
   if (!camId || !takeId) return;
   const active = activeTakes.get(camId);

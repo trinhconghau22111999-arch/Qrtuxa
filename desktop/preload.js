@@ -83,3 +83,11 @@ contextBridge.exposeInMainWorld('camBridge', {
   openFile: (filePath) => ipcRenderer.send('camrec:open-file', filePath),
   setRetentionDays: (days) => ipcRenderer.send('camrec:set-retention', days)
 });
+
+// Chup anh trang web: renderer tu chup (webview.capturePage()) roi gui du
+// lieu anh (dataURL) qua day cho main.js hien hop thoai "Luu thanh..." va
+// ghi file that xuong dia (renderer khong co quyen ghi file truc tiep vi
+// contextIsolation dang bat, giong moi thu khac trong file nay).
+contextBridge.exposeInMainWorld('screenshotBridge', {
+  save: (dataUrl) => ipcRenderer.invoke('screenshot:save', dataUrl)
+});

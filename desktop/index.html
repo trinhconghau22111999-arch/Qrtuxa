@@ -432,8 +432,22 @@
   #pwGoBackBtn { background:#fff; color:#1a0000; font-weight:700; }
   #pwProceedBtn { background:transparent; color:#e0b8b8; border:1px solid #e0b8b8 !important; }
 
-  /* ====== Panel Tai video/nhac tren trang ====== */
-  .media-item-extra { font-size:10px; color:#a879e0; }
+  /* ====== Popup chon ngon ngu dich (2 o 2 ben: Anh / Viet) - bam nut Dich hien ra,
+     bam 1 trong 2 se dich trang sang dung ngon ngu do ====== */
+  #translateWrap { position:relative; display:inline-block; }
+  #translatePopup {
+    position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    margin-top:6px; display:flex; gap:0; z-index:50;
+    background:#1a0f2e; border:1px solid var(--neon-1); border-radius:8px;
+    overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.5);
+  }
+  #translatePopup.hidden { display:none; }
+  #translatePopup button {
+    border:none; background:transparent; color:#e8d9ff; padding:8px 16px;
+    font-size:12px; cursor:pointer; white-space:nowrap;
+  }
+  #translatePopup button:first-child { border-right:1px solid var(--neon-1); }
+  #translatePopup button:hover { background:rgba(192,38,255,0.2); color:#fff; }
 
   /* ====== Panel dung chung: Tat ca dau trang / Lich su / Tai xuong / Mat khau ====== */
   #sidePanelOverlay {
@@ -541,9 +555,14 @@
       <input id="urlbar" value="https://www.google.com" />
       <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
     </div>
-    <button id="printBtn" title="In trang">🖶</button>
-    <button id="translateBtn" title="Dịch trang">🌐</button>
-    <button id="mediaBtn" title="Tải video/nhạc trên trang">⬇🎬</button>
+    <button id="screenshotBtn" title="Chụp ảnh trang web">📷</button>
+    <div id="translateWrap">
+      <button id="translateBtn" title="Dịch trang">🌐</button>
+      <div id="translatePopup" class="hidden">
+        <button id="translateEnBtn">Anh</button>
+        <button id="translateViBtn">Việt</button>
+      </div>
+    </div>
     <button id="qrBtn">📱 Chia sẻ QR</button>
     <button id="camQrBtn">📷 QR Cam</button>
   </div>
@@ -1949,7 +1968,6 @@
     theme: '🎨 Màu giao diện',
     adblock: '🛡 Chặn quảng cáo',
     phishing: '🚫 Chặn web đen/lừa đảo',
-    media: '⬇🎬 Video/nhạc trên trang',
     camrecordings: '🎬 Quản lý bản ghi QR Cam',
     camretention: '🗑 Tự động xoá bản ghi cũ'
   };
@@ -2080,11 +2098,6 @@
     if (currentSidePanel === 'phishing') {
       sidePanelClear.style.display = phishingStore.load().length ? '' : 'none';
       renderPhishingPanel();
-    }
-
-    if (currentSidePanel === 'media') {
-      sidePanelClear.style.display = 'none';
-      renderMediaPanel();
     }
 
     if (currentSidePanel === 'camrecordings') {
@@ -2250,62 +2263,6 @@
   }
 
   // ====== Panel Tai video/nhac tren trang dang xem ======
-  function renderMediaPanel() {
-    sidePanelBody.innerHTML = '<div class="sp-empty">Đang quét trang để tìm video/nhạc…</div>';
-    const wv = getActiveWebview();
-    if (!wv) return;
-    const scanFn = function () {
-      const found = [];
-      const seen = new Set();
-      const add = (url, kind) => {
-        if (!url || seen.has(url)) return;
-        if (url.startsWith('blob:') || url.startsWith('data:')) return; // khong the tai truc tiep tu blob/data
-        seen.add(url);
-        found.push({ url, kind });
-      };
-      document.querySelectorAll('video').forEach(v => {
-        add(v.currentSrc || v.src, 'video');
-        v.querySelectorAll('source').forEach(s => add(s.src, 'video'));
-      });
-      document.querySelectorAll('audio').forEach(a => {
-        add(a.currentSrc || a.src, 'audio');
-        a.querySelectorAll('source').forEach(s => add(s.src, 'audio'));
-      });
-      document.querySelectorAll('a[href]').forEach(a => {
-        if (/\.(mp4|webm|mkv|mov|mp3|wav|m4a|ogg)(\?|$)/i.test(a.href)) {
-          add(a.href, /\.(mp3|wav|m4a|ogg)(\?|$)/i.test(a.href) ? 'audio' : 'video');
-        }
-      });
-      return found;
-    };
-    wv.executeJavaScript(`(${scanFn.toString()})()`).then(results => {
-      sidePanelBody.innerHTML = '';
-      if (!results || !results.length) {
-        sidePanelBody.innerHTML = `<div class="sp-empty">Không tìm thấy video/nhạc có link tải trực tiếp trên trang này.<br><br>Lưu ý: các trang stream phân đoạn/DRM như YouTube, Facebook, TikTok, Netflix… sẽ không quét ra được link tải trực tiếp.</div>`;
-        return;
-      }
-      results.forEach(r => {
-        const item = document.createElement('div');
-        item.className = 'sp-item';
-        item.innerHTML = `<div class="sp-main"><div class="sp-title"></div><div class="sp-sub media-item-extra"></div></div>`;
-        item.querySelector('.sp-title').textContent = (r.kind === 'audio' ? '🎵 ' : '🎬 ') + decodeURIComponent(r.url.split('/').pop().split('?')[0] || r.url);
-        item.querySelector('.sp-sub').textContent = r.url;
-        item.onclick = () => {
-          const downloadFn = function (url) {
-            const a = document.createElement('a');
-            a.href = url; a.download = '';
-            document.body.appendChild(a); a.click(); a.remove();
-          };
-          wv.executeJavaScript(`(${downloadFn.toString()})(${JSON.stringify(r.url)});`).catch(() => {});
-          openSidePanel('downloads');
-        };
-        sidePanelBody.appendChild(item);
-      });
-    }).catch(() => {
-      sidePanelBody.innerHTML = '<div class="sp-empty">Không quét được trang này.</div>';
-    });
-  }
-
   // ====== Panel Quan ly ban ghi QR Cam (xem/mo/xoa ngay trong app) ======
   function fmtDuration(startedAt, lastTs) {
     if (!startedAt || !lastTs) return '';
@@ -2395,27 +2352,45 @@
     });
   }
 
-  // ====== In trang / Dich trang ======
-  document.getElementById('printBtn').onclick = () => {
+  // ====== Chup anh trang web / Dich trang ======
+  document.getElementById('screenshotBtn').onclick = async () => {
     const wv = getActiveWebview();
-    if (wv) wv.print();
+    if (!wv) return;
+    try {
+      const image = await wv.capturePage();
+      const dataUrl = image.toDataURL();
+      await window.screenshotBridge.save(dataUrl);
+    } catch (err) {}
   };
 
-  const TRANSLATE_PREFIX = 'https://translate.google.com/translate?sl=auto&tl=vi&u=';
-  document.getElementById('translateBtn').onclick = () => {
+  // Popup 2 o (Anh/Viet) - bam nut Dich hien popup, bam 1 trong 2 nut se dich
+  // trang ĐANG XEM (khong phai ban dich cu) sang dung ngon ngu vua chon.
+  const translatePopup = document.getElementById('translatePopup');
+  const TRANSLATE_BASE = 'https://translate.google.com/translate?sl=auto&u=';
+  const TRANSLATE_RE = /^https:\/\/translate\.google\.com\/translate\?sl=auto&u=([^&]+)&tl=\w+$/;
+  function doTranslate(targetLang) {
     const wv = getActiveWebview();
     if (!wv) return;
     const current = wv.getURL ? wv.getURL() : urlbar.value;
-    if (current.startsWith(TRANSLATE_PREFIX)) {
-      // Dang o ban dich -> quay lai trang goc
-      const original = decodeURIComponent(current.slice(TRANSLATE_PREFIX.length));
-      wv.loadURL(original);
-    } else {
-      wv.loadURL(TRANSLATE_PREFIX + encodeURIComponent(current));
-    }
+    // Neu dang o 1 ban dich roi (bam Dich lan 2 de doi ngon ngu khac) -> lay
+    // lai URL GOC tu tham so u=, tranh dich chong dich (dich ban da dich).
+    const m = current.match(TRANSLATE_RE);
+    const original = m ? decodeURIComponent(m[1]) : current;
+    wv.loadURL(`${TRANSLATE_BASE}${encodeURIComponent(original)}&tl=${targetLang}`);
+    translatePopup.classList.add('hidden');
+  }
+  document.getElementById('translateBtn').onclick = (e) => {
+    e.stopPropagation();
+    translatePopup.classList.toggle('hidden');
   };
-
-  document.getElementById('mediaBtn').onclick = () => openSidePanel('media');
+  document.getElementById('translateEnBtn').onclick = () => doTranslate('en');
+  document.getElementById('translateViBtn').onclick = () => doTranslate('vi');
+  // Bam ra ngoai popup thi tu dong dong lai.
+  document.addEventListener('click', (e) => {
+    if (!translatePopup.classList.contains('hidden') && !e.target.closest('#translateWrap')) {
+      translatePopup.classList.add('hidden');
+    }
+  });
 
   // Cho doc xong du lieu THAT tu file (qua main.js) roi moi ve giao dien,
   // tranh truong hop hien tam thoi gia tri mac dinh/rong roi lai "nhay" sang
