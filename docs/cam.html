@@ -132,6 +132,7 @@ if (!camId) {
   let rafId = null;
   let chunkSeq = 0;
   let sentChunks = 0;
+  let failedChunks = 0;
   const TIMESLICE_MS = 300; // moi 300ms cat 1 doan video gui di - vua nho gon, vua it do tre
 
   // Chon dinh dang video trinh duyet ho tro (uu tien webm/vp8 - Android Chrome;
@@ -189,7 +190,17 @@ if (!camId) {
 
   function startTake(mime, ext) {
     const takeId = 'take_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-    camRef.child('currentTake').set({ takeId, startedAt: Date.now(), ext, mime }).catch(() => {});
+    // FIX (theo phan anh "may tinh khong nhan duoc video"): truoc day loi ghi
+    // len Firebase o day bi nuot am tham (.catch(() => {})) - neu ghi that bai
+    // (vd bi luat bao mat Firebase chan, sai cau hinh...) thi dien thoai van
+    // cu tuong dang ghi hinh binh thuong (MediaRecorder chay CUC BO, khong
+    // phu thuoc ket qua ghi len may chu) ma khong he biet du lieu chua tung
+    // toi duoc may tinh. Hien loi that ra man hinh de biet ngay thay vi phai
+    // doan mo.
+    camRef.child('currentTake').set({ takeId, startedAt: Date.now(), ext, mime })
+      .catch(err => {
+        errEl.textContent = 'Lỗi gửi dữ liệu lên máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + '). Máy tính sẽ KHÔNG nhận được video cho tới khi lỗi này hết.';
+      });
     return takeId;
   }
 
@@ -279,7 +290,14 @@ if (!camId) {
       const base64 = await blobToBase64(e.data);
       camRef.child('chunks/' + takeId).push({ b: base64, ts: Date.now(), seq: chunkSeq })
         .then(() => { sentChunks++; frameCountEl.textContent = sentChunks + ' đoạn video đã gửi'; })
-        .catch(() => {}); // loi mang tam thoi: Firebase da tu xep hang, se tu gui lai khi co mang
+        .catch(err => {
+          // FIX: truoc day nuot loi am tham, comment cu ("loi mang tam thoi, se
+          // tu gui lai") CHI dung voi loi mang that su - loi quyen truy cap
+          // (permission-denied, thuong gap nhat khi luat bao mat Firebase
+          // chan) thi KHONG bao gio tu gui lai duoc, phai hien ra cho biet.
+          failedChunks++;
+          frameCountEl.textContent = sentChunks + ' đoạn đã gửi, ' + failedChunks + ' đoạn LỖI (mã: ' + (err.code || err.message) + ')';
+        });
     };
     recorder.start(TIMESLICE_MS);
   };

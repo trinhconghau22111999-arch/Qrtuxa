@@ -1512,7 +1512,14 @@
       renderActiveSlotQr();
 
       slot.camRef = db.ref('sessions/' + slot.camId + '/cam');
-      slot.camRef.child('meta').set({ createdAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+      slot.camRef.child('meta').set({ createdAt: firebase.database.ServerValue.TIMESTAMP })
+        .catch(err => {
+          // FIX (theo phan anh "may tinh khong nhan duoc video"): truoc day
+          // nuot loi am tham - neu MAY TINH cung khong ghi/doc duoc Firebase
+          // (vd bi luat bao mat chan) thi trang thai se dung mai o "Dang cho
+          // dien thoai..." ma khong ro ly do. Hien loi ra ngay cho de doan.
+          if (activeSlotTab === i) camQrStatus.textContent = 'Lỗi kết nối máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + ')';
+        });
 
       // Lang nghe "lan ghi hien tai": moi lan dien thoai bam Bat dau ghi hinh
       // (ke ca sau khi mat ket noi roi mo lai trang) se ghi 1 takeId moi vao day.
@@ -1533,6 +1540,13 @@
         updateSlotTabUI(i);
         if (window.camBridge) window.camBridge.newTake(slot.camId, slot.activeTakeId, val.ext || 'webm');
         listenCamChunks(i, slot.activeTakeId);
+      }, err => {
+        // Tham so thu 2 cua .on() la callback LOI (vd bi tu choi doc du lieu) -
+        // truoc day khong co, nen loi dang nay hoan toan vo hinh: callback
+        // thanh cong o tren khong bao gio duoc goi, ma cung khong co gi bao
+        // hieu tai sao, trang thai chi dung mai o "Dang cho..." nhu bao cua
+        // nguoi dung.
+        if (activeSlotTab === i) camQrStatus.textContent = 'Lỗi đọc dữ liệu từ máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + ')';
       });
     } catch (e) {
       camQrStatus.textContent = 'Lỗi: ' + e.message;
@@ -1587,6 +1601,11 @@
       // Da luu xong xuong dia -> xoa khoi Firebase de khong phinh to du lieu
       // theo thoi gian (khong lien quan gi den ban ghi da luu, ban ghi van con).
       snap.ref.remove().catch(() => {});
+    }, err => {
+      // Cung ly do nhu takeListenerRef o tren: khong co callback loi thi bi tu
+      // choi doc chunk se hoan toan vo hinh, trang thai dung mai o "Da ket noi"
+      // ma khong bao gio thay so doan tang len, khong ro tai sao.
+      if (activeSlotTab === i) camQrStatus.textContent = 'Lỗi đọc video từ máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + ')';
     });
   }
 
