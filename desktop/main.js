@@ -95,60 +95,12 @@ function attachDownloadListenerOnce() {
   });
 }
 
-// ====== Chan quang cao (danh sach nhung san trong app lam nen tang, cong them
-// tu dong tai ban cap nhat tu docs/adblock-list.json tren GitHub Pages moi khi
-// co mang - de them domain moi KHONG can sua code/build lai app. Neu offline
-// hoac tai loi thi van dung nguyen danh sach nhung san, khong anh huong gi.) ======
-const AD_BLOCK_DOMAINS_BUILTIN = [
-  'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
-  'google-analytics.com', 'googletagmanager.com', 'googletagservices.com',
-  'adservice.google.com', 'pagead2.googlesyndication.com',
-  'facebook.com/tr', 'connect.facebook.net',
-  'amazon-adsystem.com', 'taboola.com', 'outbrain.com', 'criteo.com',
-  'criteo.net', 'adnxs.com', 'moatads.com', 'scorecardresearch.com',
-  'quantserve.com', 'adform.net', 'pubmatic.com', 'rubiconproject.com',
-  'media.net', 'popads.net', 'propellerads.com', 'exoclick.com',
-  'adcolony.com', 'applovin.com', 'mgid.com', 'revcontent.com',
-  'yandex.ru/ads', 'bidswitch.net', 'casalemedia.com', 'openx.net',
-  'smartadserver.com', 'adroll.com', 'zedo.com', 'adsrvr.org',
-  '3lift.com', 'contextweb.com', 'sharethrough.com',
-  // Mang quang cao pho bien tai Viet Nam
-  'admicro.vn', 'adtima.vn', 'eclick.vn', 'ants.vn', 'admax.vn'
-];
-let adBlockDomainsRuntime = [...AD_BLOCK_DOMAINS_BUILTIN];
-let adBlockEnabled = true;
-let adBlockedCount = 0;
-let adBlockBroadcastTimer = null;
-
-const ADBLOCK_REMOTE_URL = 'https://trinhconghau22111999-arch.github.io/Qrtuxa/adblock-list.json';
-function refreshRemoteAdblockList() {
-  if (typeof fetch !== 'function') return; // moi truong Node qua cu khong co fetch san -> bo qua, van dung danh sach nhung san
-  fetch(ADBLOCK_REMOTE_URL, { cache: 'no-store' })
-    .then(res => (res && res.ok) ? res.json() : null)
-    .then(data => {
-      if (data && Array.isArray(data.domains) && data.domains.length) {
-        const merged = new Set([
-          ...AD_BLOCK_DOMAINS_BUILTIN,
-          ...data.domains.map(d => String(d).toLowerCase().trim()).filter(Boolean)
-        ]);
-        adBlockDomainsRuntime = [...merged];
-      }
-    })
-    .catch(() => {}); // offline hoac loi mang -> im lang, giu nguyen danh sach nhung san
-}
-
-function isAdHost(hostAndPath) {
-  return adBlockDomainsRuntime.some(d => hostAndPath.includes(d));
-}
-
-function broadcastAdblockState() {
-  clearTimeout(adBlockBroadcastTimer);
-  adBlockBroadcastTimer = setTimeout(() => {
-    BrowserWindow.getAllWindows().forEach(w =>
-      w.webContents.send('adblock:update', { enabled: adBlockEnabled, count: adBlockedCount })
-    );
-  }, 400); // gop nhieu lan chan lai, tranh spam IPC khi 1 trang co qua nhieu quang cao
-}
+// ====== Chan quang cao: DA CHUYEN sang co che moi (tu dong bam "Bo qua quang
+// cao" + tua nhanh + an banner/overlay ngay trong trang YouTube) - xem
+// YOUTUBE_AD_SKIP_JS trong desktop/index.html, chay o renderer (executeJavaScript
+// tren webview) chu khong con o main process nay nua. Toan bo danh sach domain
+// chan theo mang (AD_BLOCK_DOMAINS_BUILTIN cu) va viec tai ban cap nhat tu
+// docs/adblock-list.json da bo hoan toan.
 
 // ====== Canh bao web den / lua dao ======
 // KHONG co nguon du lieu "threat intel" thoi gian thuc (Google Safe Browsing
@@ -174,12 +126,6 @@ ipcMain.on('phishing:allow-once', (e, host) => {
   if (host) phishingAllowlistOnce.add(String(host).toLowerCase());
 });
 
-ipcMain.handle('adblock:get-state', () => ({ enabled: adBlockEnabled, count: adBlockedCount }));
-ipcMain.on('adblock:toggle', (e, enabled) => {
-  adBlockEnabled = !!enabled;
-  broadcastAdblockState();
-});
-
 let requestFilterAttached = false;
 function attachRequestFilterOnce() {
   if (requestFilterAttached) return;
@@ -200,13 +146,9 @@ function attachRequestFilterOnce() {
       }
     }
 
-    // Chan quang cao/theo doi theo domain
-    if (adBlockEnabled && isAdHost(details.url)) {
-      adBlockedCount++;
-      broadcastAdblockState();
-      callback({ cancel: true });
-      return;
-    }
+    // Chan quang cao: DA CHUYEN sang co che moi chay o renderer (xem
+    // YOUTUBE_AD_SKIP_JS trong desktop/index.html) - khong con chan theo
+    // domain o day nua.
 
     callback({ cancel: false });
   });
@@ -539,8 +481,6 @@ ipcMain.on('downloads:clear-finished', () => {
 
 app.whenReady().then(() => {
   createWindow();
-  refreshRemoteAdblockList(); // tai ban cap nhat danh sach chan quang cao (im lang neu offline)
-  setInterval(refreshRemoteAdblockList, 24 * 60 * 60 * 1000); // lam moi lai moi 24h neu app mo lau ngay
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

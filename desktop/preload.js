@@ -44,14 +44,10 @@ contextBridge.exposeInMainWorld('downloadsBridge', {
   clearFinished: () => ipcRenderer.send('downloads:clear-finished')
 });
 
-// Chan quang cao: bat/tat + nhan so luong da chan (gop nhieu lan chan lai o main.js).
-contextBridge.exposeInMainWorld('adblockBridge', {
-  getState: () => ipcRenderer.invoke('adblock:get-state'),
-  toggle: (enabled) => ipcRenderer.send('adblock:toggle', enabled),
-  onUpdate: (callback) => {
-    ipcRenderer.on('adblock:update', (event, state) => callback(state));
-  }
-});
+// Chan quang cao: DA CHUYEN toan bo sang co che moi chay ngay trong renderer
+// (xem YOUTUBE_AD_SKIP_JS + adBlockStore trong desktop/index.html - tu dong
+// bam "Bo qua quang cao", tua nhanh, an banner/overlay ngay trong trang
+// YouTube), khong con can IPC bridge sang main process nua.
 
 // Canh bao web den/lua dao: dong bo danh sach do nguoi dung tu quan ly xuong
 // main.js (noi thuc su chan request), va cho phep "van tiep tuc" 1 lan.

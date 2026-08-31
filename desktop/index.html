@@ -435,7 +435,6 @@
   /* ====== Panel Chan quang cao ====== */
   .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 4px; }
   .toggle-row .tr-label { font-size:12px; color:var(--text); }
-  .toggle-row .tr-count { font-size:11px; color:#a879e0; }
   .switch { position:relative; width:42px; height:22px; flex-shrink:0; }
   .switch input { opacity:0; width:0; height:0; }
   .switch .slider-track {
@@ -795,6 +794,82 @@
     return `(${fn.toString()})();`;
   }
 
+  // ====== Chan quang cao tren YouTube (thay hoan toan cho co che chan theo
+  // domain mang cu) - tiem thang vao trang YouTube dang xem, gom 3 viec:
+  //   1. Tu dong bam nut "Bo qua quang cao" ngay khi no xuat hien (quet moi
+  //      200ms, kiem tra ca 4 class khac nhau tuy phien ban giao dien YouTube).
+  //   2. Voi quang cao KHONG cho bo qua: tu tat tieng + nhay thang video den
+  //      cuoi (currentTime = duration) thay vi phai ngoi xem het; neu video
+  //      chua kip co thong tin thoi luong (vai tram ms dau) thi tang tam toc
+  //      do phat len 16x lam phuong an du phong.
+  //   3. An han cac khoi quang cao dang HIEN THI (khong phai video) tren giao
+  //      dien: banner chen trong feed, quang cao chu/anh phu len video...
+  // Chi ap dung cho rieng YouTube (khong con chan quang cao domain-level cho
+  // cac trang khac nhu truoc). Bat/tat qua adBlockStore (xem renderAdblockPanel).
+  function buildYoutubeAdSkipScript() {
+    const fn = function () {
+      if (window.__qrAdSkipInstalled) return;
+      window.__qrAdSkipInstalled = true;
+      // Co the bi doi lai sau boi toggle trong Cai dat (xem broadcastAdSkipEnabled).
+      if (typeof window.__qrAdSkipEnabled === 'undefined') window.__qrAdSkipEnabled = true;
+
+      setInterval(function () {
+        if (!window.__qrAdSkipEnabled) return;
+        try {
+          // 1. Tu dong bam "Bo qua quang cao"
+          var skipSelectors = [
+            '.ytp-ad-skip-button', '.ytp-ad-skip-button-modern',
+            '.ytp-skip-ad-button', '.videoAdUiSkipButton'
+          ];
+          for (var i = 0; i < skipSelectors.length; i++) {
+            var btn = document.querySelector(skipSelectors[i]);
+            if (btn) btn.click();
+          }
+
+          // 2. Tua nhanh quang cao khong bo qua duoc
+          var player = document.querySelector('.html5-video-player');
+          var isAdShowing = player && (
+            player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting')
+          );
+          if (isAdShowing) {
+            var video = document.querySelector('video');
+            if (video) {
+              video.muted = true;
+              if (video.duration && isFinite(video.duration)) {
+                video.currentTime = video.duration;
+              } else {
+                video.playbackRate = 16;
+              }
+            }
+          }
+
+          // 3. An banner/overlay quang cao tren giao dien
+          var hideSelectors = [
+            '.ytp-ad-overlay-container', '.ytp-ad-text-overlay', '.ytp-ad-image-overlay',
+            '.video-ads', 'ytd-promoted-sparkles-web-renderer', 'ytd-display-ad-renderer',
+            'ytd-in-feed-ad-layout-renderer', 'ytd-ad-slot-renderer'
+          ];
+          for (var j = 0; j < hideSelectors.length; j++) {
+            var els = document.querySelectorAll(hideSelectors[j]);
+            for (var k = 0; k < els.length; k++) {
+              els[k].style.setProperty('display', 'none', 'important');
+            }
+          }
+        } catch (e) {}
+      }, 200);
+    };
+    return `(${fn.toString()})();`;
+  }
+
+  function isYoutubeUrl(url) {
+    try {
+      const h = new URL(url).hostname.toLowerCase();
+      return h === 'youtube.com' || h.endsWith('.youtube.com') || h === 'youtu.be';
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ====== Quan ly da tab ======
   // Moi tab la 1 <webview> rieng. Chi 1 webview hien thi (display:block) tai 1 thoi diem.
   // Toan bo logic quet QR / dieu huong / dau trang deu thao tac tren "tab dang active",
@@ -834,6 +909,15 @@
     el.addEventListener('dom-ready', () => {
       el.executeJavaScript(buildCtrlWheelZoomScript()).catch(() => {});
       autofillPasswordIfAny(el);
+      if (isYoutubeUrl(el.getURL())) {
+        el.executeJavaScript(buildYoutubeAdSkipScript())
+          .then(() => {
+            // Ap dung dung trang thai bat/tat da luu trong Cai dat (script vua
+            // tiem mac dinh la bat, can ghi de lai neu nguoi dung da tat truoc do).
+            el.executeJavaScript(`window.__qrAdSkipEnabled = ${adBlockStore.load().enabled !== false};`).catch(() => {});
+          })
+          .catch(() => {});
+      }
     });
     el.addEventListener('did-navigate', e => { onTabNavigate(el, e.url); recordHistory(e.url); });
     el.addEventListener('did-navigate-in-page', e => onTabNavigate(el, e.url));
@@ -1708,7 +1792,7 @@
   // main.js dam nhiem qua IPC (window.localStoreBridge), dung 1 file .json
   // rieng cho tung loai du lieu trong ~/.ghn-browser/ tren CHINH may nay -
   // KHONG dong bo qua may nao khac, khong dam may nao ca.
-  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'defaultlang'];
+  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'defaultlang', 'adblock-enabled'];
   const localStoreCache = {};
   let localStoreReady = null; // Promise, resolve khi da doc xong du lieu tu file luc khoi dong
 
@@ -2303,15 +2387,20 @@
     });
   }
 
-  // ====== Panel Chan quang cao ======
+  // ====== Panel Chan quang cao (rieng YouTube - xem buildYoutubeAdSkipScript) ======
+  const adBlockStore = makeJsonStore('adblock-enabled', { enabled: true });
+  function broadcastAdSkipEnabled(enabled) {
+    for (const t of tabs.values()) {
+      t.webview.executeJavaScript(`window.__qrAdSkipEnabled = ${!!enabled};`).catch(() => {});
+    }
+  }
   function renderAdblockPanel() {
     sidePanelBody.innerHTML = '';
     const row = document.createElement('div');
     row.className = 'toggle-row';
     row.innerHTML = `
       <div>
-        <div class="tr-label">Chặn quảng cáo &amp; theo dõi</div>
-        <div class="tr-count" id="adblockCountLabel">Đang tải…</div>
+        <div class="tr-label">Chặn quảng cáo YouTube</div>
       </div>
       <label class="switch">
         <input type="checkbox" id="adblockToggle">
@@ -2320,19 +2409,18 @@
     sidePanelBody.appendChild(row);
     const note = document.createElement('div');
     note.className = 'sp-note';
-    note.textContent = 'Dùng danh sách domain quảng cáo/theo dõi phổ biến nhúng sẵn trong app (không phải danh sách EasyList đầy đủ theo thời gian thực), nên có thể không chặn được 100% quảng cáo trên mọi trang.';
+    note.textContent = 'Chỉ áp dụng riêng cho YouTube (không còn chặn quảng cáo theo domain cho các trang khác như trước). Khi bật: tự động bấm "Bỏ qua quảng cáo" ngay khi nút này xuất hiện; với quảng cáo bắt buộc xem (không có nút bỏ qua) sẽ tự tắt tiếng và tua nhanh đến hết thay vì phải ngồi xem; đồng thời ẩn các banner/quảng cáo dạng hiển thị (không phải video) chèn trong nguồn cấp hoặc phủ lên video.';
     sidePanelBody.appendChild(note);
 
-    if (window.adblockBridge) {
-      window.adblockBridge.getState().then(state => {
-        document.getElementById('adblockToggle').checked = !!state.enabled;
-        document.getElementById('adblockCountLabel').textContent = `Đã chặn ${state.count} yêu cầu trong phiên này`;
-      });
-      document.getElementById('adblockToggle').onchange = (e) => {
-        window.adblockBridge.toggle(e.target.checked);
-      };
-    }
+    const checkbox = document.getElementById('adblockToggle');
+    checkbox.checked = adBlockStore.load().enabled !== false;
+    checkbox.onchange = (e) => {
+      const enabled = e.target.checked;
+      adBlockStore.save({ enabled });
+      broadcastAdSkipEnabled(enabled);
+    };
   }
+
 
   // ====== Panel Chan web den / lua dao (danh sach do nguoi dung tu quan ly) ======
   const phishingStore = makeJsonStore('phishing-blocklist', []);
