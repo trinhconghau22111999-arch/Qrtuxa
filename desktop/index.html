@@ -1748,6 +1748,20 @@
     camLiveGrid.className = 'layout-' + n;
     document.querySelectorAll('.cam-layout-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.n) === n));
     camLiveTiles.forEach((tile, i) => tile.classList.toggle('visible', i < n));
+    // FIX loi hien thi (anh chup man hinh nguoi dung gui): doi so o dang xem -
+    // nhat la nhay thang len 4 o - co luc Chromium KHONG tinh lai ngay kich
+    // thuoc cot/hang cua CSS Grid sau khi nhieu the .cam-live-tile cung doi
+    // display:none -> block trong 1 nhip, de lai 1 khoang trong "ma" giua cac
+    // o (giong het dang bi trong anh). Ep Chromium huy va ve lai HOAN TOAN
+    // khung grid ngay sau do (tat display 1 nhip roi bat lai o frame ke tiep)
+    // de chac chan luon dung, khong con phu thuoc vao co trigger reflow tinh
+    // co nao khac (resize cua so...) hay khong.
+    void camLiveGrid.offsetHeight;
+    const prevDisplay = camLiveGrid.style.display;
+    camLiveGrid.style.display = 'none';
+    requestAnimationFrame(() => {
+      camLiveGrid.style.display = prevDisplay || '';
+    });
   }
   document.querySelectorAll('.cam-layout-btn').forEach(btn => {
     btn.onclick = () => applyLiveLayout(Number(btn.dataset.n));
