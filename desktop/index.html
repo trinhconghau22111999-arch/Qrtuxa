@@ -468,6 +468,19 @@
   #phishingWarnOverlay.show { display:flex; }
   #phishingWarnOverlay h2 { color:#ff5a5a; font-size:20px; margin:0 0 10px 0; }
   #phishingWarnOverlay p { color:#e0b8b8; font-size:13px; max-width:460px; margin:0 0 20px 0; }
+
+  /* ====== Thong bao noi mat tin hieu camera QR Cam - z-index CAO HON moi thu
+     khac trong app (ke ca canh bao web den 60) de khong bao gio bi che khuat,
+     tu bien mat sau vai giay (xem showCamSignalToast()). ====== */
+  #camSignalToast {
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-20px);
+    z-index:70; background:#2a0505; border:1px solid #ff5a5a; color:#ffd9d9;
+    padding:12px 20px; border-radius:10px; font-size:13px; font-weight:600;
+    box-shadow:0 6px 24px rgba(255,90,90,0.35); opacity:0; pointer-events:none;
+    transition: opacity .2s ease, transform .2s ease; max-width:80vw; text-align:center;
+  }
+  #camSignalToast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
   #phishingWarnOverlay .pw-actions { display:flex; gap:10px; }
   #phishingWarnOverlay button {
     padding:10px 16px; border-radius:8px; cursor:pointer; font-size:12px; border:none;
@@ -696,6 +709,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Thong bao noi bat khi 1 trong 4 camera mat tin hieu (xem showCamSignalToast())
+       - z-index cao hon moi lop phu khac trong app de luon nhin thay duoc, ke ca dang
+       mo Xem truc tiep/Cai dat. -->
+  <div id="camSignalToast"></div>
 
   <div id="camLiveOverlay">
     <div id="camLiveControls">
@@ -1402,6 +1420,7 @@
     receivedCount: 0,
     hasSignal: false,
     signalLost: false,
+    signalLostAutoFinalized: false,
     lastChunkAt: 0,
     mimeType: '',
     ext: 'webm',
@@ -1446,6 +1465,25 @@
     tile.classList.toggle('signal-lost', slot.signalLost);
   }
 
+  // Thong bao noi mat tin hieu camera - tu bien mat sau 6 giay, lan bao moi
+  // ghi de len lan cu (khong xep chong nhieu thong bao cung luc).
+  let camSignalToastTimer = null;
+  function showCamSignalToast(message) {
+    const el = document.getElementById('camSignalToast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(camSignalToastTimer);
+    camSignalToastTimer = setTimeout(() => el.classList.remove('show'), 6000);
+  }
+
+  // Qua 10 phut lien tuc mat tin hieu (khong chi 15 giay bao mat tin hieu tren
+  // giao dien) -> coi nhu dien thoai da ngung han (het pin, hong may, quen
+  // tat...), tu dong CHOT FILE dang ghi do lai (dong an toan, ghi manifest)
+  // thay vi de file "mo" cho toi khi nguoi dung tu tay dong hoac tat han app.
+  // Neu dien thoai ket noi lai sau do, se tu tao 1 file GHI MOI binh thuong
+  // (khong anh huong file da chot).
+  const CAM_AUTO_FINALIZE_MS = 10 * 60 * 1000;
+
   // Bao mat tin hieu: kiem tra dinh ky, khong lam gi neu van dang nhan du lieu deu.
   setInterval(() => {
     const now = Date.now();
@@ -1453,7 +1491,21 @@
       const slot = camSlots[i];
       if (!slot.hasSignal) continue;
       const lost = !!slot.lastChunkAt && (now - slot.lastChunkAt > CAM_SIGNAL_LOST_MS);
-      if (lost !== slot.signalLost) { slot.signalLost = lost; updateSlotTabUI(i); }
+      if (lost !== slot.signalLost) {
+        slot.signalLost = lost;
+        updateSlotTabUI(i);
+        if (lost) {
+          showCamSignalToast('⚠️ Mất tín hiệu từ ĐT ' + (i + 1) + ' — đang chờ kết nối lại...');
+        } else {
+          slot.signalLostAutoFinalized = false; // ket noi lai duoc -> reset co, san sang cho lan mat tin hieu tiep theo (neu co)
+        }
+      }
+      if (slot.signalLost && !slot.signalLostAutoFinalized
+          && slot.lastChunkAt && (now - slot.lastChunkAt > CAM_AUTO_FINALIZE_MS)) {
+        slot.signalLostAutoFinalized = true;
+        if (slot.camId && window.camBridge) window.camBridge.stopCam(slot.camId);
+        showCamSignalToast('🔴 ĐT ' + (i + 1) + ' mất tín hiệu quá 10 phút — đã tự động lưu lại đoạn đã ghi được.');
+      }
     }
   }, 5000);
 
@@ -1531,6 +1583,7 @@
         slot.receivedCount = 0;
         slot.hasSignal = false;
         slot.signalLost = false;
+        slot.signalLostAutoFinalized = false;
         slot.mimeType = val.mime || '';
         slot.ext = val.ext || 'webm';
         slot.liveChunks = [];
@@ -1625,6 +1678,7 @@
     slot.liveChunks = [];
     slot.hasSignal = false;
     slot.signalLost = false;
+    slot.signalLostAutoFinalized = false;
     updateSlotTabUI(i);
   }
 

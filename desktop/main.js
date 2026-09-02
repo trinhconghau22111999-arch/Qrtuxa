@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, clipboard, session, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, clipboard, session, shell, dialog, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -19,13 +19,54 @@ function localStoreFile(key) {
   const safeKey = String(key).replace(/[^a-zA-Z0-9_-]/g, '');
   return path.join(APP_DATA_DIR, safeKey + '.json');
 }
+
+// Rieng mat khau (key 'passwords') MA HOA truoc khi ghi xuong dia, dung
+// safeStorage co san cua Electron (Windows: DPAPI gan voi tai khoan Windows
+// dang dang nhap - may khac/nguoi khac dang nhap Windows KHONG doc duoc, ke
+// ca copy nguyen file .json sang; macOS/Linux: Keychain/libsecret tuong tu).
+// Cac key khac (bookmarks/history/theme...) KHONG doi gi, van la JSON van ban
+// thuong nhu truoc - chi rieng mat khau la du lieu nhay cam can bao ve them.
+function readLocalStoreValue(key) {
+  const file = localStoreFile(key);
+  if (!fs.existsSync(file)) return null;
+  if (key !== 'passwords') {
+    try { return JSON.parse(fs.readFileSync(file, 'utf8') || 'null'); } catch (err) { return null; }
+  }
+  try {
+    const buf = fs.readFileSync(file); // doc dang Buffer nhi phan (file ma hoa khong phai UTF-8 hop le)
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        return JSON.parse(safeStorage.decryptString(buf));
+      } catch (err) {
+        // Giai ma that bai - co the la file CU tu ban truoc khi co ma hoa
+        // (luc do van con la JSON van ban thuong) - doc lai kieu cu de KHONG
+        // mat mat khau da luu tu truoc; lan ghi tiep theo se tu dong ma hoa lai.
+        try { return JSON.parse(buf.toString('utf8')); } catch (err2) { return null; }
+      }
+    }
+    // May khong ho tro ma hoa he thong (hiem, vd 1 so ban Linux khong co
+    // keyring) - danh doc/ghi van ban thuong, van hoat dong binh thuong,
+    // chi la khong duoc ma hoa them.
+    return JSON.parse(buf.toString('utf8'));
+  } catch (err) { return null; }
+}
+function writeLocalStoreValue(key, value) {
+  const file = localStoreFile(key);
+  if (key !== 'passwords') {
+    fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf8');
+    return;
+  }
+  if (safeStorage.isEncryptionAvailable()) {
+    fs.writeFileSync(file, safeStorage.encryptString(JSON.stringify(value)));
+  } else {
+    fs.writeFileSync(file, JSON.stringify(value, null, 2), 'utf8');
+  }
+}
+
 ipcMain.handle('localstore:get', (e, key) => {
   try {
     ensureDirSafe(APP_DATA_DIR);
-    const file = localStoreFile(key);
-    if (!fs.existsSync(file)) return null;
-    const raw = fs.readFileSync(file, 'utf8');
-    return raw ? JSON.parse(raw) : null;
+    return readLocalStoreValue(key);
   } catch (err) { return null; }
 });
 ipcMain.handle('localstore:get-all', (e, keys) => {
@@ -33,8 +74,7 @@ ipcMain.handle('localstore:get-all', (e, keys) => {
   for (const key of keys || []) {
     try {
       ensureDirSafe(APP_DATA_DIR);
-      const file = localStoreFile(key);
-      result[key] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8') || 'null') : null;
+      result[key] = readLocalStoreValue(key);
     } catch (err) { result[key] = null; }
   }
   return result;
@@ -42,7 +82,7 @@ ipcMain.handle('localstore:get-all', (e, keys) => {
 ipcMain.on('localstore:set', (e, { key, value }) => {
   try {
     ensureDirSafe(APP_DATA_DIR);
-    fs.writeFileSync(localStoreFile(key), JSON.stringify(value, null, 2), 'utf8');
+    writeLocalStoreValue(key, value);
   } catch (err) { /* 1 lan ghi loi khong lam sap app, bo qua */ }
 });
 function ensureDirSafe(dir) {
