@@ -1398,9 +1398,12 @@
 
   // ====== QR Cam: toi da 4 dien thoai doc lap, moi may quay video ~30fps gui
   // ve song song, may tinh noi cac doan lai thanh video lien tuc rieng cho
-  // TUNG may (khong lien quan gi nhau), xem truc tiep chia 1/2/3/4 o, co the
-  // KEO LAI XEM trong pham vi 30 phut gan nhat (kieu DVR) roi tu dong ve lai
-  // truc tiep khi keo het thanh ve cuoi ======
+  // TUNG may (khong lien quan gi nhau), xem truc tiep chia 1/2/3/4 o - CHI
+  // XEM TRUC TIEP (thoi diem hien tai), KHONG giu bo dem de keo lai xem nua
+  // (truoc day giu toi 30 phut kieu DVR - ton RAM nhieu, nhat la khi mo ca 4
+  // camera cung luc xem truc tiep lau; bo theo dung yeu cau, video da ghi day
+  // du van con nguyen trong file that tren dia, chi rieng man "Xem truc tiep"
+  // la khong giu lai nua). ======
   // Dung CHUNG co che Firebase Realtime Database voi QR chia se van ban o tren,
   // nhung o cac nhanh du lieu rieng (sessions/{camId}/cam, moi may 1 camId
   // khac nhau) va 1 trang mobile rieng (cam.html) de khong lam anh huong gi
@@ -1408,7 +1411,11 @@
   // rieng biet tu truoc nen khong can sua gi o do - 4 may ghi song song hoan
   // toan doc lap, khong may nao anh huong may nao.
   const MAX_CAM_SLOTS = 4;
-  const CAM_LIVE_MAX_SECONDS = 30 * 60; // giu toi da 30 phut gan nhat de keo lai xem
+  // Chi giu du du lieu de phat MUOT (tranh giat/khung hinh) - KHONG phai de
+  // keo lai xem. Con so nho (vai giay) la du cho MediaSource, khac han fallback
+  // Blob (~60 giay, xem MAX_LIVE_CHUNKS_FALLBACK) vi MediaSource quan ly hieu
+  // qua hon nhieu nen khong can du du lieu du phong nhu fallback.
+  const CAM_LIVE_MAX_SECONDS = 15;
   const CAM_SIGNAL_LOST_MS = 15000; // qua 15 giay khong nhan doan nao -> bao mat tin hieu
   const camSlots = Array.from({ length: MAX_CAM_SLOTS }, (_, i) => ({
     index: i,
@@ -1424,10 +1431,11 @@
     lastChunkAt: 0,
     mimeType: '',
     ext: 'webm',
-    // Xem truc tiep kieu DVR: dung MediaSource + SourceBuffer de Chromium tu
-    // quan ly bo dem hieu qua (khong phai mang JS thuong), tu dong "tia bot"
-    // phan cu hon 30 phut. Neu trinh duyet/codec khong ho tro MediaSource thi
-    // tu dong roi ve cach cu (dung lai video ngan ~60s, khong keo lai duoc).
+    // Xem truc tiep: dung MediaSource + SourceBuffer de Chromium tu quan ly
+    // bo dem hieu qua (khong phai mang JS thuong), tu dong "tia bot" phan cu
+    // hon vai giay (CAM_LIVE_MAX_SECONDS - chi du phat muot, khong giu lau).
+    // Neu trinh duyet/codec khong ho tro MediaSource thi tu dong roi ve cach
+    // cu (dung lai video ngan ~60s).
     mediaSource: null,
     sourceBuffer: null,
     appendQueue: [],
@@ -1627,8 +1635,9 @@
       if (window.camBridge) window.camBridge.sendChunk(slot.camId, takeId, val.ts || Date.now(), val.b);
 
       // Neu dang mo man hinh xem truc tiep -> dua doan nay vao bo dem xem
-      // truc tiep (uu tien MediaSource de giu duoc 30 phut + keo lai xem,
-      // fallback ve cach dung lai Blob ngan neu trinh duyet khong ho tro).
+      // truc tiep (uu tien MediaSource - hieu qua hon, chi giu vai giay gan
+      // nhat de phat muot, xem CAM_LIVE_MAX_SECONDS; fallback ve cach dung
+      // lai Blob ngan neu trinh duyet khong ho tro MediaSource).
       if (camLiveOpen && takeId === slot.activeTakeId) {
         try {
           const res = await fetch('data:application/octet-stream;base64,' + val.b);
@@ -1682,14 +1691,11 @@
     updateSlotTabUI(i);
   }
 
-  // ====== Xem truc tiep kieu DVR: MediaSource + SourceBuffer ======
+  // ====== Xem truc tiep: MediaSource + SourceBuffer ======
   // Chromium tu quan ly du lieu media noi bo (khong phai mang JS binh thuong)
   // nen hieu qua bo nho hon nhieu so voi giu ArrayBuffer trong JS. Sau moi lan
-  // them du lieu, "tia" bot phan cu hon 30 phut de khong phinh vo han. Nguoi
-  // dung keo thanh tien trinh video (co san nho thuoc tinh controls) de xem
-  // lai trong pham vi da luu; khi keo/phat toi gan cuoi thanh se tu dong tro
-  // thanh "truc tiep" tro lai vi du lieu moi van dang duoc them lien tuc vao
-  // dung vi tri do - khong can code gi dac biet de "nhay ve" ca.
+  // them du lieu, "tia" bot phan cu hon CAM_LIVE_MAX_SECONDS (vai giay - CHI
+  // du de phat muot, khong phai de keo lai xem) de khong phinh vo han.
   function initMseForSlot(i) {
     const slot = camSlots[i];
     const tile = camLiveTiles[i];
