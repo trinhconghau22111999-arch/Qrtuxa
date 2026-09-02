@@ -1792,14 +1792,25 @@
     // Tu chon so o = so may dang co tin hieu (toi thieu 1), nguoi dung co the bam doi lai 1/2/3/4 bat cu luc nao.
     const connectedCount = camSlots.filter(s => s.hasSignal).length;
     applyLiveLayout(Math.max(1, Math.min(MAX_CAM_SLOTS, connectedCount || 1)));
-    // Moi lan mo xem truc tiep = bat dau tich luy bo dem 30 phut TU THOI DIEM
-    // NAY tro di (khong tai lai toan bo lich su lan ghi tu dau, tranh ton bo
-    // nho/thoi gian nap qua nhieu khi lan ghi da keo dai truoc do).
-    for (let i = 0; i < MAX_CAM_SLOTS; i++) {
-      const slot = camSlots[i];
-      slot.liveChunks = [];
-      if (slot.hasSignal && slot.activeTakeId) initMseForSlot(i);
-    }
+    for (let i = 0; i < MAX_CAM_SLOTS; i++) camSlots[i].liveChunks = [];
+    // FIX (theo phan anh nguoi dung: quet QR ghi hinh truoc, dang ghi moi bam
+    // "Xem truc tiep" thi khong thay gi ca): applyLiveLayout() o tren tam thoi
+    // an nguyen luoi (display:none) 1 nhip requestAnimationFrame de ep Chromium
+    // ve lai dung khung grid (xem comment trong ham do, sua o lan truoc cho
+    // loi hien thi 4 camera). initMseForSlot() tao MediaSource/gan video.src
+    // MOI cho tung o - neu khoi tao dung luc container cha dang bi an, video
+    // co the khong bat dau nhan/giai ma luong du lieu tiep theo duoc. Doi qua
+    // HAI nhip requestAnimationFrame (chac chan sau ca nhip an/hien cua
+    // applyLiveLayout) roi moi khoi tao MediaSource, dam bao luoi da HIEN LAI
+    // HOAN TOAN truoc do.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        for (let i = 0; i < MAX_CAM_SLOTS; i++) {
+          const slot = camSlots[i];
+          if (slot.hasSignal && slot.activeTakeId) initMseForSlot(i);
+        }
+      });
+    });
   };
   document.getElementById('closeCamLive').onclick = () => {
     camLiveOpen = false;
