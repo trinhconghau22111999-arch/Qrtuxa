@@ -202,9 +202,8 @@ function attachRequestFilterOnce() {
 // 1 lan ghi moi), tu dong ghep cac khung thanh 1 file video .mp4 bang ffmpeg
 // NEU may co san ffmpeg trong PATH; neu khong co thi giu nguyen thu muc anh.
 const CAM_REC_ROOT = path.join(os.homedir(), '.ghn-browser', 'qr-cam-recordings');
-// camId -> { takeId, dir, filePath, fd, ext, chunkCount, startedAt, partStartedAt, partNumber, lastTs }
+// camId -> { takeId, dir, filePath, fd, ext, chunkCount, startedAt, partNumber, lastTs }
 const activeTakes = new Map();
-const CAM_SPLIT_MS = 60 * 60 * 1000; // tu dong tach file video moi 60 phut/lan ghi
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -220,7 +219,6 @@ function openNewPart(entry) {
   const filename = entry.partNumber === 1 ? `video.${entry.ext}` : `video_part${entry.partNumber}.${entry.ext}`;
   entry.filePath = path.join(entry.dir, filename);
   entry.fd = fs.openSync(entry.filePath, 'w');
-  entry.partStartedAt = Date.now();
 }
 
 // Cac doan video (chunk) do MediaRecorder ben dien thoai cat ra, khi noi
@@ -258,7 +256,7 @@ ipcMain.on('camrec:new-take', (e, { camId, takeId, ext }) => {
   const safeExt = (ext === 'mp4') ? 'mp4' : 'webm';
   const entry = {
     takeId, dir, filePath: null, fd: null, ext: safeExt,
-    chunkCount: 0, startedAt: Date.now(), partStartedAt: Date.now(), partNumber: 0, lastTs: Date.now()
+    chunkCount: 0, startedAt: Date.now(), partNumber: 0, lastTs: Date.now()
   };
   openNewPart(entry);
   activeTakes.set(camId, entry);
@@ -271,15 +269,19 @@ ipcMain.on('camrec:chunk', (e, { camId, takeId, ts, dataBase64 }) => {
     // Chua thay currentTake truoc do (vd. race luc moi ket noi) -> tu tao file luon (mac dinh webm).
     const dir = takeDir(camId, takeId);
     ensureDir(dir);
-    entry = { takeId, dir, filePath: null, fd: null, ext: 'webm', chunkCount: 0, startedAt: Date.now(), partStartedAt: Date.now(), partNumber: 0, lastTs: Date.now() };
+    entry = { takeId, dir, filePath: null, fd: null, ext: 'webm', chunkCount: 0, startedAt: Date.now(), partNumber: 0, lastTs: Date.now() };
     openNewPart(entry);
     activeTakes.set(camId, entry);
   }
-  // Da ghi lien tuc du 60 phut cho phan hien tai -> tu dong mo file moi
-  // (video_part2, part3...) de tranh 1 file qua khong lo.
-  if (Date.now() - entry.partStartedAt >= CAM_SPLIT_MS) {
-    openNewPart(entry);
-  }
+  // LỖI ĐÃ SỬA ("máy tính nhận nhiều đoạn video nhưng không xem trực tiếp được - báo lỗi tệp"):
+  // TRƯỚC ĐÂY cứ 60 phút lại tự openNewPart() mở 1 file .webm HOÀN TOÀN MỚI giữa dòng quay -
+  // nhưng MediaRecorder CHỈ ghi phần "tiêu đề" (EBML header/tracks cho WebM, ftyp/moov cho MP4)
+  // ở ĐÚNG ĐOẠN ĐẦU TIÊN của CẢ PHIÊN quay (video.webm) - mọi đoạn SAU đó chỉ là dữ liệu tiếp
+  // nối thô, KHÔNG có tiêu đề riêng. Mở file MỚI giữa chừng rồi nối các đoạn thô đó vào -> file
+  // video_part2.webm/part3... không có tiêu đề hợp lệ, mọi trình phát video đều báo lỗi/không mở
+  // được. Bỏ hẳn việc tự tách file giữa 1 phiên quay - chỉ mở file mới khi ĐIỆN THOẠI thật sự
+  // bắt đầu 1 "lần ghi" (take) MỚI (MediaRecorder mới, có tiêu đề mới hẳn hoi - xem
+  // ipcMain.on('camrec:new-take')), file 1 lần ghi cứ nối dài liên tục cho tới khi kết thúc.
   try {
     // Noi truc tiep (append) doan video moi vao CUOI file hien co, dung thu
     // tu nhan duoc - moi khi mot doan da duoc ghi an toan xuong dia, du dien
