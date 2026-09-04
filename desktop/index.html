@@ -1657,6 +1657,7 @@
         slot.mimeType = val.mime || '';
         slot.ext = val.ext || 'webm';
         slot.liveChunks = [];
+        slot.headerChunk = null; // lan ghi moi -> doan tieu de (header) cu khong con dung duoc nua
         teardownMseForSlot(i);
         if (camLiveOpen) initMseForSlot(i); // dang xem truc tiep -> chuan bi luon bo dem moi cho lan ghi moi
         if (activeSlotTab === i) camQrStatus.textContent = 'Đã kết nối - đang nhận video...';
@@ -1695,6 +1696,21 @@
 
       // Luu that xuong dia (o main.js) ngay lap tuc - noi tiep vao cuoi file video hien co.
       if (window.camBridge) window.camBridge.sendChunk(slot.camId, takeId, val.ts || Date.now(), val.b);
+
+      // FIX (man hinh den khi bam "Xem truc tiep" luc dien thoai DA dang quay san):
+      // doan dau tien cua ca lan ghi la doan DUY NHAT chua "tieu de" WebM/MP4 (EBML
+      // header+Tracks, hoac ftyp/moov) - thieu no thi SourceBuffer khong the giai ma
+      // BAT KY khung hinh nao du van nhan du lieu deu (khong bao loi, chi dung im mau
+      // den). Doan nay bi xoa khoi Firebase ngay sau khi luu (xem cuoi ham) nen neu
+      // nguoi dung mo "Xem truc tiep" SAU thoi diem do, initMseForSlot() se khong bao
+      // gio co no nua. Giu rieng 1 ban sao trong bo nho (nho, ~vai chuc KB) tu luc no
+      // vua ve toi, du dang xem truc tiep hay chua, de dung lai bat ky luc nao.
+      if (!slot.headerChunk) {
+        try {
+          const headerRes = await fetch('data:application/octet-stream;base64,' + val.b);
+          slot.headerChunk = await headerRes.arrayBuffer();
+        } catch (e) {}
+      }
 
       // Neu dang mo man hinh xem truc tiep -> dua doan nay vao bo dem xem
       // truc tiep (uu tien MediaSource - hieu qua hon, chi giu vai giay gan
@@ -1776,6 +1792,12 @@
       const ms = new MediaSource();
       slot.mediaSource = ms;
       slot.appendQueue = [];
+      // FIX man hinh den (xem chi tiet o listenCamChunks): luon nap doan "tieu de" da
+      // luu san VAO DAU HANG DOI truoc moi doan hinh anh khac, du la moi mo xem truc
+      // tiep giua chung lan ghi dang chay san hay lan ghi vua bat dau. Neu day la lan
+      // ghi vua bat dau that (chua kip cache) thi bo qua, roi doan dau tien tu nhien
+      // se toi qua listenCamChunks nhu binh thuong.
+      if (slot.headerChunk) slot.appendQueue.push(slot.headerChunk);
       slot.mseReady = false;
       slot.mseFailed = false;
       const url = URL.createObjectURL(ms);

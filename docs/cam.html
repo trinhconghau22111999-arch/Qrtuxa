@@ -139,18 +139,22 @@ if (!camId) {
   // may Safari/iOS se tu dong roi xuong mp4/h264). Neu ghi kem am thanh thi
   // dung bien the co codec am thanh tuong ung.
   function pickMimeType(withAudio) {
+    // THU NGHIEM: uu tien MP4/H.264 truoc WebM/VP8 - Windows (Media Player/Movies & TV/Photos)
+    // doc duoc H.264+AAC trong hop MP4 ngay tu dau khong can cai them codec nao, trong khi
+    // WebM/VP8/Opus thi khong. Neu may dien thoai (Android Chrome moi, iPhone) ho tro ghi MP4
+    // truc tiep thi se dung luon, khong con phu thuoc VLC/codec ben ngoai nua.
     const candidates = withAudio ? [
+      'video/mp4;codecs=h264,aac',
+      'video/mp4',
       'video/webm;codecs=vp8,opus',
       'video/webm;codecs=vp9,opus',
-      'video/webm',
-      'video/mp4;codecs=h264,aac',
-      'video/mp4'
+      'video/webm'
     ] : [
+      'video/mp4;codecs=h264',
+      'video/mp4',
       'video/webm;codecs=vp8',
       'video/webm;codecs=vp9',
-      'video/webm',
-      'video/mp4;codecs=h264',
-      'video/mp4'
+      'video/webm'
     ];
     for (const t of candidates) {
       if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
