@@ -92,6 +92,9 @@
     box-shadow: 0 0 10px rgba(192,38,255,0.55);
     background: rgba(192,38,255,0.12);
   }
+  /* Tab dang "ngu" (webview da huy de giai phong RAM, chi con nho URL) - lam
+     mo di de phan biet voi tab binh thuong, xem sleepTab()/wakeTab(). */
+  .tab-item.sleeping { opacity:.55; border-style:dashed; }
   #titleBar #tabsBar::-webkit-scrollbar { height:3px; }
   #titleBar #tabsBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
   /* Hieu ung khi keo 1 lien ket tu trang dang xem len thanh tab de tha ra mo tab moi,
@@ -941,6 +944,18 @@
     el.addEventListener('did-navigate-in-page', e => onTabNavigate(el, e.url));
     el.addEventListener('page-title-updated', e => onTabTitle(el, e.title));
 
+    // Theo doi tab co dang PHAT NHAC/VIDEO khong - dung de loai tru khoi tinh
+    // nang "ngu tab" (xem sleepTab()): tab dang phat media thi KHONG BAO GIO
+    // bi ngu du la lau khong active, dung theo yeu cau.
+    el.addEventListener('media-started-playing', () => {
+      const tab = findTabByWebview(el);
+      if (tab) { tab.isPlayingMedia = true; renderTabs(); }
+    });
+    el.addEventListener('media-paused', () => {
+      const tab = findTabByWebview(el);
+      if (tab) { tab.isPlayingMedia = false; renderTabs(); }
+    });
+
     // Chuot phai vao link/vung chu ben trong trang -> chuyen thong tin sang main.js
     // de hien menu native (giong bam chuot phai trong Chrome that).
     el.addEventListener('context-menu', (e) => {
@@ -1002,7 +1017,10 @@
     url = url || 'https://www.google.com';
     const id = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
     const webview = createWebviewElement(url);
-    tabs.set(id, { id, webview, url, title: 'Trang mới' });
+    tabs.set(id, {
+      id, webview, url, title: 'Trang mới',
+      sleeping: false, isPlayingMedia: false, lastActiveAt: Date.now()
+    });
     tabOrder.push(id);
     switchTab(id);
     return id;
@@ -1011,8 +1029,17 @@
   function switchTab(id) {
     const tab = tabs.get(id);
     if (!tab) return;
-    tabs.forEach(t => { t.webview.classList.toggle('active-tab', t.id === id); });
+    // Ghi lai thoi diem tab CU (dang active truoc do, neu co) vua chuyen sang
+    // khong active nua - dung de tinh "da ngoi yen bao lau" cho vong kiem tra
+    // ngu tab dinh ky (xem checkTabSleepLoop()).
+    const prevActive = activeTabId ? tabs.get(activeTabId) : null;
+    if (prevActive && prevActive.id !== id) prevActive.lastActiveAt = Date.now();
+
+    if (tab.sleeping) wakeTab(tab);
+
+    tabs.forEach(t => { if (t.webview) t.webview.classList.toggle('active-tab', t.id === id); });
     activeTabId = id;
+    tab.lastActiveAt = Date.now();
     urlbar.value = tab.url || '';
     renderTabs();
   }
@@ -1020,7 +1047,7 @@
   function closeTab(id) {
     const tab = tabs.get(id);
     if (!tab) return;
-    tab.webview.remove();
+    if (tab.webview) tab.webview.remove();
     tabs.delete(id);
     tabOrder = tabOrder.filter(tid => tid !== id);
     if (activeTabId === id) {
@@ -1035,6 +1062,40 @@
     renderTabs();
   }
 
+  // ====== Ngu tab (tiet kiem RAM): CHI ap dung khi dang mo tu 5 tab tro len,
+  // tab dang phat nhac/video thi KHONG BAO GIO bi ngu du la lau khong active
+  // - theo dung yeu cau. "Ngu" o day nghia la HUY HAN <webview> (giai phong
+  // tien trinh Chromium con cua no, RAM tra ve that su - khac voi chi an CSS
+  // vi an CSS khong giai phong duoc gi ca), chi nho lai URL de dung lai luc
+  // nguoi dung bam vao tab do (xem wakeTab()) - webview MOI se duoc tao lai,
+  // tuong duong voi tai lai trang do tu dau (giong Chrome/Edge "ngu tab").
+  const TAB_SLEEP_MIN_TABS = 5;
+  const TAB_SLEEP_IDLE_MS = 10 * 60 * 1000; // qua 10 phut khong active moi xet ngu
+
+  function sleepTab(id) {
+    const tab = tabs.get(id);
+    if (!tab || !tab.webview || tab.id === activeTabId || tab.isPlayingMedia) return;
+    tab.url = (tab.webview.getURL && tab.webview.getURL()) || tab.url;
+    tab.webview.remove();
+    tab.webview = null;
+    tab.sleeping = true;
+    renderTabs();
+  }
+
+  function wakeTab(tab) {
+    tab.webview = createWebviewElement(tab.url);
+    tab.sleeping = false;
+  }
+
+  setInterval(() => {
+    if (tabs.size < TAB_SLEEP_MIN_TABS) return;
+    const now = Date.now();
+    for (const tab of tabs.values()) {
+      if (tab.id === activeTabId || tab.sleeping || tab.isPlayingMedia) continue;
+      if (now - (tab.lastActiveAt || 0) > TAB_SLEEP_IDLE_MS) sleepTab(tab.id);
+    }
+  }, 60000);
+
   // ====== Keo-tha tab: doi vi tri trong thanh tab / tach thanh cua so rieng /
   // keo sang thanh tab cua 1 cua so khac cua app - giong Chrome ======
   let draggingTabId = null;
@@ -1046,13 +1107,14 @@
       const tab = tabs.get(id);
       if (!tab) return;
       const item = document.createElement('div');
-      item.className = 'tab-item' + (tab.id === activeTabId ? ' active' : '');
+      item.className = 'tab-item' + (tab.id === activeTabId ? ' active' : '') + (tab.sleeping ? ' sleeping' : '');
       item.draggable = true;
       item.dataset.tabId = tab.id;
+      if (tab.sleeping) item.title = 'Tab đang tạm ngủ để tiết kiệm RAM - bấm vào để tải lại';
 
       const label = document.createElement('span');
       label.className = 'tab-label';
-      label.textContent = shortTitle(tab.title, tab.url);
+      label.textContent = (tab.sleeping ? '💤 ' : '') + shortTitle(tab.title, tab.url);
       item.appendChild(label);
 
       const close = document.createElement('span');
@@ -2495,7 +2557,7 @@
   const adBlockStore = makeJsonStore('adblock-enabled', { enabled: true });
   function broadcastAdSkipEnabled(enabled) {
     for (const t of tabs.values()) {
-      t.webview.executeJavaScript(`window.__qrAdSkipEnabled = ${!!enabled};`).catch(() => {});
+      if (t.webview) t.webview.executeJavaScript(`window.__qrAdSkipEnabled = ${!!enabled};`).catch(() => {});
     }
   }
   function renderAdblockPanel() {
