@@ -128,6 +128,13 @@ function attachDownloadListenerOnce() {
     item.on('done', (e, state) => {
       entry.state = state; // 'completed' | 'cancelled' | 'interrupted'
       entry.path = item.getSavePath();
+      // FIX (theo phan anh nguoi dung: "tai xong roi ma van hien 0%"): truoc
+      // day o day CHI cap nhat state/path, quen cap nhat receivedBytes - neu
+      // file tai qua nhanh (chua kip co su kien 'updated' bao tien do nao ca)
+      // thi receivedBytes van giu nguyen 0 tu luc bat dau, khien giao dien
+      // hien mai 0% du file da tai xong that su. Cap nhat lai cho dung o day.
+      entry.receivedBytes = item.getReceivedBytes();
+      entry.totalBytes = item.getTotalBytes();
       broadcastDownloads();
     });
 
