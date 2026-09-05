@@ -12,6 +12,25 @@
     --neon-3: #4d0bff;
     --neon-soft: #d9b3ff;
     --text: #ffffff;
+    /* Bien mau tim CO DO TRONG SUOT (alpha) khac nhau + 1 mau chu "mo" - dung
+       cho vien/bong do/nen mo trong suot o vung phia tren (title bar/toolbar/
+       tab/dau trang). Truoc day cac cho nay hardcode rgba(192,38,255,X) hoac
+       #a879e0/#c7a8ff CO DINH nen KHONG doi theo khi nguoi dung chon mau khac
+       trong Cai dat > Mau giao dien - applyTheme() se tinh lai dung theo hue
+       moi moi lan doi mau (xem applyTheme() trong phan ma JS). Gia tri o day
+       chi la mac dinh ban dau (khop mau tim neon goc), se bi ghi de ngay khi
+       app khoi dong (JS luon goi applyTheme() 1 lan luc mo app).
+    */
+    --neon-a12: rgba(192,38,255,0.12);
+    --neon-a15: rgba(192,38,255,0.15);
+    --neon-a18: rgba(192,38,255,0.18);
+    --neon-a25: rgba(192,38,255,0.25);
+    --neon-a35: rgba(192,38,255,0.35);
+    --neon-a40: rgba(192,38,255,0.40);
+    --neon-a50: rgba(192,38,255,0.50);
+    --neon-a55: rgba(192,38,255,0.55);
+    --neon-a60: rgba(192,38,255,0.60);
+    --neon-text-dim: #c7a8ff;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -26,7 +45,7 @@
     flex: 0 0 auto;
     display:flex; align-items:center; gap:10px; height:34px; padding:0 6px 0 12px;
     background: #000000;
-    border-bottom: 1px solid rgba(192,38,255,0.5);
+    border-bottom: 1px solid var(--neon-a50);
     -webkit-app-region: drag; /* cho phep keo di chuyen cua so bang thanh nay */
   }
   #titleBar #settingsWrap {
@@ -34,12 +53,12 @@
     -webkit-app-region: no-drag; /* can bam duoc nen phai tat drag o day */
   }
   #titleBar .title-text-btn {
-    font-size:12px; color:#a879e0; white-space:nowrap; cursor:pointer;
+    font-size:12px; color:var(--neon-text-dim); white-space:nowrap; cursor:pointer;
     background:transparent; border:1px solid transparent; border-radius:8px;
     padding:5px 9px; font-family:inherit; transition:all .15s ease;
   }
   #titleBar .title-text-btn:hover {
-    color:#fff; border-color:rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
+    color:#fff; border-color:var(--neon-a50); background:var(--neon-a15);
   }
   #titleBar #tabsBar {
     -webkit-app-region: no-drag; /* vung co nut/tab phai tat drag de bam duoc */
@@ -53,17 +72,17 @@
   }
   .win-btn {
     width:32px; height:26px; display:flex; align-items:center; justify-content:center;
-    background:transparent; border:none; color:#c7a8ff; cursor:pointer; font-size:12px;
+    background:transparent; border:none; color:var(--neon-text-dim); cursor:pointer; font-size:12px;
     border-radius:4px; transition: all .15s ease;
   }
-  .win-btn:hover { background: rgba(192,38,255,0.25); color:#fff; }
+  .win-btn:hover { background: var(--neon-a25); color:#fff; }
   #winCloseBtn:hover { background:#e0304f; color:#fff; }
   #toolbar {
     flex: 0 0 auto;
     display:flex; align-items:center; gap:6px; padding:5px 8px;
     background: #000000;
     border-bottom: 1px solid var(--neon-1);
-    box-shadow: 0 0 12px rgba(192,38,255,0.4);
+    box-shadow: 0 0 12px var(--neon-a40);
   }
   #toolbar button {
     background: #000000;
@@ -74,33 +93,33 @@
   }
   #toolbar button:hover {
     border-color: var(--neon-1);
-    box-shadow: 0 0 12px rgba(192,38,255,0.6);
+    box-shadow: 0 0 12px var(--neon-a60);
     color: #fff;
   }
   .tab-item {
     display:flex; align-items:center; gap:6px;
     max-width:150px;
-    background:#000000; border:1px solid rgba(192,38,255,0.4);
+    background:#000000; border:1px solid var(--neon-a40);
     border-radius:8px; padding:4px 6px 4px 10px;
-    font-size:11px; color:#c7a8ff; cursor:pointer; flex-shrink:0;
+    font-size:11px; color:var(--neon-text-dim); cursor:pointer; flex-shrink:0;
     transition: all .15s ease;
   }
   .tab-item .tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .tab-item:hover { border-color: var(--neon-1); }
   .tab-item.active {
     border-color: var(--neon-1); color:#fff;
-    box-shadow: 0 0 10px rgba(192,38,255,0.55);
-    background: rgba(192,38,255,0.12);
+    box-shadow: 0 0 10px var(--neon-a55);
+    background: var(--neon-a12);
   }
   /* Tab dang "ngu" (webview da huy de giai phong RAM, chi con nho URL) - lam
      mo di de phan biet voi tab binh thuong, xem sleepTab()/wakeTab(). */
   .tab-item.sleeping { opacity:.55; border-style:dashed; }
   #titleBar #tabsBar::-webkit-scrollbar { height:3px; }
-  #titleBar #tabsBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
+  #titleBar #tabsBar::-webkit-scrollbar-thumb { background: var(--neon-a40); border-radius:4px; }
   /* Hieu ung khi keo 1 lien ket tu trang dang xem len thanh tab de tha ra mo tab moi,
      giong hanh vi keo link/tab len thanh tab cua Chrome. */
   #titleBar.drag-over-new-tab {
-    background: rgba(192,38,255,0.18);
+    background: var(--neon-a18);
     box-shadow: inset 0 0 0 2px var(--neon-1);
   }
   .tab-close {
@@ -114,30 +133,30 @@
     cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;
     transition: all .15s ease;
   }
-  #newTabBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
+  #newTabBtn:hover { background:var(--neon-a35); color:#fff; }
   #bookmarksBar {
     flex: 0 0 auto;
     display:flex; align-items:center; gap:5px; padding:3px 8px;
     background: #000000;
-    border-bottom: 1px solid rgba(192,38,255,0.5);
+    border-bottom: 1px solid var(--neon-a50);
     overflow-x:auto; white-space:nowrap;
     min-height:10px;
   }
   #bookmarksBar::-webkit-scrollbar { height:4px; }
-  #bookmarksBar::-webkit-scrollbar-thumb { background: rgba(192,38,255,0.4); border-radius:4px; }
-  #bookmarksEmpty { font-size:10px; color:#a879e0; }
+  #bookmarksBar::-webkit-scrollbar-thumb { background: var(--neon-a40); border-radius:4px; }
+  #bookmarksEmpty { font-size:10px; color:var(--neon-text-dim); }
   .bm-item {
     display:flex; align-items:center; gap:6px;
     background: #000000;
-    border:1px solid rgba(192,38,255,0.5);
+    border:1px solid var(--neon-a50);
     border-radius:14px; padding:3px 5px 3px 10px;
     font-size:11px; color: var(--text); cursor:pointer;
     transition: all .15s ease; flex-shrink:0;
   }
-  .bm-item:hover { border-color: var(--neon-1); box-shadow:0 0 8px rgba(192,38,255,0.4); }
+  .bm-item:hover { border-color: var(--neon-1); box-shadow:0 0 8px var(--neon-a40); }
   .bm-item .bm-del {
     width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    color:#c7a8ff; font-size:11px; line-height:1;
+    color:var(--neon-text-dim); font-size:11px; line-height:1;
   }
   .bm-item .bm-del:hover { color:#fff; background:rgba(255,60,90,0.6); }
   #urlbarWrap { position:relative; flex:1; display:flex; align-items:center; }
@@ -149,7 +168,7 @@
     color: var(--neon-soft); cursor:pointer; font-size:12px; display:flex;
     align-items:center; justify-content:center; transition: all .15s ease;
   }
-  #addBookmarkBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
+  #addBookmarkBtn:hover { background:var(--neon-a35); color:#fff; }
   #bookmarkModalOverlay {
     position:fixed; inset:0; background:rgba(8,4,16,0.6); z-index:40; display:none;
     align-items:flex-start; justify-content:center;
@@ -2426,6 +2445,9 @@
   const DEFAULT_HUE = 291; // hue cua tim neon goc (#c026ff)
 
   function hslStr(h, s, l) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%)`; }
+  // Giong hslStr() nhung co them do trong suot (alpha) - dung cho vien/bong
+  // do/nen mo trong suot (--neon-aXX, xem :root va applyTheme() ben duoi).
+  function hslStrA(h, s, l, a) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%, ${a})`; }
 
   function applyTheme(hue) {
     hue = ((hue % 360) + 360) % 360;
@@ -2433,6 +2455,17 @@
     document.documentElement.style.setProperty('--neon-2', hslStr(hue + 12, 84, 52));
     document.documentElement.style.setProperty('--neon-3', hslStr(hue + 28, 100, 54));
     document.documentElement.style.setProperty('--neon-soft', hslStr(hue, 100, 85));
+    // Cac bien mau tim CO DO TRONG SUOT + 1 mau chu "mo" - dung cho vien/bong
+    // do/nen mo o vung phia tren (title bar/toolbar/tab/dau trang). FIX theo
+    // phan anh nguoi dung "nut doi mau chua doi het mau chu va duong vien phia
+    // tren": truoc day cac cho nay hardcode rgba(192,38,255,X)/#a879e0/#c7a8ff
+    // CO DINH nen khong doi theo khi chon mau khac - gio tinh lai dung theo
+    // hue vua chon, khop voi --neon-1 o tren.
+    const ALPHAS = [12, 15, 18, 25, 35, 40, 50, 55, 60];
+    for (const a of ALPHAS) {
+      document.documentElement.style.setProperty(`--neon-a${a}`, hslStrA(hue, 91, 57, a / 100));
+    }
+    document.documentElement.style.setProperty('--neon-text-dim', hslStr(hue, 70, 76));
   }
 
   // Nen vung phia tren (thanh tab + thanh dia chi + thanh dau trang ghim) - den
