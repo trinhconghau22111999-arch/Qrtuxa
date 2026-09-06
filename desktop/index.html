@@ -1369,7 +1369,9 @@
   const qrStatus = document.getElementById('qrStatus');
 
   document.getElementById('qrBtn').onclick = () => {
-    if (currentSession && sessionRef) {
+    if (qrPanel.classList.contains('show')) {
+      hideQrPanel(); // dang mo -> cham lan nua thi dong lai
+    } else if (currentSession && sessionRef) {
       qrPanel.classList.add('show'); // session cu van con song, chi mo lai khung
     } else {
       startSession();
@@ -1586,9 +1588,13 @@
   });
 
   document.getElementById('camQrBtn').onclick = () => {
-    camQrPanel.classList.add('show');
-    if (!camSlots[activeSlotTab].camId) startCamSlot(activeSlotTab);
-    else renderActiveSlotQr();
+    if (camQrPanel.classList.contains('show')) {
+      camQrPanel.classList.remove('show'); // dang mo -> cham lan nua thi dong lai
+    } else {
+      camQrPanel.classList.add('show');
+      if (!camSlots[activeSlotTab].camId) startCamSlot(activeSlotTab);
+      else renderActiveSlotQr();
+    }
   };
   document.getElementById('closeCamQr').onclick = () => {
     camQrPanel.classList.remove('show'); // chi an giao dien, KHONG dung ghi hinh dang chay ngam
