@@ -591,6 +591,7 @@
         <div class="settings-sep"></div>
         <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
         <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
+        <div class="settings-item" data-panel="oneclickopen">👆 Mở link bằng 1 chạm</div>
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
         <div class="settings-sep"></div>
         <div class="settings-item" data-panel="camrecordings">🎬 Quản lý bản ghi QR Cam</div>
@@ -922,6 +923,11 @@
     el.addEventListener('dom-ready', () => {
       el.executeJavaScript(buildCtrlWheelZoomScript()).catch(() => {});
       autofillPasswordIfAny(el);
+      // Ap dung dung trang thai "Mo link bang 1 cham" da luu trong Cai dat cho
+      // MOI lan trang tai xong (khong chi luc bat/tat, ma ca luc mo tab
+      // moi/dieu huong sang trang khac) - webview-preload.js (chay o webview
+      // nay) se nhan qua ipcRenderer.on('qr-browser:set-one-click-open',...).
+      el.send('qr-browser:set-one-click-open', oneClickOpenStore.load().enabled !== false);
       if (isYoutubeUrl(el.getURL())) {
         el.executeJavaScript(buildYoutubeAdSkipScript())
           .then(() => {
@@ -1983,7 +1989,7 @@
   // main.js dam nhiem qua IPC (window.localStoreBridge), dung 1 file .json
   // rieng cho tung loai du lieu trong ~/.ghn-browser/ tren CHINH may nay -
   // KHONG dong bo qua may nao khac, khong dam may nao ca.
-  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'defaultlang', 'adblock-enabled'];
+  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'defaultlang', 'adblock-enabled', 'one-click-open-enabled'];
   const localStoreCache = {};
   let localStoreReady = null; // Promise, resolve khi da doc xong du lieu tu file luc khoi dong
 
@@ -2296,6 +2302,7 @@
     passwords: '🔑 Mật khẩu đã lưu',
     theme: '🎨 Màu giao diện',
     adblock: '🛡 Chặn quảng cáo',
+    oneclickopen: '👆 Mở link bằng 1 chạm',
     phishing: '🚫 Chặn web đen/lừa đảo',
     camrecordings: '🎬 Quản lý bản ghi QR Cam',
     camretention: '🗑 Tự động xoá bản ghi cũ'
@@ -2422,6 +2429,11 @@
     if (currentSidePanel === 'adblock') {
       sidePanelClear.style.display = 'none';
       renderAdblockPanel();
+    }
+
+    if (currentSidePanel === 'oneclickopen') {
+      sidePanelClear.style.display = 'none';
+      renderOneClickOpenPanel();
     }
 
     if (currentSidePanel === 'phishing') {
@@ -2586,6 +2598,48 @@
       const enabled = e.target.checked;
       adBlockStore.save({ enabled });
       broadcastAdSkipEnabled(enabled);
+    };
+  }
+
+  // ====== Panel "Mo link bang 1 cham" - tat di de tranh cham nham link
+  // quang cao an/lop phu tren cac trang xem phim, video... Mac dinh BAT (giu
+  // dung hanh vi trinh duyet binh thuong tu truoc den gio). Khi TAT: cham
+  // trai vao link se KHONG mo nua - muon mo phai bam CHUOT PHAI -> "Mo lien
+  // ket trong tab moi" (menu nay hoat dong doc lap, khong bi anh huong boi
+  // cai dat nay - xem ipcMain.on('context-menu:show') o main.js). Ap dung cho
+  // MOI trang dang mo (broadcastOneClickOpen) va duoc goi vao cho tung
+  // webview NGAY LUC tao xong (xem createWebviewElement) de trang moi mo
+  // cung theo dung cai dat da luu, khong chi trang dang xem luc bat/tat.
+  const oneClickOpenStore = makeJsonStore('one-click-open-enabled', { enabled: true });
+  function broadcastOneClickOpen(enabled) {
+    for (const t of tabs.values()) {
+      if (t.webview) t.webview.send('qr-browser:set-one-click-open', !!enabled);
+    }
+  }
+  function renderOneClickOpenPanel() {
+    sidePanelBody.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'toggle-row';
+    row.innerHTML = `
+      <div>
+        <div class="tr-label">Mở link bằng 1 chạm (tự động mở)</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="oneClickOpenToggle">
+        <span class="slider-track"></span>
+      </label>`;
+    sidePanelBody.appendChild(row);
+    const note = document.createElement('div');
+    note.className = 'sp-note';
+    note.textContent = 'Khi TẮT: chạm/click trái vào link sẽ KHÔNG mở nữa - dùng lúc xem phim ở các trang có gài quảng cáo ẩn/lớp phủ, tránh lỡ chạm là bị mở tràn lan trang quảng cáo. Muốn mở 1 link cụ thể thì bấm CHUỘT PHẢI vào link đó rồi chọn "Mở liên kết trong tab mới" - cách này vẫn hoạt động bình thường dù bật hay tắt cài đặt này.';
+    sidePanelBody.appendChild(note);
+
+    const checkbox = document.getElementById('oneClickOpenToggle');
+    checkbox.checked = oneClickOpenStore.load().enabled !== false;
+    checkbox.onchange = (e) => {
+      const enabled = e.target.checked;
+      oneClickOpenStore.save({ enabled });
+      broadcastOneClickOpen(enabled);
     };
   }
 
