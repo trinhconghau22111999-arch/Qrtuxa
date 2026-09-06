@@ -83,10 +83,33 @@ ipcRenderer.on('qr-browser:set-one-click-open', (e, enabled) => {
 // nay, nen phai chan tu som nhat co the. stopImmediatePropagation() de dung
 // luon ca cac listener khac cung dang ky tren CHINH phan tu nay (khong chi
 // preventDefault ngan dieu huong mac dinh cua trinh duyet).
-document.addEventListener('click', (e) => {
+function blockLinkEvent(e) {
   if (oneClickOpenEnabled) return;
   const link = e.target && e.target.closest ? e.target.closest('a[href]') : null;
   if (!link) return;
   e.preventDefault();
   e.stopImmediatePropagation();
-}, true);
+}
+// Chan ca 3 loai su kien ma cac trang phim/quang cao hay dung:
+// - click: su kien chinh khi nhan-tha chuot
+// - mousedown: nhieu trang gai script mo quang cao NGAY khi nhan chuot xuong
+//   (truoc ca khi tha ra), nen phai chan tu day
+// - auxclick: nut giua chuot (middle-click) co the mo link trong tab moi
+document.addEventListener('click',     blockLinkEvent, true);
+document.addEventListener('mousedown',  blockLinkEvent, true);
+document.addEventListener('auxclick',   blockLinkEvent, true);
+
+// Mot so trang gai quang cao bang cach override window.open() hoac goi no
+// truc tiep tu su kien chuot (khong qua <a href>) - can chan them khi tat.
+// Luu lai ham goc de menu chuot phai "Mo trong tab moi" (dung window.open
+// noi bo) van hoat dong - tuy nhien phan do xu ly o main.js qua IPC chu
+// khong qua window.open, nen viec che window.open la an toan.
+const _nativeOpen = window.open.bind(window);
+window.open = function (url, target, features) {
+  if (!oneClickOpenEnabled) {
+    // Khi tat 1-cham: nuot request mo cua so/tab moi tu script trang.
+    // Tra ve null de khong lam vo cac trang dung ket qua cua window.open().
+    return null;
+  }
+  return _nativeOpen(url, target, features);
+};
