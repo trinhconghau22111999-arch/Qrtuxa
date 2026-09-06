@@ -90,14 +90,17 @@ function blockLinkEvent(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
 }
-// Chan ca 3 loai su kien ma cac trang phim/quang cao hay dung:
+// Chan ca 4 loai su kien ma cac trang phim/quang cao hay dung:
 // - click: su kien chinh khi nhan-tha chuot
 // - mousedown: nhieu trang gai script mo quang cao NGAY khi nhan chuot xuong
 //   (truoc ca khi tha ra), nen phai chan tu day
 // - auxclick: nut giua chuot (middle-click) co the mo link trong tab moi
-document.addEventListener('click',     blockLinkEvent, true);
-document.addEventListener('mousedown',  blockLinkEvent, true);
-document.addEventListener('auxclick',   blockLinkEvent, true);
+// - pointerdown: trang hien dai dung Pointer Events API thay vi mouse events,
+//   script quang cao hay bat pointerdown thay vi mousedown
+document.addEventListener('click',        blockLinkEvent, true);
+document.addEventListener('mousedown',     blockLinkEvent, true);
+document.addEventListener('auxclick',      blockLinkEvent, true);
+document.addEventListener('pointerdown',   blockLinkEvent, true);
 
 // Mot so trang gai quang cao bang cach override window.open() hoac goi no
 // truc tiep tu su kien chuot (khong qua <a href>) - can chan them khi tat.
@@ -113,3 +116,33 @@ window.open = function (url, target, features) {
   }
   return _nativeOpen(url, target, features);
 };
+
+// Mot so trang dieu huong truc tiep qua location.href/assign/replace ma khong
+// qua <a href> hay window.open - override de chan khi tat 1-cham.
+// Chi chan khi dieu huong KHAC origin hien tai (la quang cao bat ngoai),
+// cung origin (dieu huong noi bo trang phim) van cho qua binh thuong.
+(function () {
+  try {
+    const _assign  = location.assign.bind(location);
+    const _replace = location.replace.bind(location);
+    function isSameOrigin(url) {
+      try { return new URL(url, location.href).origin === location.origin; } catch (e) { return false; }
+    }
+    Object.defineProperty(location, 'href', {
+      get: function () { return window.location.href; },
+      set: function (url) {
+        if (!oneClickOpenEnabled && !isSameOrigin(url)) return; // chan dieu huong sang trang khac
+        _assign(url);
+      },
+      configurable: true
+    });
+    location.assign = function (url) {
+      if (!oneClickOpenEnabled && !isSameOrigin(url)) return;
+      _assign(url);
+    };
+    location.replace = function (url) {
+      if (!oneClickOpenEnabled && !isSameOrigin(url)) return;
+      _replace(url);
+    };
+  } catch (e) { /* mot so trang co CSP chat chan override - bo qua, cac lop khac van hoat dong */ }
+})();
