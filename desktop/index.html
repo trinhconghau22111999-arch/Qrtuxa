@@ -319,42 +319,56 @@
   #refreshQr { position:absolute; top:10px; right:34px; cursor:pointer; color:#c7a8ff; }
   #refreshQr:hover { color:#fff; }
 
-  /* ====== Panel QR Cam (ghi hinh tu dien thoai) ====== */
+  /* ====== Panel QR Cam moi: nhap ma 6 so, ket noi WebRTC tu APK ====== */
   #camQrPanel {
-    position:absolute; top:14px; right:14px; width:280px;
+    position:absolute; top:14px; right:14px; width:300px;
     background:#000000; border:1px solid var(--neon-1);
     border-radius:14px; padding:16px; display:none; z-index:10;
     box-shadow: 0 0 30px rgba(192,38,255,0.5), 0 8px 24px rgba(0,0,0,.5);
   }
   #camQrPanel.show { display:block; }
-  #camQrPanel canvas { width:100%; height:auto; background:#fff; border-radius:8px; box-shadow:0 0 16px rgba(192,38,255,0.4); }
   #camQrPanel h3 {
-    margin:0 0 10px 0; font-size:14px; letter-spacing:.3px; padding-right:60px;
+    margin:0 0 12px 0; font-size:14px; letter-spacing:.3px; padding-right:28px;
     background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  #camQrStatus { font-size:12px; color:#7effc0; margin-top:8px; }
-  #camFrameCount { font-size:11px; color:#a879e0; margin-top:2px; }
   #closeCamQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
   #closeCamQr:hover { color:#fff; }
-  #refreshCamQr { position:absolute; top:10px; right:34px; cursor:pointer; color:#c7a8ff; }
-  #refreshCamQr:hover { color:#fff; }
-  #openCamFolder { position:absolute; top:10px; right:56px; cursor:pointer; color:#c7a8ff; font-size:13px; }
-  #openCamFolder:hover { color:#fff; }
 
-  /* ====== Tab chon 1 trong toi da 4 dien thoai ====== */
-  #camSlotTabs { display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:12px; }
-  .cam-slot-tab {
-    display:flex; align-items:center; justify-content:center; gap:4px;
-    padding:7px 4px; border-radius:8px; font-size:11px; cursor:pointer;
-    border:1px solid rgba(192,38,255,0.3); color:#c7a8ff;
+  /* Danh sach cac slot cam (moi slot = 1 dien thoai) */
+  #camSlotList { display:flex; flex-direction:column; gap:8px; }
+  .cam-slot-row {
+    display:flex; align-items:center; gap:6px;
+    padding:8px 10px; border-radius:10px;
+    border:1px solid rgba(192,38,255,0.25); background:rgba(192,38,255,0.04);
   }
-  .cam-slot-tab:hover { border-color:var(--neon-1); }
-  .cam-slot-tab.active { background:rgba(192,38,255,0.25); border-color:var(--neon-1); color:#fff; }
-  .cam-slot-dot { width:7px; height:7px; border-radius:50%; background:#555; flex-shrink:0; }
-  .cam-slot-tab.connected .cam-slot-dot { background:#7effc0; box-shadow:0 0 5px #7effc0; }
-  .cam-slot-tab.recording .cam-slot-dot { background:#ff3b3b; box-shadow:0 0 5px #ff3b3b; animation:blink 1.1s infinite; }
-  .cam-slot-tab.signal-lost .cam-slot-dot { background:#ffb020; box-shadow:0 0 5px #ffb020; animation:none; }
+  .cam-slot-row.connected { border-color:#7effc0; background:rgba(126,255,192,0.06); }
+  .cam-slot-row.signal-lost { border-color:#ffb020; }
+  .cam-slot-dot { width:8px; height:8px; border-radius:50%; background:#444; flex-shrink:0; }
+  .cam-slot-row.connected .cam-slot-dot { background:#7effc0; box-shadow:0 0 5px #7effc0; }
+  .cam-slot-row.streaming .cam-slot-dot { background:#ff3b3b; box-shadow:0 0 5px #ff3b3b; animation:blink 1.1s infinite; }
+  .cam-slot-row.signal-lost .cam-slot-dot { background:#ffb020; animation:none; }
+  .cam-slot-code-wrap { flex:1; display:flex; gap:4px; }
+  .cam-slot-code-input {
+    flex:1; background:#0a0010; border:1px solid rgba(192,38,255,0.3);
+    border-radius:7px; color:#fff; font-size:18px; font-weight:700;
+    letter-spacing:4px; text-align:center; padding:4px 2px; width:0;
+  }
+  .cam-slot-code-input:focus { outline:none; border-color:var(--neon-1); }
+  .cam-slot-code-input::placeholder { font-size:11px; letter-spacing:1px; color:#555; font-weight:400; }
+  .cam-slot-connect-btn {
+    padding:5px 10px; border-radius:7px; cursor:pointer; font-size:11px;
+    border:1px solid var(--neon-1); background:rgba(192,38,255,0.15); color:#e0c0ff;
+  }
+  .cam-slot-connect-btn:hover { background:rgba(192,38,255,0.35); color:#fff; }
+  .cam-slot-disconnect-btn {
+    padding:5px 8px; border-radius:7px; cursor:pointer; font-size:11px;
+    border:1px solid rgba(255,90,90,0.5); background:transparent; color:#ff9090;
+  }
+  .cam-slot-disconnect-btn:hover { background:rgba(255,90,90,0.15); }
+  .cam-slot-status { font-size:10px; color:#a879e0; flex-shrink:0; max-width:60px; text-align:right; line-height:1.3; }
+  .cam-slot-row.connected .cam-slot-status { color:#7effc0; }
+  .cam-slot-row.signal-lost .cam-slot-status { color:#ffb020; }
 
   #camLiveBtnWrap { display:flex; justify-content:center; margin-top:14px; }
   #camLiveBtn {
@@ -685,19 +699,11 @@
     </div>
 
     <div id="camQrPanel">
-      <span id="openCamFolder" title="Mở thư mục lưu bản ghi">📂</span>
-      <span id="refreshCamQr" title="Tạo mã QR mới cho máy đang chọn (mã cũ sẽ ngừng hoạt động, lần ghi hiện tại sẽ được lưu lại)">⟳</span>
       <span id="closeCamQr">✕</span>
-      <h3>Ghi hình từ điện thoại<br>(tối đa 4 máy)</h3>
-      <div id="camSlotTabs">
-        <div class="cam-slot-tab" data-slot="0"><span class="cam-slot-dot"></span>ĐT 1</div>
-        <div class="cam-slot-tab" data-slot="1"><span class="cam-slot-dot"></span>ĐT 2</div>
-        <div class="cam-slot-tab" data-slot="2"><span class="cam-slot-dot"></span>ĐT 3</div>
-        <div class="cam-slot-tab" data-slot="3"><span class="cam-slot-dot"></span>ĐT 4</div>
+      <h3>📷 QR Cam — Kết nối điện thoại</h3>
+      <div id="camSlotList">
+        <!-- 4 slot, mỗi slot 1 điện thoại, render bằng JS -->
       </div>
-      <canvas id="camQrCanvas"></canvas>
-      <div id="camQrStatus">Đang chờ điện thoại kết nối camera...</div>
-      <div id="camFrameCount"></div>
       <div id="camLiveBtnWrap">
         <button id="camLiveBtn" title="Xem trực tiếp hình ảnh từ (các) điện thoại">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -1458,489 +1464,320 @@
     qrPanel.classList.remove('show');
   }
 
-  // ====== QR Cam: toi da 4 dien thoai doc lap, moi may quay video ~30fps gui
-  // ve song song, may tinh noi cac doan lai thanh video lien tuc rieng cho
-  // TUNG may (khong lien quan gi nhau), xem truc tiep chia 1/2/3/4 o - CHI
-  // XEM TRUC TIEP (thoi diem hien tai), KHONG giu bo dem de keo lai xem nua
-  // (truoc day giu toi 30 phut kieu DVR - ton RAM nhieu, nhat la khi mo ca 4
-  // camera cung luc xem truc tiep lau; bo theo dung yeu cau, video da ghi day
-  // du van con nguyen trong file that tren dia, chi rieng man "Xem truc tiep"
-  // la khong giu lai nua). ======
-  // Dung CHUNG co che Firebase Realtime Database voi QR chia se van ban o tren,
-  // nhung o cac nhanh du lieu rieng (sessions/{camId}/cam, moi may 1 camId
-  // khac nhau) va 1 trang mobile rieng (cam.html) de khong lam anh huong gi
-  // den tinh nang QR chia se hien co. main.js da luu file theo tung camId
-  // rieng biet tu truoc nen khong can sua gi o do - 4 may ghi song song hoan
-  // toan doc lap, khong may nao anh huong may nao.
+  // ====== QR Cam: WebRTC viewer — nhan video truc tiep tu APK tren dien thoai ======
+  // Moi slot = 1 dien thoai (toi da 4). Dien thoai chay APK "QR Cam", hien ma 6 so.
+  // Nguoi dung nhap ma do vao o tuong ung o day -> may tinh ket noi qua Firebase
+  // signaling + WebRTC (giong he thong cua Xem.Wedcam) va nhan stream video truc tiep.
+  // HOAN TOAN KHONG LIEN QUAN gi den phan "Chia se QR" o tren (dung nhanh Firebase rieng).
   const MAX_CAM_SLOTS = 4;
-  // Chi giu du du lieu de phat MUOT (tranh giat/khung hinh) - KHONG phai de
-  // keo lai xem. Con so nho (vai giay) la du cho MediaSource, khac han fallback
-  // Blob (~60 giay, xem MAX_LIVE_CHUNKS_FALLBACK) vi MediaSource quan ly hieu
-  // qua hon nhieu nen khong can du du lieu du phong nhu fallback.
-  const CAM_LIVE_MAX_SECONDS = 15;
-  const CAM_SIGNAL_LOST_MS = 15000; // qua 15 giay khong nhan doan nao -> bao mat tin hieu
-  const camSlots = Array.from({ length: MAX_CAM_SLOTS }, (_, i) => ({
-    index: i,
-    camId: null,
-    camRef: null,
-    takeListenerRef: null,
-    chunksListenerRef: null,
-    activeTakeId: null,
-    receivedCount: 0,
-    hasSignal: false,
-    signalLost: false,
-    signalLostAutoFinalized: false,
-    lastChunkAt: 0,
-    mimeType: '',
-    ext: 'webm',
-    // Xem truc tiep: dung MediaSource + SourceBuffer de Chromium tu quan ly
-    // bo dem hieu qua (khong phai mang JS thuong), tu dong "tia bot" phan cu
-    // hon vai giay (CAM_LIVE_MAX_SECONDS - chi du phat muot, khong giu lau).
-    // Neu trinh duyet/codec khong ho tro MediaSource thi tu dong roi ve cach
-    // cu (dung lai video ngan ~60s).
-    mediaSource: null,
-    sourceBuffer: null,
-    appendQueue: [],
-    mseReady: false,
-    mseFailed: false,
-    liveChunks: [], // chi dung khi mseFailed = true (fallback)
-    liveNeedsRefresh: false
-  }));
-  let activeSlotTab = 0; // slot dang hien trong panel QR (0-3)
+  const CAM_SIGNAL_LOST_MS = 8000; // 8s khong nhan ICE connected -> canh bao mat tin hieu
+
+  // ICE servers giong APK (STUN public + TURN du phong cho CGNAT)
+  const CAM_ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80',  username:'openrelayproject', credential:'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject' }
+  ];
+
+  // Trang thai moi slot
+  function makeCamSlot(i) {
+    return {
+      index: i,
+      roomCode: null,        // ma 6 so nguoi dung nhap
+      viewerId: null,        // ID may xem (may tinh nay), sinh 1 lan khi ket noi
+      pc: null,              // RTCPeerConnection
+      fbViewerRef: null,     // Firebase ref cua viewer nay: rooms/{code}/viewers/{viewerId}
+      fbGenRef: null,        // ref den gen/{generation} hien tai
+      fbHostGenListener: null,
+      fbIceListener: null,
+      fbOfferListener: null,
+      generation: -1,
+      stream: null,          // MediaStream nhan duoc tu dien thoai
+      connected: false,
+      signalLost: false,
+      lastConnectedAt: 0,
+      signalLostTimer: null,
+      reconnectTimer: null,
+    };
+  }
+
+  const camSlots = Array.from({ length: MAX_CAM_SLOTS }, (_, i) => makeCamSlot(i));
   let camLiveOpen = false;
   let camLiveLayout = 1;
 
-  const camQrPanel = document.getElementById('camQrPanel');
-  const camQrCanvas = document.getElementById('camQrCanvas');
-  const camQrStatus = document.getElementById('camQrStatus');
-  const camFrameCount = document.getElementById('camFrameCount');
-  const camSlotTabs = [...document.querySelectorAll('.cam-slot-tab')];
+  const camQrPanel    = document.getElementById('camQrPanel');
   const camLiveOverlay = document.getElementById('camLiveOverlay');
-  const camLiveGrid = document.getElementById('camLiveGrid');
-  const camLiveTiles = [...document.querySelectorAll('.cam-live-tile')];
+  const camLiveGrid   = document.getElementById('camLiveGrid');
+  const camLiveTiles  = [...document.querySelectorAll('.cam-live-tile')];
 
-  function genCamId() {
-    return 'cam_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  // ====== Render danh sach slot trong panel ======
+  function renderCamSlotList() {
+    const list = document.getElementById('camSlotList');
+    list.innerHTML = '';
+    camSlots.forEach((slot, i) => {
+      const row = document.createElement('div');
+      row.className = 'cam-slot-row' +
+        (slot.connected ? ' connected' : '') +
+        (slot.connected && !slot.signalLost ? ' streaming' : '') +
+        (slot.signalLost ? ' signal-lost' : '');
+
+      const dot = document.createElement('span');
+      dot.className = 'cam-slot-dot';
+
+      const codeWrap = document.createElement('div');
+      codeWrap.className = 'cam-slot-code-wrap';
+
+      if (!slot.roomCode) {
+        // Chua ket noi: hien o nhap ma
+        const input = document.createElement('input');
+        input.className = 'cam-slot-code-input';
+        input.placeholder = 'Mã 6 số';
+        input.maxLength = 6;
+        input.inputMode = 'numeric';
+        input.dataset.slot = i;
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') connectSlot(i, input.value.trim()); });
+        codeWrap.appendChild(input);
+
+        const btn = document.createElement('button');
+        btn.className = 'cam-slot-connect-btn';
+        btn.textContent = 'Kết nối';
+        btn.onclick = () => connectSlot(i, input.value.trim());
+        codeWrap.appendChild(btn);
+      } else {
+        // Dang ket noi: hien ma va nut ngat
+        const codeLabel = document.createElement('span');
+        codeLabel.style.cssText = 'font-size:18px;font-weight:700;letter-spacing:4px;color:#e0c0ff;flex:1;text-align:center;';
+        codeLabel.textContent = slot.roomCode;
+        codeWrap.appendChild(codeLabel);
+
+        const discBtn = document.createElement('button');
+        discBtn.className = 'cam-slot-disconnect-btn';
+        discBtn.textContent = '✕';
+        discBtn.title = 'Ngắt kết nối';
+        discBtn.onclick = () => disconnectSlot(i);
+        codeWrap.appendChild(discBtn);
+      }
+
+      const status = document.createElement('span');
+      status.className = 'cam-slot-status';
+      status.textContent = slot.signalLost ? 'Mất tín hiệu' :
+                           slot.connected  ? 'Đang xem' :
+                           slot.roomCode   ? 'Đang kết nối...' : ('ĐT ' + (i+1));
+
+      row.appendChild(dot);
+      row.appendChild(codeWrap);
+      row.appendChild(status);
+      list.appendChild(row);
+    });
   }
 
-  function updateSlotTabUI(i) {
-    const tab = camSlotTabs[i];
+  renderCamSlotList();
+
+  // ====== Ket noi 1 slot voi ma phong cho truoc ======
+  function connectSlot(i, code) {
+    if (!code || code.length < 4) { showCamSignalToast('Nhập mã 6 số của điện thoại'); return; }
+    if (!db) { showCamSignalToast('Firebase chưa sẵn sàng'); return; }
+    disconnectSlot(i, true); // don slot cu neu co
     const slot = camSlots[i];
-    tab.classList.toggle('active', i === activeSlotTab);
-    tab.classList.toggle('connected', !!slot.camId);
-    tab.classList.toggle('recording', slot.hasSignal && !slot.signalLost);
-    tab.classList.toggle('signal-lost', slot.signalLost);
-    const tile = camLiveTiles[i];
-    tile.classList.toggle('has-signal', slot.hasSignal);
-    tile.classList.toggle('signal-lost', slot.signalLost);
+    slot.roomCode = code;
+    slot.viewerId = 'pc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+    renderCamSlotList();
+    _doConnect(i);
   }
 
-  // Thong bao noi mat tin hieu camera - tu bien mat sau 6 giay, lan bao moi
-  // ghi de len lan cu (khong xep chong nhieu thong bao cung luc).
+  function _doConnect(i) {
+    const slot = camSlots[i];
+    if (!slot.roomCode) return;
+
+    // Tao RTCPeerConnection
+    const pc = new RTCPeerConnection({ iceServers: CAM_ICE_SERVERS });
+    slot.pc = pc;
+
+    // Nhan video track tu dien thoai
+    pc.ontrack = e => {
+      if (e.streams && e.streams[0]) {
+        slot.stream = e.streams[0];
+      } else {
+        const ms = new MediaStream(); ms.addTrack(e.track); slot.stream = ms;
+      }
+      // Gan vao tile neu dang xem truc tiep
+      const video = camLiveTiles[i].querySelector('video');
+      if (video.srcObject !== slot.stream) {
+        video.srcObject = slot.stream;
+        video.play().catch(()=>{});
+      }
+    };
+
+    // Them transceiver chi nhan (Máy xem)
+    pc.addTransceiver('video', { direction: 'recvonly' });
+
+    // ICE: gui len Firebase
+    pc.onicecandidate = e => {
+      if (!e.candidate || !slot.fbGenRef) return;
+      slot.fbGenRef.child('iceCandidatesCtrl').push({
+        sdpMid: e.candidate.sdpMid,
+        sdpMLineIndex: e.candidate.sdpMLineIndex,
+        candidate: e.candidate.candidate
+      });
+    };
+
+    pc.onconnectionstatechange = () => {
+      const s = pc.connectionState;
+      if (s === 'connected') {
+        slot.connected = true;
+        slot.signalLost = false;
+        slot.lastConnectedAt = Date.now();
+        clearTimeout(slot.signalLostTimer);
+        renderCamSlotList();
+        updateLiveTileState(i);
+        // Bat dau theo doi mat tin hieu
+        _startSignalLostCheck(i);
+      } else if (s === 'disconnected' || s === 'failed') {
+        _onSlotLostSignal(i);
+      }
+    };
+
+    // Firebase signaling: dang ky "present" va theo doi hostGeneration
+    const fbRoot = firebase.database().ref('rooms').child(slot.roomCode).child('viewers').child(slot.viewerId);
+    slot.fbViewerRef = fbRoot;
+    fbRoot.child('present').set(true);
+    fbRoot.child('present').onDisconnect().remove();
+
+    // Theo doi hostGeneration — moi khi dien thoai mo phien dam phan moi thi doi
+    slot.fbHostGenListener = fbRoot.child('hostGeneration').on('value', snap => {
+      const gen = snap.val();
+      if (!gen || gen === slot.generation) return;
+      slot.generation = gen;
+      _resubscribeGen(i, gen);
+    });
+  }
+
+  function _resubscribeGen(i, gen) {
+    const slot = camSlots[i];
+    // Huy listener cu
+    if (slot.fbOfferListener && slot.fbGenRef) slot.fbGenRef.child('offer').off('value', slot.fbOfferListener);
+    if (slot.fbIceListener   && slot.fbGenRef) slot.fbGenRef.child('iceCandidatesHost').off('value', slot.fbIceListener);
+
+    slot.fbGenRef = slot.fbViewerRef.child('gen').child(String(gen));
+
+    // Nhan offer tu dien thoai
+    slot.fbOfferListener = slot.fbGenRef.child('offer').on('value', async snap => {
+      const val = snap.val();
+      if (!val || !val.sdp) return;
+      try {
+        await slot.pc.setRemoteDescription({ type: 'offer', sdp: val.sdp });
+        const answer = await slot.pc.createAnswer();
+        await slot.pc.setLocalDescription(answer);
+        slot.fbGenRef.child('answer').set({ type: 'answer', sdp: answer.sdp });
+      } catch(e) { console.error('QRCam offer error', e); }
+    });
+
+    // Nhan ICE candidates tu dien thoai (host)
+    slot.fbIceListener = slot.fbGenRef.child('iceCandidatesHost').on('value', snap => {
+      snap.forEach(child => {
+        const c = child.val();
+        if (!c) return;
+        slot.pc.addIceCandidate({ sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex, candidate: c.candidate }).catch(()=>{});
+      });
+    });
+  }
+
+  function _onSlotLostSignal(i) {
+    const slot = camSlots[i];
+    if (!slot.roomCode) return;
+    slot.connected = false;
+    slot.signalLost = true;
+    renderCamSlotList();
+    updateLiveTileState(i);
+    showCamSignalToast('⚠️ Mất tín hiệu ĐT ' + (i+1) + ' — đang thử kết nối lại...');
+    // Thu ket noi lai sau 4 giay
+    clearTimeout(slot.reconnectTimer);
+    slot.reconnectTimer = setTimeout(() => {
+      if (slot.roomCode) _doConnect(i);
+    }, 4000);
+  }
+
+  function _startSignalLostCheck(i) {
+    const slot = camSlots[i];
+    clearTimeout(slot.signalLostTimer);
+    slot.signalLostTimer = setTimeout(() => {
+      if (slot.connected && slot.stream) {
+        const tracks = slot.stream.getVideoTracks();
+        if (!tracks.length || tracks[0].readyState === 'ended') _onSlotLostSignal(i);
+        else _startSignalLostCheck(i); // van oke -> lap lai kiem tra
+      }
+    }, CAM_SIGNAL_LOST_MS);
+  }
+
+  function disconnectSlot(i, silent) {
+    const slot = camSlots[i];
+    clearTimeout(slot.reconnectTimer);
+    clearTimeout(slot.signalLostTimer);
+    // Don Firebase
+    if (slot.fbOfferListener && slot.fbGenRef) slot.fbGenRef.child('offer').off('value', slot.fbOfferListener);
+    if (slot.fbIceListener   && slot.fbGenRef) slot.fbGenRef.child('iceCandidatesHost').off('value', slot.fbIceListener);
+    if (slot.fbHostGenListener && slot.fbViewerRef) slot.fbViewerRef.child('hostGeneration').off('value', slot.fbHostGenListener);
+    if (slot.fbViewerRef) { slot.fbViewerRef.child('present').onDisconnect().cancel(); slot.fbViewerRef.remove().catch(()=>{}); }
+    // Don WebRTC
+    if (slot.pc) { try { slot.pc.close(); } catch(e){} }
+    // Don tile
+    const video = camLiveTiles[i].querySelector('video');
+    video.srcObject = null;
+    video.src = '';
+    // Reset slot
+    Object.assign(slot, makeCamSlot(i));
+    renderCamSlotList();
+    updateLiveTileState(i);
+    if (!silent) showCamSignalToast('ĐT ' + (i+1) + ' đã ngắt kết nối');
+  }
+
+  // Thong bao mat tin hieu
   let camSignalToastTimer = null;
-  function showCamSignalToast(message) {
+  function showCamSignalToast(msg) {
     const el = document.getElementById('camSignalToast');
-    el.textContent = message;
+    el.textContent = msg;
     el.classList.add('show');
     clearTimeout(camSignalToastTimer);
     camSignalToastTimer = setTimeout(() => el.classList.remove('show'), 6000);
   }
 
-  // Qua 10 phut lien tuc mat tin hieu (khong chi 15 giay bao mat tin hieu tren
-  // giao dien) -> coi nhu dien thoai da ngung han (het pin, hong may, quen
-  // tat...), tu dong CHOT FILE dang ghi do lai (dong an toan, ghi manifest)
-  // thay vi de file "mo" cho toi khi nguoi dung tu tay dong hoac tat han app.
-  // Neu dien thoai ket noi lai sau do, se tu tao 1 file GHI MOI binh thuong
-  // (khong anh huong file da chot).
-  const CAM_AUTO_FINALIZE_MS = 10 * 60 * 1000;
-
-  // Bao mat tin hieu: kiem tra dinh ky, khong lam gi neu van dang nhan du lieu deu.
-  setInterval(() => {
-    const now = Date.now();
-    for (let i = 0; i < MAX_CAM_SLOTS; i++) {
-      const slot = camSlots[i];
-      if (!slot.hasSignal) continue;
-      const lost = !!slot.lastChunkAt && (now - slot.lastChunkAt > CAM_SIGNAL_LOST_MS);
-      if (lost !== slot.signalLost) {
-        slot.signalLost = lost;
-        updateSlotTabUI(i);
-        if (lost) {
-          showCamSignalToast('⚠️ Mất tín hiệu từ ĐT ' + (i + 1) + ' — đang chờ kết nối lại...');
-        } else {
-          slot.signalLostAutoFinalized = false; // ket noi lai duoc -> reset co, san sang cho lan mat tin hieu tiep theo (neu co)
-        }
-      }
-      if (slot.signalLost && !slot.signalLostAutoFinalized
-          && slot.lastChunkAt && (now - slot.lastChunkAt > CAM_AUTO_FINALIZE_MS)) {
-        slot.signalLostAutoFinalized = true;
-        if (slot.camId && window.camBridge) window.camBridge.stopCam(slot.camId);
-        showCamSignalToast('🔴 ĐT ' + (i + 1) + ' mất tín hiệu quá 10 phút — đã tự động lưu lại đoạn đã ghi được.');
-      }
-    }
-  }, 5000);
-
-  camSlotTabs.forEach((tab, i) => {
-    tab.onclick = () => {
-      activeSlotTab = i;
-      camSlotTabs.forEach((t, j) => updateSlotTabUI(j));
-      renderActiveSlotQr();
-    };
-  });
-
+  // Dong/mo panel
   document.getElementById('camQrBtn').onclick = () => {
     if (camQrPanel.classList.contains('show')) {
-      camQrPanel.classList.remove('show'); // dang mo -> cham lan nua thi dong lai
+      camQrPanel.classList.remove('show');
     } else {
       camQrPanel.classList.add('show');
-      if (!camSlots[activeSlotTab].camId) startCamSlot(activeSlotTab);
-      else renderActiveSlotQr();
+      renderCamSlotList();
     }
   };
-  document.getElementById('closeCamQr').onclick = () => {
-    camQrPanel.classList.remove('show'); // chi an giao dien, KHONG dung ghi hinh dang chay ngam
-  };
-  document.getElementById('refreshCamQr').onclick = () => startCamSlot(activeSlotTab, true);
-  document.getElementById('openCamFolder').onclick = () => {
-    if (window.camBridge) window.camBridge.openFolder(camSlots[activeSlotTab].camId || '');
-  };
+  document.getElementById('closeCamQr').onclick = () => camQrPanel.classList.remove('show');
 
-  function renderActiveSlotQr() {
-    const slot = camSlots[activeSlotTab];
-    if (!slot.camId) return;
-    const link = `${window.MOBILE_SCAN_URL}cam.html?cam=${slot.camId}`;
-    QRCode.toCanvas(camQrCanvas, link, { width: 250, margin: 1 }, (err) => {
-      if (err) camQrStatus.textContent = 'Lỗi vẽ QR: ' + err.message;
-    });
-    camQrStatus.textContent = slot.hasSignal ? 'Đang ghi hình...' : (slot.camId ? 'Đang chờ điện thoại kết nối camera...' : '');
-    camFrameCount.textContent = slot.receivedCount ? slot.receivedCount + ' đoạn video đã nhận và lưu' : '';
-  }
-
-  function startCamSlot(i, forceNew) {
-    const slot = camSlots[i];
-    try {
-      if (typeof QRCode === 'undefined') {
-        camQrStatus.textContent = 'Lỗi: thư viện QRCode chưa tải được (kiểm tra mạng internet).';
-        return;
-      }
-      if (!db) {
-        camQrStatus.textContent = 'Lỗi: Firebase chưa khởi tạo được.';
-        return;
-      }
-
-      // Doi ma QR = huy hoan toan ket noi cu CUA RIENG SLOT NAY (theo dung yeu
-      // cau): chot lai lan ghi dang do cua ma cu thanh video, roi ngung theo
-      // doi ma do. Cac slot khac (dien thoai khac) hoan toan khong bi anh huong.
-      if (forceNew || !slot.camId) stopCamSlot(i);
-      if (!slot.camId) slot.camId = genCamId();
-
-      activeSlotTab = i;
-      camSlotTabs.forEach((t, j) => updateSlotTabUI(j));
-      renderActiveSlotQr();
-
-      slot.camRef = db.ref('sessions/' + slot.camId + '/cam');
-      slot.camRef.child('meta').set({ createdAt: firebase.database.ServerValue.TIMESTAMP })
-        .catch(err => {
-          // FIX (theo phan anh "may tinh khong nhan duoc video"): truoc day
-          // nuot loi am tham - neu MAY TINH cung khong ghi/doc duoc Firebase
-          // (vd bi luat bao mat chan) thi trang thai se dung mai o "Dang cho
-          // dien thoai..." ma khong ro ly do. Hien loi ra ngay cho de doan.
-          if (activeSlotTab === i) camQrStatus.textContent = 'Lỗi kết nối máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + ')';
-        });
-
-      // Lang nghe "lan ghi hien tai": moi lan dien thoai bam Bat dau ghi hinh
-      // (ke ca sau khi mat ket noi roi mo lai trang) se ghi 1 takeId moi vao day.
-      slot.takeListenerRef = slot.camRef.child('currentTake');
-      slot.takeListenerRef.on('value', snap => {
-        const val = snap.val();
-        if (!val || !val.takeId || val.takeId === slot.activeTakeId) return;
-        slot.activeTakeId = val.takeId;
-        slot.receivedCount = 0;
-        slot.hasSignal = false;
-        slot.signalLost = false;
-        slot.signalLostAutoFinalized = false;
-        slot.mimeType = val.mime || '';
-        slot.ext = val.ext || 'webm';
-        slot.liveChunks = [];
-        slot.headerChunk = null; // lan ghi moi -> doan tieu de (header) cu khong con dung duoc nua
-        teardownMseForSlot(i);
-        if (camLiveOpen) initMseForSlot(i); // dang xem truc tiep -> chuan bi luon bo dem moi cho lan ghi moi
-        if (activeSlotTab === i) camQrStatus.textContent = 'Đã kết nối - đang nhận video...';
-        updateSlotTabUI(i);
-        if (window.camBridge) window.camBridge.newTake(slot.camId, slot.activeTakeId, val.ext || 'webm');
-        listenCamChunks(i, slot.activeTakeId);
-      }, err => {
-        // Tham so thu 2 cua .on() la callback LOI (vd bi tu choi doc du lieu) -
-        // truoc day khong co, nen loi dang nay hoan toan vo hinh: callback
-        // thanh cong o tren khong bao gio duoc goi, ma cung khong co gi bao
-        // hieu tai sao, trang thai chi dung mai o "Dang cho..." nhu bao cua
-        // nguoi dung.
-        if (activeSlotTab === i) camQrStatus.textContent = 'Lỗi đọc dữ liệu từ máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + ')';
-      });
-    } catch (e) {
-      camQrStatus.textContent = 'Lỗi: ' + e.message;
-    }
-  }
-
-  function listenCamChunks(i, takeId) {
-    const slot = camSlots[i];
-    if (slot.chunksListenerRef) slot.chunksListenerRef.off();
-    slot.chunksListenerRef = slot.camRef.child('chunks/' + takeId);
-    slot.chunksListenerRef.on('child_added', async snap => {
-      const val = snap.val();
-      if (!val || !val.b) return;
-      slot.receivedCount++;
-      slot.hasSignal = true;
-      slot.signalLost = false;
-      slot.lastChunkAt = Date.now();
-      updateSlotTabUI(i);
-      if (activeSlotTab === i) {
-        camFrameCount.textContent = slot.receivedCount + ' đoạn video đã nhận và lưu';
-        camQrStatus.textContent = 'Đang ghi hình...';
-      }
-
-      // Luu that xuong dia (o main.js) ngay lap tuc - noi tiep vao cuoi file video hien co.
-      if (window.camBridge) window.camBridge.sendChunk(slot.camId, takeId, val.ts || Date.now(), val.b);
-
-      // FIX (man hinh den khi bam "Xem truc tiep" luc dien thoai DA dang quay san):
-      // doan dau tien cua ca lan ghi la doan DUY NHAT chua "tieu de" WebM/MP4 (EBML
-      // header+Tracks, hoac ftyp/moov) - thieu no thi SourceBuffer khong the giai ma
-      // BAT KY khung hinh nao du van nhan du lieu deu (khong bao loi, chi dung im mau
-      // den). Doan nay bi xoa khoi Firebase ngay sau khi luu (xem cuoi ham) nen neu
-      // nguoi dung mo "Xem truc tiep" SAU thoi diem do, initMseForSlot() se khong bao
-      // gio co no nua. Giu rieng 1 ban sao trong bo nho (nho, ~vai chuc KB) tu luc no
-      // vua ve toi, du dang xem truc tiep hay chua, de dung lai bat ky luc nao.
-      if (!slot.headerChunk) {
-        try {
-          const headerRes = await fetch('data:application/octet-stream;base64,' + val.b);
-          slot.headerChunk = await headerRes.arrayBuffer();
-        } catch (e) {}
-      }
-
-      // Neu dang mo man hinh xem truc tiep -> dua doan nay vao bo dem xem
-      // truc tiep (uu tien MediaSource - hieu qua hon, chi giu vai giay gan
-      // nhat de phat muot, xem CAM_LIVE_MAX_SECONDS; fallback ve cach dung
-      // lai Blob ngan neu trinh duyet khong ho tro MediaSource).
-      if (camLiveOpen && takeId === slot.activeTakeId) {
-        try {
-          const res = await fetch('data:application/octet-stream;base64,' + val.b);
-          const buf = await res.arrayBuffer();
-          if (!slot.mseFailed && window.MediaSource) {
-            appendChunkToSlot(i, buf);
-          } else {
-            slot.liveChunks.push(buf);
-            const MAX_LIVE_CHUNKS_FALLBACK = 200; // ~60 giay, khong keo lai xem duoc trong che do nay
-            if (slot.liveChunks.length > MAX_LIVE_CHUNKS_FALLBACK) {
-              const header = slot.liveChunks[0];
-              const recent = slot.liveChunks.slice(-(MAX_LIVE_CHUNKS_FALLBACK - 1));
-              slot.liveChunks = [header, ...recent];
-            }
-            slot.liveNeedsRefresh = true;
-          }
-          const tile = camLiveTiles[i];
-          tile.querySelector('.cam-tile-meta').textContent =
-            new Date(val.ts || Date.now()).toLocaleString('vi-VN') + ' · đoạn #' + slot.receivedCount;
-        } catch (e) {}
-      }
-
-      // Da luu xong xuong dia -> xoa khoi Firebase de khong phinh to du lieu
-      // theo thoi gian (khong lien quan gi den ban ghi da luu, ban ghi van con).
-      snap.ref.remove().catch(() => {});
-    }, err => {
-      // Cung ly do nhu takeListenerRef o tren: khong co callback loi thi bi tu
-      // choi doc chunk se hoan toan vo hinh, trang thai dung mai o "Da ket noi"
-      // ma khong bao gio thay so doan tang len, khong ro tai sao.
-      if (activeSlotTab === i) camQrStatus.textContent = 'Lỗi đọc video từ máy chủ: ' + err.message + ' (mã: ' + (err.code || '?') + ')';
-    });
-  }
-
-  function stopCamSlot(i) {
-    const slot = camSlots[i];
-    if (slot.takeListenerRef) slot.takeListenerRef.off();
-    if (slot.chunksListenerRef) slot.chunksListenerRef.off();
-    if (slot.camRef) slot.camRef.remove().catch(() => {});
-    if (slot.camId && window.camBridge) window.camBridge.stopCam(slot.camId); // chot lan ghi dang do, dong file an toan
-    teardownMseForSlot(i);
-    slot.camId = null;
-    slot.camRef = null;
-    slot.takeListenerRef = null;
-    slot.chunksListenerRef = null;
-    slot.activeTakeId = null;
-    slot.receivedCount = 0;
-    slot.liveChunks = [];
-    slot.hasSignal = false;
-    slot.signalLost = false;
-    slot.signalLostAutoFinalized = false;
-    updateSlotTabUI(i);
-  }
-
-  // ====== Xem truc tiep: MediaSource + SourceBuffer ======
-  // Chromium tu quan ly du lieu media noi bo (khong phai mang JS binh thuong)
-  // nen hieu qua bo nho hon nhieu so voi giu ArrayBuffer trong JS. Sau moi lan
-  // them du lieu, "tia" bot phan cu hon CAM_LIVE_MAX_SECONDS (vai giay - CHI
-  // du de phat muot, khong phai de keo lai xem) de khong phinh vo han.
-  function initMseForSlot(i) {
+  // ====== Live view: gan stream vao tile video ======
+  function updateLiveTileState(i) {
     const slot = camSlots[i];
     const tile = camLiveTiles[i];
-    const video = tile.querySelector('video');
-    teardownMseForSlot(i);
-    if (!window.MediaSource || !slot.mimeType) { slot.mseFailed = true; return; }
-
-    // Dùng MIME đơn giản không có codec cụ thể cho SourceBuffer:
-    // Electron/Chromium MediaSource rất nhạy với codec mismatch - nếu dữ liệu
-    // thực tế không khớp chính xác codec trong MIME (hay gặp sau base64 round-trip
-    // qua Firebase), appendBuffer sẽ throw lỗi decode ngay lập tức.
-    // Dùng type đơn giản (video/webm hoặc video/mp4) để Chromium tự detect codec.
-    let mimeForMse = slot.ext === 'mp4' ? 'video/mp4' : 'video/webm';
-    if (!MediaSource.isTypeSupported(mimeForMse)) { slot.mseFailed = true; return; }
-    try {
-      const ms = new MediaSource();
-      slot.mediaSource = ms;
-      slot.appendQueue = [];
-      // FIX man hinh den (xem chi tiet o listenCamChunks): luon nap doan "tieu de" da
-      // luu san VAO DAU HANG DOI truoc moi doan hinh anh khac, du la moi mo xem truc
-      // tiep giua chung lan ghi dang chay san hay lan ghi vua bat dau. Neu day la lan
-      // ghi vua bat dau that (chua kip cache) thi bo qua, roi doan dau tien tu nhien
-      // se toi qua listenCamChunks nhu binh thuong.
-      if (slot.headerChunk) slot.appendQueue.push(slot.headerChunk);
-      slot.mseReady = false;
-      slot.mseFailed = false;
-      const url = URL.createObjectURL(ms);
-      const prevUrl = video.dataset.blobUrl;
-      video.src = url;
-      video.dataset.blobUrl = url;
-      ms.addEventListener('sourceopen', () => {
-        try {
-          const sb = ms.addSourceBuffer(mimeForMse);
-          slot.sourceBuffer = sb;
-          slot.mseReady = true;
-          let hasPlayed = false;
-          sb.addEventListener('updateend', () => {
-            trimSlotBuffer(i);
-            drainAppendQueue(i);
-            // Gọi play() sau lần append đầu tiên - video.src đã gán nhưng
-            // chưa bao giờ được play(), MediaSource cần play() để bắt đầu decode.
-            if (!hasPlayed) {
-              hasPlayed = true;
-              const tile = camLiveTiles[i];
-              const video = tile.querySelector('video');
-              video.play().catch(() => {});
-            }
-          });
-          drainAppendQueue(i);
-        } catch (e) { slot.mseFailed = true; }
-      }, { once: true });
-      if (prevUrl) URL.revokeObjectURL(prevUrl);
-    } catch (e) { slot.mseFailed = true; }
-  }
-
-  function teardownMseForSlot(i) {
-    const slot = camSlots[i];
-    slot.mediaSource = null;
-    slot.sourceBuffer = null;
-    slot.appendQueue = [];
-    slot.mseReady = false;
-  }
-
-  function drainAppendQueue(i) {
-    const slot = camSlots[i];
-    if (!slot.sourceBuffer || slot.sourceBuffer.updating) return;
-    if (!slot.appendQueue.length) return;
-    const chunk = slot.appendQueue.shift();
-    try { slot.sourceBuffer.appendBuffer(chunk); } catch (e) { slot.mseFailed = true; }
-  }
-
-  function appendChunkToSlot(i, arrayBuffer) {
-    const slot = camSlots[i];
-    if (!slot.mseReady || !slot.sourceBuffer || slot.sourceBuffer.updating) {
-      slot.appendQueue.push(arrayBuffer);
-      return;
+    tile.classList.toggle('has-signal', slot.connected && !slot.signalLost);
+    tile.classList.toggle('signal-lost', slot.signalLost);
+    // Gan lai stream neu dang xem truc tiep
+    if (camLiveOpen && slot.stream) {
+      const video = tile.querySelector('video');
+      if (video.srcObject !== slot.stream) { video.srcObject = slot.stream; video.play().catch(()=>{}); }
     }
-    try { slot.sourceBuffer.appendBuffer(arrayBuffer); } catch (e) { slot.mseFailed = true; }
   }
 
-  function trimSlotBuffer(i) {
-    const slot = camSlots[i];
-    const sb = slot.sourceBuffer;
-    if (!sb || sb.updating) return;
-    try {
-      const buffered = sb.buffered;
-      if (!buffered.length) return;
-      const start = buffered.start(0);
-      const end = buffered.end(buffered.length - 1);
-      if (end - start > CAM_LIVE_MAX_SECONDS) sb.remove(start, end - CAM_LIVE_MAX_SECONDS);
-    } catch (e) {}
-  }
-
-  // Fallback (chi chay khi mseFailed=true): cu vai giay dung lai Blob video
-  // ngan roi phat lai tu gan cuoi - khong keo lai xem duoc, nhung chac chan
-  // hoat dong tren moi trinh duyet/codec.
-  function refreshLiveTileFallback(i) {
-    const slot = camSlots[i];
-    if (!camLiveOpen || !slot.mseFailed || !slot.liveNeedsRefresh || !slot.liveChunks.length) return;
-    slot.liveNeedsRefresh = false;
-    const tile = camLiveTiles[i];
-    const video = tile.querySelector('video');
-    try {
-      const blob = new Blob(slot.liveChunks, { type: slot.ext === 'mp4' ? 'video/mp4' : 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const prevUrl = video.dataset.blobUrl;
-      video.src = url;
-      video.dataset.blobUrl = url;
-      video.onloadedmetadata = () => {
-        if (isFinite(video.duration) && video.duration > 0.3) video.currentTime = Math.max(0, video.duration - 0.2);
-        video.play().catch(() => {});
-      };
-      if (prevUrl) URL.revokeObjectURL(prevUrl);
-    } catch (e) {}
-  }
-  setInterval(() => {
-    if (!camLiveOpen) return;
-    for (let i = 0; i < MAX_CAM_SLOTS; i++) refreshLiveTileFallback(i);
-  }, 1800);
-
-  // Nut "Ve truc tiep": hien khi nguoi dung da keo/lui xa khoi diem moi nhat
-  // da nhan (> 4 giay), an di khi da o gan cuoi thanh (dang "truc tiep").
-  camLiveTiles.forEach((tile, i) => {
-    const video = tile.querySelector('video');
-    const goLiveBtn = tile.querySelector('.cam-golive-btn');
-    video.addEventListener('timeupdate', () => {
-      try {
-        const b = video.buffered;
-        if (!b.length) { goLiveBtn.classList.remove('show'); return; }
-        const end = b.end(b.length - 1);
-        goLiveBtn.classList.toggle('show', (end - video.currentTime) > 4);
-      } catch (e) {}
-    });
-    goLiveBtn.onclick = () => {
-      try {
-        const b = video.buffered;
-        if (b.length) video.currentTime = Math.max(0, b.end(b.length - 1) - 0.3);
-        video.play().catch(() => {});
-      } catch (e) {}
-    };
-  });
-
-  // ====== Chia man hinh xem truc tiep 1/2/3/4 o ======
   function applyLiveLayout(n) {
     camLiveLayout = n;
     camLiveGrid.className = 'layout-' + n;
     document.querySelectorAll('.cam-layout-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.n) === n));
     camLiveTiles.forEach((tile, i) => tile.classList.toggle('visible', i < n));
-    // FIX loi hien thi (anh chup man hinh nguoi dung gui): doi so o dang xem -
-    // nhat la nhay thang len 4 o - co luc Chromium KHONG tinh lai ngay kich
-    // thuoc cot/hang cua CSS Grid sau khi nhieu the .cam-live-tile cung doi
-    // display:none -> block trong 1 nhip, de lai 1 khoang trong "ma" giua cac
-    // o (giong het dang bi trong anh). Ep Chromium huy va ve lai HOAN TOAN
-    // khung grid ngay sau do (tat display 1 nhip roi bat lai o frame ke tiep)
-    // de chac chan luon dung, khong con phu thuoc vao co trigger reflow tinh
-    // co nao khac (resize cua so...) hay khong.
     void camLiveGrid.offsetHeight;
-    const prevDisplay = camLiveGrid.style.display;
+    const prev = camLiveGrid.style.display;
     camLiveGrid.style.display = 'none';
-    requestAnimationFrame(() => {
-      camLiveGrid.style.display = prevDisplay || '';
-    });
+    requestAnimationFrame(() => { camLiveGrid.style.display = prev || ''; });
   }
+
   document.querySelectorAll('.cam-layout-btn').forEach(btn => {
     btn.onclick = () => applyLiveLayout(Number(btn.dataset.n));
   });
@@ -1948,36 +1785,29 @@
   document.getElementById('camLiveBtn').onclick = () => {
     camLiveOpen = true;
     camLiveOverlay.classList.add('show');
-    // Tu chon so o = so may dang co tin hieu (toi thieu 1), nguoi dung co the bam doi lai 1/2/3/4 bat cu luc nao.
-    const connectedCount = camSlots.filter(s => s.hasSignal).length;
-    applyLiveLayout(Math.max(1, Math.min(MAX_CAM_SLOTS, connectedCount || 1)));
-    for (let i = 0; i < MAX_CAM_SLOTS; i++) camSlots[i].liveChunks = [];
-    // FIX (theo phan anh nguoi dung: quet QR ghi hinh truoc, dang ghi moi bam
-    // "Xem truc tiep" thi khong thay gi ca): applyLiveLayout() o tren tam thoi
-    // an nguyen luoi (display:none) 1 nhip requestAnimationFrame de ep Chromium
-    // ve lai dung khung grid (xem comment trong ham do, sua o lan truoc cho
-    // loi hien thi 4 camera). initMseForSlot() tao MediaSource/gan video.src
-    // MOI cho tung o - neu khoi tao dung luc container cha dang bi an, video
-    // co the khong bat dau nhan/giai ma luong du lieu tiep theo duoc. Doi qua
-    // HAI nhip requestAnimationFrame (chac chan sau ca nhip an/hien cua
-    // applyLiveLayout) roi moi khoi tao MediaSource, dam bao luoi da HIEN LAI
-    // HOAN TOAN truoc do.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        for (let i = 0; i < MAX_CAM_SLOTS; i++) {
-          const slot = camSlots[i];
-          if (slot.hasSignal && slot.activeTakeId) initMseForSlot(i);
-        }
+    const connected = camSlots.filter(s => s.connected).length;
+    applyLiveLayout(Math.max(1, Math.min(MAX_CAM_SLOTS, connected || 1)));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      camSlots.forEach((slot, i) => {
+        if (!slot.stream) return;
+        const video = camLiveTiles[i].querySelector('video');
+        video.srcObject = slot.stream;
+        video.play().catch(()=>{});
+        updateLiveTileState(i);
       });
-    });
+    }));
   };
+
+  // Nut "Ve truc tiep" tren tung tile (cho WebRTC stream khong co buffered)
+  camLiveTiles.forEach((tile) => {
+    const goLiveBtn = tile.querySelector('.cam-golive-btn');
+    if (goLiveBtn) goLiveBtn.style.display = 'none'; // WebRTC luon truc tiep, khong can nut nay
+  });
+
   document.getElementById('closeCamLive').onclick = () => {
     camLiveOpen = false;
     camLiveOverlay.classList.remove('show');
-    camLiveTiles.forEach((tile, i) => {
-      tile.querySelector('video').pause();
-      teardownMseForSlot(i);
-    });
+    camLiveTiles.forEach(tile => { tile.querySelector('video').pause(); });
   };
 
   // ====== Thanh dau trang cho may tinh ======
