@@ -1500,6 +1500,7 @@
       lastConnectedAt: 0,
       signalLostTimer: null,
       reconnectTimer: null,
+      permissionError: false, // true khi Firebase tu choi doc/ghi (Rules chan) - khac voi "dang cho dien thoai"
     };
   }
 
@@ -1562,7 +1563,8 @@
 
       const status = document.createElement('span');
       status.className = 'cam-slot-status';
-      status.textContent = slot.signalLost ? 'Mất tín hiệu' :
+      status.textContent = slot.permissionError ? 'Lỗi quyền Firebase' :
+                           slot.signalLost ? 'Mất tín hiệu' :
                            slot.connected  ? 'Đang xem' :
                            slot.roomCode   ? 'Đang kết nối...' : ('ĐT ' + (i+1));
 
@@ -1583,6 +1585,7 @@
     const slot = camSlots[i];
     slot.roomCode = code;
     slot.viewerId = 'pc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+    slot.permissionError = false;
     renderCamSlotList();
     _doConnect(i);
   }
@@ -1651,6 +1654,14 @@
       if (!gen || gen === slot.generation) return;
       slot.generation = gen;
       _resubscribeGen(i, gen);
+    }, err => {
+      // Truoc day khong co callback loi nao o day - neu Firebase Rules tu choi quyen doc,
+      // slot se mac ket vinh vien o "Dang ket noi..." ma khong co bat ky dau hieu nao ve ly
+      // do that su (khong phai do dien thoai chua bat, ma do quyen Firebase bi chan).
+      console.error('QRCam hostGeneration permission error', err);
+      slot.permissionError = true;
+      renderCamSlotList();
+      showCamSignalToast('⚠️ Firebase từ chối quyền đọc/ghi (kiểm tra lại Database Rules trên Firebase Console)');
     });
   }
 
@@ -1672,6 +1683,10 @@
         await slot.pc.setLocalDescription(answer);
         slot.fbGenRef.child('answer').set({ type: 'answer', sdp: answer.sdp });
       } catch(e) { console.error('QRCam offer error', e); }
+    }, err => {
+      console.error('QRCam offer permission error', err);
+      slot.permissionError = true;
+      renderCamSlotList();
     });
 
     // Nhan ICE candidates tu dien thoai (host)
@@ -1681,6 +1696,10 @@
         if (!c) return;
         slot.pc.addIceCandidate({ sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex, candidate: c.candidate }).catch(()=>{});
       });
+    }, err => {
+      console.error('QRCam ice permission error', err);
+      slot.permissionError = true;
+      renderCamSlotList();
     });
   }
 
