@@ -1963,6 +1963,15 @@
   // ket noi dang chay (may tinh se KHONG con ket noi voi dien thoai nua cho
   // toi khi mo lai) - nhung KHONG xoa ma da luu, mo lai la tu ket noi lai
   // ngay, khong phai nhap lai tu dau.
+  //
+  // NGOAI LE: o nao dang QUAY VIDEO va da dat GIO TU DONG LUU thi GIU
+  // NGUYEN ket noi ngam du dong panel - vi neu ngat, phien quay se bi dung
+  // va lich tu luu (dat cho mot thoi diem trong tuong lai, co the luc do
+  // panel dang dong) se khong bao gio co co hoi chay. Cac o khac (khong
+  // quay, hoac quay nhung chua dat gio) van bi ngat nhu binh thuong.
+  function _shouldKeepAliveOnClose(i) {
+    return camSlots[i].recording && !!getRecordSettings(i).autoSaveTime;
+  }
   async function openCamQrPanelAndAutoConnect() {
     camQrPanel.classList.add('show');
     renderCamSlotList();
@@ -1975,9 +1984,15 @@
   }
   function closeCamQrPanelAndPause() {
     camQrPanel.classList.remove('show');
+    let keptAlive = false;
     camSlots.forEach((slot, i) => {
-      if (slot.roomCode) disconnectSlot(i, true, true); // silent + giu nguyen ma da luu
+      if (!slot.roomCode) return;
+      if (_shouldKeepAliveOnClose(i)) { keptAlive = true; return; }
+      disconnectSlot(i, true, true); // silent + giu nguyen ma da luu
     });
+    if (keptAlive) {
+      showCamSignalToast('🔴 Một số ĐT vẫn giữ kết nối ngầm để tiếp tục quay theo lịch tự lưu đã đặt');
+    }
   }
   document.getElementById('camQrBtn').onclick = () => {
     if (camQrPanel.classList.contains('show')) {
