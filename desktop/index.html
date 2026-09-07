@@ -434,8 +434,45 @@
   }
   .cam-live-tile.has-signal .cam-tile-empty { display:none; }
 
+  /* Nut quay video + nut cai dat gio tu dong luu moi ngay, dat goc duoi-phai
+     tung o xem (goc tren-phai da danh cho nut "Ve truc tiep" tuy hien dang
+     an, de tranh dung do sau nay neu bat lai). */
+  .cam-tile-record-controls {
+    position:absolute; bottom:10px; right:10px; z-index:4;
+    display:flex; align-items:center; gap:6px;
+  }
+  .cam-record-btn, .cam-record-settings-btn {
+    width:30px; height:30px; border-radius:50%; cursor:pointer; border:none;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+    background:rgba(0,0,0,0.55); color:#fff;
+  }
+  .cam-record-btn:hover, .cam-record-settings-btn:hover { background:rgba(0,0,0,0.8); }
+  .cam-record-btn.recording { background:#e0304f; color:#fff; animation: recPulse 1.2s infinite; }
+  @keyframes recPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(224,48,79,0.6);} 50%{ box-shadow:0 0 0 6px rgba(224,48,79,0);} }
+  .cam-record-settings-pop {
+    display:none; position:absolute; bottom:38px; right:0; width:220px;
+    background:#1a1226; border:1px solid rgba(192,38,255,0.4); border-radius:10px;
+    padding:10px; font-size:12px; color:var(--text); box-shadow:0 6px 20px rgba(0,0,0,0.5);
+  }
+  .cam-record-settings-pop.show { display:block; }
+  .cam-record-settings-pop label { display:block; margin-bottom:6px; color:#c7a8ff; }
+  .cam-record-time-input {
+    width:100%; box-sizing:border-box; padding:6px 8px; border-radius:6px;
+    border:1px solid rgba(192,38,255,0.4); background:#0d0715; color:var(--text); margin-bottom:8px;
+  }
+  .cam-record-settings-actions { display:flex; justify-content:flex-end; gap:6px; }
+  .cam-record-settings-actions button {
+    padding:5px 12px; border-radius:16px; cursor:pointer; font-size:11px; border:none;
+  }
+  .cam-record-time-save { background:linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; }
+  .cam-record-time-clear { background:rgba(255,255,255,0.1); color:var(--text); }
+
+  /* Truoc day nut Dong nam trong luong flex binh thuong (moc them phia duoi
+     luoi video) nen bi day xuong giua-duoi cung. Gio dinh vi tuyet doi ngay
+     goc tren-phai cua overlay, khong con phu thuoc vao luong noi dung nua. */
   #closeCamLive {
-    margin-top:18px; padding:10px 22px; border-radius:22px; cursor:pointer;
+    position:absolute; top:14px; right:18px; z-index:5;
+    padding:8px 18px; border-radius:22px; cursor:pointer;
     border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.12); color:var(--text); font-size:13px;
   }
   #closeCamLive:hover { background:rgba(192,38,255,0.3); color:#fff; }
@@ -607,9 +644,6 @@
         <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
         <div class="settings-item" data-panel="oneclickopen">👆 Mở link bằng 1 chạm</div>
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
-        <div class="settings-sep"></div>
-        <div class="settings-item" data-panel="camrecordings">🎬 Quản lý bản ghi QR Cam</div>
-        <div class="settings-item" data-panel="camretention">🗑 Tự động xoá bản ghi cũ</div>
       </div>
     </div>
     <div id="tabsBar">
@@ -733,6 +767,18 @@
         <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
+        <div class="cam-tile-record-controls">
+          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
+          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
+          <div class="cam-record-settings-pop">
+            <label>Tự động lưu &amp; đổi file mới lúc:</label>
+            <input type="time" class="cam-record-time-input" />
+            <div class="cam-record-settings-actions">
+              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-save">Lưu</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="cam-live-tile" data-slot="1">
         <video autoplay muted playsinline controls></video>
@@ -741,6 +787,18 @@
         <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
+        <div class="cam-tile-record-controls">
+          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
+          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
+          <div class="cam-record-settings-pop">
+            <label>Tự động lưu &amp; đổi file mới lúc:</label>
+            <input type="time" class="cam-record-time-input" />
+            <div class="cam-record-settings-actions">
+              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-save">Lưu</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="cam-live-tile" data-slot="2">
         <video autoplay muted playsinline controls></video>
@@ -749,6 +807,18 @@
         <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
+        <div class="cam-tile-record-controls">
+          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
+          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
+          <div class="cam-record-settings-pop">
+            <label>Tự động lưu &amp; đổi file mới lúc:</label>
+            <input type="time" class="cam-record-time-input" />
+            <div class="cam-record-settings-actions">
+              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-save">Lưu</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="cam-live-tile" data-slot="3">
         <video autoplay muted playsinline controls></video>
@@ -757,6 +827,18 @@
         <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
+        <div class="cam-tile-record-controls">
+          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
+          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
+          <div class="cam-record-settings-pop">
+            <label>Tự động lưu &amp; đổi file mới lúc:</label>
+            <input type="time" class="cam-record-time-input" />
+            <div class="cam-record-settings-actions">
+              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-save">Lưu</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <button id="closeCamLive">Đóng</button>
@@ -764,6 +846,93 @@
 
   <script src="vendor/firebase-compat.js"></script>
   <script src="vendor/qrcode.min.js"></script>
+  <script>
+  // ====== Nut dieu khien cua so (thu nho / phong to / dong) + keo-gian vien cua so ======
+  // CHAY DAU TIEN, boc try/catch rieng: truoc day khoi nay nam sau rat nhieu
+  // code khac trong CUNG 1 script duy nhat - neu bat ky doan nao phia truoc no
+  // gap loi runtime, no se KHONG BAO GIO chay toi, khien nut thu nho/dong
+  // hoan toan khong phan hoi. Dat len dau + tu boc try/catch de dam bao LUON
+  // hoat dong bat ke phan con lai cua app co loi gi xay ra sau nay.
+  try {
+    const winMinBtn = document.getElementById('winMinBtn');
+    const winMaxBtn = document.getElementById('winMaxBtn');
+    const winCloseBtn = document.getElementById('winCloseBtn');
+
+    if (window.windowControls) {
+      winMinBtn.onclick = () => window.windowControls.minimize();
+      winMaxBtn.onclick = () => window.windowControls.toggleMaximize();
+      winCloseBtn.onclick = () => window.windowControls.close();
+      window.windowControls.onMaximizedChange((isMaximized) => {
+        winMaxBtn.textContent = isMaximized ? '❐' : '☐';
+        winMaxBtn.title = isMaximized ? 'Khôi phục' : 'Phóng to';
+      });
+    }
+
+    // Keo-gian cua so tu vien/goc: cua so frame:false + noi dung (webview) phu
+    // kin sat toi tan mep cua so, nen he dieu hanh KHONG CON "khe ho" nao o
+    // vien de tu nhan dien thao tac keo-gian (moi su kien mousedown ngay tai
+    // mep deu bi webview/noi dung ben duoi "nuot" truoc). Giai phap: tu ve 8
+    // vung "tay cam" mong (canh + goc), tu tinh toan kich thuoc/vi tri cua so
+    // moi theo chuot va goi windowControls.setBounds() - khong phu thuoc vao
+    // co che keo-gian mac dinh cua he dieu hanh nua.
+    if (window.windowControls && window.windowControls.getBounds && window.windowControls.setBounds) {
+      const EDGES = [
+        { dir: 'n',  cursor: 'ns-resize',   style: 'top:0; left:6px; right:6px; height:6px;' },
+        { dir: 's',  cursor: 'ns-resize',   style: 'bottom:0; left:6px; right:6px; height:6px;' },
+        { dir: 'w',  cursor: 'ew-resize',   style: 'left:0; top:6px; bottom:6px; width:6px;' },
+        { dir: 'e',  cursor: 'ew-resize',   style: 'right:0; top:6px; bottom:6px; width:6px;' },
+        { dir: 'nw', cursor: 'nwse-resize', style: 'top:0; left:0; width:10px; height:10px;' },
+        { dir: 'se', cursor: 'nwse-resize', style: 'bottom:0; right:0; width:10px; height:10px;' },
+        { dir: 'ne', cursor: 'nesw-resize', style: 'top:0; right:0; width:10px; height:10px;' },
+        { dir: 'sw', cursor: 'nesw-resize', style: 'bottom:0; left:0; width:10px; height:10px;' },
+      ];
+      const MIN_W = 480, MIN_H = 360;
+      let dragState = null;
+
+      EDGES.forEach(edge => {
+        const el = document.createElement('div');
+        el.style.cssText = 'position:fixed; z-index:99999; -webkit-app-region:no-drag; ' +
+          'background:transparent; cursor:' + edge.cursor + '; ' + edge.style;
+        document.body.appendChild(el);
+        el.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          window.windowControls.getBounds().then(bounds => {
+            if (!bounds) return;
+            dragState = {
+              dir: edge.dir,
+              startX: ev.screenX, startY: ev.screenY,
+              startBounds: bounds
+            };
+          });
+        });
+      });
+
+      window.addEventListener('mousemove', (ev) => {
+        if (!dragState) return;
+        const dx = ev.screenX - dragState.startX;
+        const dy = ev.screenY - dragState.startY;
+        const b = dragState.startBounds;
+        let { x, y, width, height } = b;
+
+        if (dragState.dir.includes('e')) width  = Math.max(MIN_W, b.width + dx);
+        if (dragState.dir.includes('s')) height = Math.max(MIN_H, b.height + dy);
+        if (dragState.dir.includes('w')) {
+          width = Math.max(MIN_W, b.width - dx);
+          x = b.x + (b.width - width);
+        }
+        if (dragState.dir.includes('n')) {
+          height = Math.max(MIN_H, b.height - dy);
+          y = b.y + (b.height - height);
+        }
+        window.windowControls.setBounds({ x, y, width, height });
+      });
+
+      window.addEventListener('mouseup', () => { dragState = null; });
+    }
+  } catch (e) {
+    console.error('Loi khoi tao nut dieu khien cua so / resize:', e);
+  }
+  </script>
   <script>
   window.FIREBASE_CONFIG = {
     apiKey: "AIzaSyCPwMKElbsQLjOeSVddGAfjNiHnPHV9b1A",
@@ -1255,23 +1424,6 @@
     if (url) newTab(normalizeUrl(url));
   });
 
-  // ====== Nut dieu khien cua so (thu nho / phong to / dong) tren thanh tieu de tu ve ======
-  // Khong lien quan gi den logic tab hay quet QR; chi goi qua API an toan
-  // ma preload.js da lo ra (window.windowControls), vi contextIsolation dang bat.
-  const winMinBtn = document.getElementById('winMinBtn');
-  const winMaxBtn = document.getElementById('winMaxBtn');
-  const winCloseBtn = document.getElementById('winCloseBtn');
-
-  if (window.windowControls) {
-    winMinBtn.onclick = () => window.windowControls.minimize();
-    winMaxBtn.onclick = () => window.windowControls.toggleMaximize();
-    winCloseBtn.onclick = () => window.windowControls.close();
-    window.windowControls.onMaximizedChange((isMaximized) => {
-      winMaxBtn.textContent = isMaximized ? '❐' : '☐';
-      winMaxBtn.title = isMaximized ? 'Khôi phục' : 'Phóng to';
-    });
-  }
-
   urlbar.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       const wv = getActiveWebview();
@@ -1501,6 +1653,11 @@
       signalLostTimer: null,
       reconnectTimer: null,
       permissionError: false, // true khi Firebase tu choi doc/ghi (Rules chan) - khac voi "dang cho dien thoai"
+      recording: false,
+      mediaRecorder: null,
+      recordedChunks: [],
+      autoSaveTimer: null,
+      _restartAfterFlush: false,
     };
   }
 
@@ -1581,18 +1738,44 @@
   function connectSlot(i, code) {
     if (!code || code.length < 4) { showCamSignalToast('Nhập mã 6 số của điện thoại'); return; }
     if (!db) { showCamSignalToast('Firebase chưa sẵn sàng'); return; }
-    disconnectSlot(i, true); // don slot cu neu co
+    disconnectSlot(i, true, true); // don slot cu neu co - GIU nguyen ma da luu, se ghi lai ngay ben duoi
     const slot = camSlots[i];
     slot.roomCode = code;
     slot.viewerId = 'pc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
     slot.permissionError = false;
     renderCamSlotList();
+    // Luu lai ma nay - se con nguyen trong o nhap ke ca sau khi tat app roi mo
+    // lai, cho toi khi nguoi dung tu bam ngat (✕) hoac nhap ma khac de thay.
+    const codes = camRoomCodesStore.load().slice();
+    codes[i] = code;
+    camRoomCodesStore.save(codes);
     _doConnect(i);
   }
 
   function _doConnect(i) {
     const slot = camSlots[i];
     if (!slot.roomCode) return;
+
+    // SUA LOI "da ket noi lai thanh cong nhung van hien Mat tin hieu vinh
+    // vien": khi ket noi lai (sau mat tin hieu), _doConnect() truoc day
+    // KHONG reset slot.generation - neu dien thoai khong doi so generation
+    // (fbHostGenListener kiem tra "gen === slot.generation" roi bo qua),
+    // offer/ICE listener moi se KHONG BAO GIO duoc dang ky lai, nen ket noi
+    // moi khong the nao hoan tat - UI ket qua ket ket mai o "Mat tin hieu".
+    // Reset ve -1 (gia tri Firebase khong bao gio luu) de LUON dang ky lai,
+    // bat ke dien thoai co doi so generation hay khong.
+    slot.generation = -1;
+    // Don listener hostGeneration CU (tu lan _doConnect truoc, neu co) truoc
+    // khi dang ky listener moi - tranh chong listener tren cung 1 duong dan.
+    if (slot.fbHostGenListener && slot.fbViewerRef) {
+      slot.fbViewerRef.child('hostGeneration').off('value', slot.fbHostGenListener);
+    }
+    // Dang thu ket noi lai - bo trang thai "Mat tin hieu" NGAY, de giao dien
+    // hien dung "Dang ket noi..." thay vi tiep tuc treo "Mat tin hieu" trong
+    // luc dang thu lai (dung ke ca khi ket noi cuoi cung that bai/phai thu lai
+    // vong tiep theo - _onSlotLostSignal() se tu bat lai signalLost=true).
+    slot.signalLost = false;
+    renderCamSlotList();
 
     // Tao RTCPeerConnection
     const pc = new RTCPeerConnection({ iceServers: CAM_ICE_SERVERS });
@@ -1730,10 +1913,13 @@
     }, CAM_SIGNAL_LOST_MS);
   }
 
-  function disconnectSlot(i, silent) {
+  function disconnectSlot(i, silent, keepSavedCode) {
     const slot = camSlots[i];
     clearTimeout(slot.reconnectTimer);
     clearTimeout(slot.signalLostTimer);
+    // Dung sach neu dang quay video o - tranh MediaRecorder con treo lai chay
+    // ngam sau khi stream/pc da bi dong, khong bao gio duoc luu xuong file.
+    if (slot.recording) stopRecording(i, false);
     // Don Firebase
     if (slot.fbOfferListener && slot.fbGenRef) slot.fbGenRef.child('offer').off('value', slot.fbOfferListener);
     if (slot.fbIceListener   && slot.fbGenRef) slot.fbGenRef.child('iceCandidatesHost').off('value', slot.fbIceListener);
@@ -1747,6 +1933,15 @@
     video.src = '';
     // Reset slot
     Object.assign(slot, makeCamSlot(i));
+    // CHỈ xoá mã đã lưu khi đây là hành động ngắt THẬT SỰ do người dùng chủ
+    // động bấm (✕) - không xoá khi chỉ là tạm ngắt vì đóng trang QR Cam (panel
+    // đóng) hoặc đang chuẩn bị kết nối lại bằng mã mới (connectSlot gọi hàm
+    // này trước rồi tự ghi lại mã mới ngay sau đó).
+    if (!keepSavedCode) {
+      const codes = camRoomCodesStore.load().slice();
+      codes[i] = '';
+      camRoomCodesStore.save(codes);
+    }
     renderCamSlotList();
     updateLiveTileState(i);
     if (!silent) showCamSignalToast('ĐT ' + (i+1) + ' đã ngắt kết nối');
@@ -1762,16 +1957,36 @@
     camSignalToastTimer = setTimeout(() => el.classList.remove('show'), 6000);
   }
 
-  // Dong/mo panel
+  // Dong/mo panel — CHUC NANG QR Cam CHI hoat dong trong luc panel dang mo:
+  // mo panel se tu dong ket noi lai bang (cac) ma da luu tu truoc (neu co); o
+  // nao chua co ma thi cu de trong cho nhap. Dong panel se tam ngat HET moi
+  // ket noi dang chay (may tinh se KHONG con ket noi voi dien thoai nua cho
+  // toi khi mo lai) - nhung KHONG xoa ma da luu, mo lai la tu ket noi lai
+  // ngay, khong phai nhap lai tu dau.
+  async function openCamQrPanelAndAutoConnect() {
+    camQrPanel.classList.add('show');
+    renderCamSlotList();
+    await localStoreReady; // dam bao da doc xong ma da luu tu file truoc khi dung
+    const savedCodes = camRoomCodesStore.load();
+    camSlots.forEach((slot, i) => {
+      const saved = (savedCodes[i] || '').trim();
+      if (saved && !slot.roomCode) connectSlot(i, saved);
+    });
+  }
+  function closeCamQrPanelAndPause() {
+    camQrPanel.classList.remove('show');
+    camSlots.forEach((slot, i) => {
+      if (slot.roomCode) disconnectSlot(i, true, true); // silent + giu nguyen ma da luu
+    });
+  }
   document.getElementById('camQrBtn').onclick = () => {
     if (camQrPanel.classList.contains('show')) {
-      camQrPanel.classList.remove('show');
+      closeCamQrPanelAndPause();
     } else {
-      camQrPanel.classList.add('show');
-      renderCamSlotList();
+      openCamQrPanelAndAutoConnect();
     }
   };
-  document.getElementById('closeCamQr').onclick = () => camQrPanel.classList.remove('show');
+  document.getElementById('closeCamQr').onclick = closeCamQrPanelAndPause;
 
   // ====== Live view: gan stream vao tile video ======
   function updateLiveTileState(i) {
@@ -1817,6 +2032,177 @@
     }));
   };
 
+  // ====== Quay video tung o xem: chon thu muc luu truoc, quay bang MediaRecorder
+  // tren chinh MediaStream dang hien thi trong o, tu dong luu + doi file moi theo
+  // gio da chon moi ngay ======
+  const camRecordSettingsStore = makeJsonStore('cam-record-settings', [
+    { folder: null, autoSaveTime: null },
+    { folder: null, autoSaveTime: null },
+    { folder: null, autoSaveTime: null },
+    { folder: null, autoSaveTime: null }
+  ]);
+
+  function getRecordSettings(i) {
+    const all = camRecordSettingsStore.load();
+    return (all && all[i]) || { folder: null, autoSaveTime: null };
+  }
+  function saveRecordSettings(i, patch) {
+    const all = (camRecordSettingsStore.load() || []).slice();
+    while (all.length < MAX_CAM_SLOTS) all.push({ folder: null, autoSaveTime: null });
+    all[i] = Object.assign({}, all[i], patch);
+    camRecordSettingsStore.save(all);
+  }
+
+  function _pad2(n) { return String(n).padStart(2, '0'); }
+  function _recordingFilename(i) {
+    const d = new Date();
+    return 'qrcam_dt' + (i + 1) + '_' + d.getFullYear() + _pad2(d.getMonth() + 1) + _pad2(d.getDate()) +
+      '_' + _pad2(d.getHours()) + _pad2(d.getMinutes()) + _pad2(d.getSeconds()) + '.webm';
+  }
+  function _arrayBufferToBase64(buf) {
+    let binary = '';
+    const bytes = new Uint8Array(buf);
+    const chunkSize = 0x8000;
+    for (let idx = 0; idx < bytes.length; idx += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(idx, idx + chunkSize));
+    }
+    return btoa(binary);
+  }
+
+  function _updateRecordBtnUI(i) {
+    const btn = camLiveTiles[i].querySelector('.cam-record-btn');
+    if (!btn) return;
+    btn.classList.toggle('recording', !!camSlots[i].recording);
+    btn.title = camSlots[i].recording ? 'Dừng quay (sẽ lưu file ngay)' : 'Quay video ô này';
+  }
+
+  // Bam nut quay: NEU o nay chua tung chon thu muc luu, hoi truoc (hop thoai
+  // that cua he dieu hanh) - chon xong roi moi bat dau quay. Lan sau se dung
+  // lai dung thu muc da chon, khong hoi lai nua (de tinh nang tu dong luu
+  // hang ngay chay ngam duoc, khong the hoi lai giua dem).
+  async function startRecording(i) {
+    const slot = camSlots[i];
+    if (!slot.stream) { showCamSignalToast('ĐT ' + (i+1) + ' chưa có hình để quay'); return; }
+    if (slot.recording) return;
+    let settings = getRecordSettings(i);
+    if (!settings.folder) {
+      if (!window.recordingBridge) { showCamSignalToast('Không thể chọn thư mục lưu'); return; }
+      const folder = await window.recordingBridge.chooseFolder();
+      if (!folder) return; // nguoi dung bam Huy trong hop thoai chon thu muc
+      saveRecordSettings(i, { folder });
+    }
+    try {
+      const mr = new MediaRecorder(slot.stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      slot.recordedChunks = [];
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) slot.recordedChunks.push(e.data); };
+      mr.onstop = () => { _flushRecording(i); };
+      mr.start(1000); // gom du lieu moi 1s - giam rui ro mat trang neu app tat dot ngot
+      slot.mediaRecorder = mr;
+      slot.recording = true;
+      _updateRecordBtnUI(i);
+      _scheduleAutoSave(i);
+      showCamSignalToast('⏺ Đang quay video ĐT ' + (i+1));
+    } catch (e) {
+      console.error('Khong the bat dau quay video', e);
+      showCamSignalToast('⚠️ Không thể bắt đầu quay video ĐT ' + (i+1));
+    }
+  }
+
+  // restart=true dung cho luc tu dong luu-va-doi-file-moi hang ngay: luu file
+  // hien tai xong thi TU KHOI DONG LAI ngay (khong hoi lai thu muc), tiep tuc
+  // quay lien mach sang ngay tiep theo.
+  function stopRecording(i, restart) {
+    const slot = camSlots[i];
+    if (!slot.recording || !slot.mediaRecorder) return;
+    slot.recording = false;
+    clearTimeout(slot.autoSaveTimer);
+    slot._restartAfterFlush = !!restart;
+    try { slot.mediaRecorder.stop(); } catch(e) {}
+    slot.mediaRecorder = null;
+    _updateRecordBtnUI(i);
+  }
+
+  async function _flushRecording(i) {
+    const slot = camSlots[i];
+    const chunks = slot.recordedChunks || [];
+    slot.recordedChunks = [];
+    if (!chunks.length) {
+      if (slot._restartAfterFlush) { slot._restartAfterFlush = false; startRecording(i); }
+      return;
+    }
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const buf = await blob.arrayBuffer();
+    const base64 = _arrayBufferToBase64(buf);
+    const settings = getRecordSettings(i);
+    if (settings.folder && window.recordingBridge) {
+      const filename = _recordingFilename(i);
+      const result = await window.recordingBridge.save(settings.folder, filename, base64);
+      showCamSignalToast(result && result.ok
+        ? ('💾 Đã lưu video ĐT ' + (i+1) + ': ' + filename)
+        : ('⚠️ Lưu video ĐT ' + (i+1) + ' thất bại'));
+    }
+    if (slot._restartAfterFlush) {
+      slot._restartAfterFlush = false;
+      startRecording(i);
+    }
+  }
+
+  // Len lich tu dong "luu va doi file moi" vao dung gio da chon MOI NGAY -
+  // tu tinh thoi diem ke tiep (hom nay neu chua qua gio do, mai neu da qua).
+  function _scheduleAutoSave(i) {
+    const slot = camSlots[i];
+    clearTimeout(slot.autoSaveTimer);
+    const settings = getRecordSettings(i);
+    if (!settings.autoSaveTime || !slot.recording) return;
+    const parts = settings.autoSaveTime.split(':').map(Number);
+    const hh = parts[0], mm = parts[1];
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    slot.autoSaveTimer = setTimeout(() => {
+      if (slot.recording) stopRecording(i, /*restart=*/true);
+    }, next.getTime() - now.getTime());
+  }
+
+  // Noi nut quay / nut cai dat gio / popover cho tung o
+  camLiveTiles.forEach((tile, i) => {
+    const recordBtn = tile.querySelector('.cam-record-btn');
+    const settingsBtn = tile.querySelector('.cam-record-settings-btn');
+    const pop = tile.querySelector('.cam-record-settings-pop');
+    const timeInput = tile.querySelector('.cam-record-time-input');
+    const saveBtn = tile.querySelector('.cam-record-time-save');
+    const clearBtn = tile.querySelector('.cam-record-time-clear');
+    if (!recordBtn) return;
+
+    recordBtn.onclick = () => {
+      if (camSlots[i].recording) stopRecording(i, false);
+      else startRecording(i);
+    };
+
+    settingsBtn.onclick = () => {
+      const settings = getRecordSettings(i);
+      timeInput.value = settings.autoSaveTime || '';
+      pop.classList.toggle('show');
+    };
+
+    saveBtn.onclick = () => {
+      const val = timeInput.value || null;
+      saveRecordSettings(i, { autoSaveTime: val });
+      pop.classList.remove('show');
+      if (camSlots[i].recording) _scheduleAutoSave(i);
+      showCamSignalToast(val ? ('Đã đặt giờ tự lưu ĐT ' + (i+1) + ': ' + val)
+                              : ('Đã tắt tự động lưu ĐT ' + (i+1)));
+    };
+
+    clearBtn.onclick = () => {
+      timeInput.value = '';
+      saveRecordSettings(i, { autoSaveTime: null });
+      clearTimeout(camSlots[i].autoSaveTimer);
+      pop.classList.remove('show');
+      showCamSignalToast('Đã tắt tự động lưu ĐT ' + (i+1));
+    };
+  });
+
   // Nut "Ve truc tiep" tren tung tile (cho WebRTC stream khong co buffered)
   camLiveTiles.forEach((tile) => {
     const goLiveBtn = tile.querySelector('.cam-golive-btn');
@@ -1844,7 +2230,7 @@
   // main.js dam nhiem qua IPC (window.localStoreBridge), dung 1 file .json
   // rieng cho tung loai du lieu trong ~/.ghn-browser/ tren CHINH may nay -
   // KHONG dong bo qua may nao khac, khong dam may nao ca.
-  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'defaultlang', 'adblock-enabled', 'one-click-open-enabled'];
+  const LOCAL_STORE_KEYS = ['bookmarks', 'history', 'passwords', 'theme', 'phishing-blocklist', 'cam-retention-days', 'cam-room-codes', 'cam-record-settings', 'defaultlang', 'adblock-enabled', 'one-click-open-enabled'];
   const localStoreCache = {};
   let localStoreReady = null; // Promise, resolve khi da doc xong du lieu tu file luc khoi dong
 
@@ -1873,6 +2259,10 @@
   const historyStore = makeJsonStore('history', []);
   const passwordsStore = makeJsonStore('passwords', []);
   const camRetentionStore = makeJsonStore('cam-retention-days', 0); // 0 = khong bao gio tu xoa
+  // Ma 6 so cua tung o (4 o) - LUU LAI vinh vien qua cac lan mo app, KHONG tu
+  // mat sau khi ket noi. Chi mat khi nguoi dung chu dong bam nut ngat (✕) o
+  // chinh o do, hoac nhap ma khac de thay the.
+  const camRoomCodesStore = makeJsonStore('cam-room-codes', ['', '', '', '']);
   const MAX_HISTORY_ITEMS = 500;
 
   // Xao tron nhe cho mat khau luu cuc bo (KHONG phai ma hoa manh - chi de
@@ -2158,9 +2548,7 @@
     theme: '🎨 Màu giao diện',
     adblock: '🛡 Chặn quảng cáo',
     oneclickopen: '👆 Mở link bằng 1 chạm',
-    phishing: '🚫 Chặn web đen/lừa đảo',
-    camrecordings: '🎬 Quản lý bản ghi QR Cam',
-    camretention: '🗑 Tự động xoá bản ghi cũ'
+    phishing: '🚫 Chặn web đen/lừa đảo'
   };
 
   function openSidePanel(kind) {
@@ -2294,16 +2682,6 @@
     if (currentSidePanel === 'phishing') {
       sidePanelClear.style.display = phishingStore.load().length ? '' : 'none';
       renderPhishingPanel();
-    }
-
-    if (currentSidePanel === 'camrecordings') {
-      sidePanelClear.style.display = 'none';
-      renderCamRecordingsPanel();
-    }
-
-    if (currentSidePanel === 'camretention') {
-      sidePanelClear.style.display = 'none';
-      renderCamRetentionPanel();
     }
   }
 

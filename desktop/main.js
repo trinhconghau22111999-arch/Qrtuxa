@@ -404,6 +404,9 @@ function createWindow(initialUrl) {
   const win = new BrowserWindow({
     width: 1280,
     height: 820,
+    minWidth: 480,
+    minHeight: 360,
+    resizable: true,
     icon: path.join(__dirname, 'build', 'icon.ico'),
     autoHideMenuBar: true,
     frame: false,
@@ -495,6 +498,49 @@ function createWindow(initialUrl) {
   });
   ipcMain.on('win:close', (e) => {
     if (e.sender === win.webContents) win.close();
+  });
+
+  // ====== Ho tro tay cam keo-gian vien cua so tu ve trong renderer ======
+  // (can vi cua so frame:false + noi dung phu kin sat mep khien HDH khong
+  // con nhan dien duoc thao tac keo-gian mac dinh o vien nua - xem index.html)
+  ipcMain.handle('win:get-bounds', (e) => {
+    if (e.sender !== win.webContents) return null;
+    return win.getBounds();
+  });
+  ipcMain.on('win:set-bounds', (e, bounds) => {
+    if (e.sender !== win.webContents || !bounds) return;
+    const MIN_W = 480, MIN_H = 360;
+    win.setBounds({
+      x: Math.round(bounds.x),
+      y: Math.round(bounds.y),
+      width: Math.max(MIN_W, Math.round(bounds.width)),
+      height: Math.max(MIN_H, Math.round(bounds.height))
+    });
+  });
+
+  // ====== Quay video tung o xem QR Cam: chon thu muc luu + ghi file that ======
+  // (renderer chi ghi hinh bang MediaRecorder trong bo nho - khong the tu
+  // ghi file xuong dia vi contextIsolation dang bat, giong moi thu khac)
+  ipcMain.handle('recording:choose-folder', async (e) => {
+    if (e.sender !== win.webContents) return null;
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Chọn nơi lưu video ghi hình',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    return result.filePaths[0];
+  });
+  ipcMain.handle('recording:save', async (e, { folder, filename, base64Data }) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    try {
+      if (!folder || !filename) return { ok: false, error: 'missing folder/filename' };
+      fs.mkdirSync(folder, { recursive: true });
+      const fullPath = path.join(folder, filename);
+      fs.writeFileSync(fullPath, Buffer.from(base64Data, 'base64'));
+      return { ok: true, path: fullPath };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
   });
 
   win.on('maximize', () => win.webContents.send('win:maximized-state', true));

@@ -10,7 +10,12 @@ contextBridge.exposeInMainWorld('windowControls', {
   close: () => ipcRenderer.send('win:close'),
   onMaximizedChange: (callback) => {
     ipcRenderer.on('win:maximized-state', (event, isMaximized) => callback(isMaximized));
-  }
+  },
+  // Cho he thong tu ve tay cam keo-gian vien cua so (xem index.html) - can vi
+  // du:false vi frame:false + noi dung phu kin sat mep khien HDH khong con
+  // "khe ho" nao de tu nhan dien thao tac keo-gian mac dinh nua.
+  getBounds: () => ipcRenderer.invoke('win:get-bounds'),
+  setBounds: (bounds) => ipcRenderer.send('win:set-bounds', bounds)
 });
 
 // Duong dan tuyet doi toi preload rieng cho <webview>, dung de bat su kien
@@ -76,6 +81,14 @@ contextBridge.exposeInMainWorld('camBridge', {
   delete: (camId, takeId) => ipcRenderer.send('camrec:delete', { camId, takeId }),
   openFile: (filePath) => ipcRenderer.send('camrec:open-file', filePath),
   setRetentionDays: (days) => ipcRenderer.send('camrec:set-retention', days)
+});
+
+// Quay video tung o xem QR Cam: chon thu muc luu (hop thoai that cua he
+// dieu hanh) + ghi file .webm that xuong dia - deu phai qua main.js vi
+// renderer khong co quyen dung fs truc tiep (contextIsolation dang bat).
+contextBridge.exposeInMainWorld('recordingBridge', {
+  chooseFolder: () => ipcRenderer.invoke('recording:choose-folder'),
+  save: (folder, filename, base64Data) => ipcRenderer.invoke('recording:save', { folder, filename, base64Data })
 });
 
 // Chup anh trang web: renderer tu chup (webview.capturePage()) roi gui du
