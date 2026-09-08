@@ -1765,6 +1765,29 @@
     const slot = camSlots[i];
     if (!slot.roomCode) return;
 
+    // SUA LOI "vua ket noi lai xong thi bao loi, roi ket ket mai o Dang ket
+    // noi": _doConnect() TRUOC DAY khong bao gio dong RTCPeerConnection CU
+    // truoc khi tao cai MOI - doi tuong cu van "song", cac su kien cua no
+    // (onconnectionstatechange, onicecandidate) van co the ban RA TRE (do
+    // ICE/STUN van dang xu ly ngam), ghi de len trang thai cua ket noi MOI
+    // ngay sau khi no vua thanh cong that su. Phai dong het + go moi listener
+    // cua pc CU truoc khi bat dau thu lai.
+    if (slot.pc) {
+      slot.pc.onconnectionstatechange = null;
+      slot.pc.onicecandidate = null;
+      slot.pc.ontrack = null;
+      try { slot.pc.close(); } catch(e) {}
+      slot.pc = null;
+    }
+    if (slot.fbOfferListener && slot.fbGenRef) {
+      slot.fbGenRef.child('offer').off('value', slot.fbOfferListener);
+      slot.fbOfferListener = null;
+    }
+    if (slot.fbIceListener && slot.fbGenRef) {
+      slot.fbGenRef.child('iceCandidatesHost').off('value', slot.fbIceListener);
+      slot.fbIceListener = null;
+    }
+
     // SUA LOI "da ket noi lai thanh cong nhung van hien Mat tin hieu vinh
     // vien": khi ket noi lai (sau mat tin hieu), _doConnect() truoc day
     // KHONG reset slot.generation - neu dien thoai khong doi so generation
@@ -1792,6 +1815,10 @@
 
     // Nhan video track tu dien thoai
     pc.ontrack = e => {
+      // Chi nhan neu day van la pc HIEN TAI cua slot - phong truong hop su
+      // kien nay la cua 1 pc CU da bi thay the (dut duyet dut, khong nen con
+      // xay ra sau fix o tren, nhung kiem tra them cho chac).
+      if (slot.pc !== pc) return;
       if (e.streams && e.streams[0]) {
         slot.stream = e.streams[0];
       } else {
@@ -1810,6 +1837,7 @@
 
     // ICE: gui len Firebase
     pc.onicecandidate = e => {
+      if (slot.pc !== pc) return; // pc cu, khong con hieu luc - bo qua
       if (!e.candidate || !slot.fbGenRef) return;
       slot.fbGenRef.child('iceCandidatesCtrl').push({
         sdpMid: e.candidate.sdpMid,
@@ -1819,6 +1847,7 @@
     };
 
     pc.onconnectionstatechange = () => {
+      if (slot.pc !== pc) return; // pc cu, khong con hieu luc - bo qua
       const s = pc.connectionState;
       if (s === 'connected') {
         slot.connected = true;
