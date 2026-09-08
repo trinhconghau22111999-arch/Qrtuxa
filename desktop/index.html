@@ -456,7 +456,7 @@
   }
   .cam-record-settings-pop.show { display:block; }
   .cam-record-settings-pop label { display:block; margin-bottom:6px; color:#c7a8ff; }
-  .cam-record-time-input {
+  .cam-record-start-input, .cam-record-stop-input {
     width:100%; box-sizing:border-box; padding:6px 8px; border-radius:6px;
     border:1px solid rgba(192,38,255,0.4); background:#0d0715; color:var(--text); margin-bottom:8px;
   }
@@ -771,10 +771,12 @@
           <button class="cam-record-btn" title="Quay video ô này">⏺</button>
           <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
           <div class="cam-record-settings-pop">
-            <label>Tự động lưu &amp; đổi file mới lúc:</label>
-            <input type="time" class="cam-record-time-input" />
+            <label>Giờ bắt đầu quay:</label>
+            <input type="time" class="cam-record-start-input" />
+            <label>Giờ kết thúc &amp; lưu:</label>
+            <input type="time" class="cam-record-stop-input" />
             <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-clear">Tắt lịch</button>
               <button class="cam-record-time-save">Lưu</button>
             </div>
           </div>
@@ -791,10 +793,12 @@
           <button class="cam-record-btn" title="Quay video ô này">⏺</button>
           <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
           <div class="cam-record-settings-pop">
-            <label>Tự động lưu &amp; đổi file mới lúc:</label>
-            <input type="time" class="cam-record-time-input" />
+            <label>Giờ bắt đầu quay:</label>
+            <input type="time" class="cam-record-start-input" />
+            <label>Giờ kết thúc &amp; lưu:</label>
+            <input type="time" class="cam-record-stop-input" />
             <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-clear">Tắt lịch</button>
               <button class="cam-record-time-save">Lưu</button>
             </div>
           </div>
@@ -811,10 +815,12 @@
           <button class="cam-record-btn" title="Quay video ô này">⏺</button>
           <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
           <div class="cam-record-settings-pop">
-            <label>Tự động lưu &amp; đổi file mới lúc:</label>
-            <input type="time" class="cam-record-time-input" />
+            <label>Giờ bắt đầu quay:</label>
+            <input type="time" class="cam-record-start-input" />
+            <label>Giờ kết thúc &amp; lưu:</label>
+            <input type="time" class="cam-record-stop-input" />
             <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-clear">Tắt lịch</button>
               <button class="cam-record-time-save">Lưu</button>
             </div>
           </div>
@@ -831,10 +837,12 @@
           <button class="cam-record-btn" title="Quay video ô này">⏺</button>
           <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
           <div class="cam-record-settings-pop">
-            <label>Tự động lưu &amp; đổi file mới lúc:</label>
-            <input type="time" class="cam-record-time-input" />
+            <label>Giờ bắt đầu quay:</label>
+            <input type="time" class="cam-record-start-input" />
+            <label>Giờ kết thúc &amp; lưu:</label>
+            <input type="time" class="cam-record-stop-input" />
             <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt</button>
+              <button class="cam-record-time-clear">Tắt lịch</button>
               <button class="cam-record-time-save">Lưu</button>
             </div>
           </div>
@@ -1656,7 +1664,8 @@
       recording: false,
       mediaRecorder: null,
       recordedChunks: [],
-      autoSaveTimer: null,
+      startTimer: null,
+      stopTimer: null,
       _restartAfterFlush: false,
     };
   }
@@ -1820,6 +1829,12 @@
         updateLiveTileState(i);
         // Bat dau theo doi mat tin hieu
         _startSignalLostCheck(i);
+        // Vua co ket noi (co stream) - neu o nay dang co lich Bat dau/Ket thuc
+        // dang bat, len lich cho lan chay tiep theo VA kiem tra xem hien tai
+        // co dang nam trong khung gio da dat khong (de tu quay ngay, khong
+        // phai doi den lan kich hoat ke tiep cua ngay mai).
+        _scheduleRecordingWindow(i);
+        _startRecordingIfWithinScheduledWindow(i);
       } else if (s === 'disconnected' || s === 'failed') {
         _onSlotLostSignal(i);
       }
@@ -1917,6 +1932,8 @@
     const slot = camSlots[i];
     clearTimeout(slot.reconnectTimer);
     clearTimeout(slot.signalLostTimer);
+    clearTimeout(slot.startTimer);
+    clearTimeout(slot.stopTimer);
     // Dung sach neu dang quay video o - tranh MediaRecorder con treo lai chay
     // ngam sau khi stream/pc da bi dong, khong bao gio duoc luu xuong file.
     if (slot.recording) stopRecording(i, false);
@@ -1964,14 +1981,11 @@
   // toi khi mo lai) - nhung KHONG xoa ma da luu, mo lai la tu ket noi lai
   // ngay, khong phai nhap lai tu dau.
   //
-  // NGOAI LE: o nao dang QUAY VIDEO va da dat GIO TU DONG LUU thi GIU
-  // NGUYEN ket noi ngam du dong panel - vi neu ngat, phien quay se bi dung
-  // va lich tu luu (dat cho mot thoi diem trong tuong lai, co the luc do
-  // panel dang dong) se khong bao gio co co hoi chay. Cac o khac (khong
-  // quay, hoac quay nhung chua dat gio) van bi ngat nhu binh thuong.
-  function _shouldKeepAliveOnClose(i) {
-    return camSlots[i].recording && !!getRecordSettings(i).autoSaveTime;
-  }
+  // NGOAI LE: o nao dang quay HOAC co lich Bat dau/Ket thuc dang bat thi GIU
+  // NGUYEN ket noi ngam du dong panel (xem ham _shouldKeepAliveOnClose dinh
+  // nghia cung khoi lich quay ben duoi) - vi neu ngat, phien quay dang chay se
+  // bi cat ngang, va lich cho mot thoi diem trong tuong lai (luc do panel co
+  // the dang dong) se khong bao gio co co hoi kich hoat.
   async function openCamQrPanelAndAutoConnect() {
     camQrPanel.classList.add('show');
     renderCamSlotList();
@@ -2048,24 +2062,36 @@
   };
 
   // ====== Quay video tung o xem: chon thu muc luu truoc, quay bang MediaRecorder
-  // tren chinh MediaStream dang hien thi trong o, tu dong luu + doi file moi theo
-  // gio da chon moi ngay ======
+  // tren chinh MediaStream dang hien thi trong o. Ho tro DAT LICH: gio BAT DAU
+  // quay + gio KET THUC va luu, lap lai moi ngay - khong can tu bam ⏺. ======
   const camRecordSettingsStore = makeJsonStore('cam-record-settings', [
-    { folder: null, autoSaveTime: null },
-    { folder: null, autoSaveTime: null },
-    { folder: null, autoSaveTime: null },
-    { folder: null, autoSaveTime: null }
+    { folder: null, startTime: null, stopTime: null },
+    { folder: null, startTime: null, stopTime: null },
+    { folder: null, startTime: null, stopTime: null },
+    { folder: null, startTime: null, stopTime: null }
   ]);
 
   function getRecordSettings(i) {
     const all = camRecordSettingsStore.load();
-    return (all && all[i]) || { folder: null, autoSaveTime: null };
+    return (all && all[i]) || { folder: null, startTime: null, stopTime: null };
   }
   function saveRecordSettings(i, patch) {
     const all = (camRecordSettingsStore.load() || []).slice();
-    while (all.length < MAX_CAM_SLOTS) all.push({ folder: null, autoSaveTime: null });
+    while (all.length < MAX_CAM_SLOTS) all.push({ folder: null, startTime: null, stopTime: null });
     all[i] = Object.assign({}, all[i], patch);
     camRecordSettingsStore.save(all);
+  }
+  // Co lich dang bat (ca 2 gio bat dau + ket thuc deu da dat) hay khong.
+  function _hasActiveSchedule(i) {
+    const s = getRecordSettings(i);
+    return !!(s.startTime && s.stopTime);
+  }
+  // Dung cho ngoai le "giu ket noi ngam khi dong trang QR Cam": can giu neu
+  // DANG quay (bat ke co lich hay khong, tranh cat ngang phien dang chay) HOAC
+  // co lich dang bat (de con co co hoi tu bat dau dung gio, ke ca khi chua
+  // bat dau quay tai thoi diem dong trang).
+  function _shouldKeepAliveOnClose(i) {
+    return camSlots[i].recording || _hasActiveSchedule(i);
   }
 
   function _pad2(n) { return String(n).padStart(2, '0'); }
@@ -2091,16 +2117,20 @@
     btn.title = camSlots[i].recording ? 'Dừng quay (sẽ lưu file ngay)' : 'Quay video ô này';
   }
 
-  // Bam nut quay: NEU o nay chua tung chon thu muc luu, hoi truoc (hop thoai
-  // that cua he dieu hanh) - chon xong roi moi bat dau quay. Lan sau se dung
-  // lai dung thu muc da chon, khong hoi lai nua (de tinh nang tu dong luu
-  // hang ngay chay ngam duoc, khong the hoi lai giua dem).
-  async function startRecording(i) {
+  // Bam nut quay tay, HOAC he thong lich tu goi: NEU o nay chua tung chon thu
+  // muc luu, hoi truoc (hop thoai that cua he dieu hanh) - CHI hoi khi la bam
+  // tay (fromSchedule=false); neu la lich tu dong goi ma chua co thu muc thi
+  // bo qua (khong the tu hien hop thoai luc nua dem khong ai ngoi may).
+  async function startRecording(i, fromSchedule) {
     const slot = camSlots[i];
-    if (!slot.stream) { showCamSignalToast('ĐT ' + (i+1) + ' chưa có hình để quay'); return; }
     if (slot.recording) return;
+    if (!slot.stream) {
+      if (!fromSchedule) showCamSignalToast('ĐT ' + (i+1) + ' chưa có hình để quay');
+      return;
+    }
     let settings = getRecordSettings(i);
     if (!settings.folder) {
+      if (fromSchedule) return; // lich tu dong: khong the hoi chon thu muc luc nay
       if (!window.recordingBridge) { showCamSignalToast('Không thể chọn thư mục lưu'); return; }
       const folder = await window.recordingBridge.chooseFolder();
       if (!folder) return; // nguoi dung bam Huy trong hop thoai chon thu muc
@@ -2115,22 +2145,20 @@
       slot.mediaRecorder = mr;
       slot.recording = true;
       _updateRecordBtnUI(i);
-      _scheduleAutoSave(i);
       showCamSignalToast('⏺ Đang quay video ĐT ' + (i+1));
     } catch (e) {
       console.error('Khong the bat dau quay video', e);
-      showCamSignalToast('⚠️ Không thể bắt đầu quay video ĐT ' + (i+1));
+      if (!fromSchedule) showCamSignalToast('⚠️ Không thể bắt đầu quay video ĐT ' + (i+1));
     }
   }
 
-  // restart=true dung cho luc tu dong luu-va-doi-file-moi hang ngay: luu file
-  // hien tai xong thi TU KHOI DONG LAI ngay (khong hoi lai thu muc), tiep tuc
-  // quay lien mach sang ngay tiep theo.
+  // restart=true dung khi muon tiep tuc quay ngay sau khi luu (khong dung cho
+  // lich Bat dau/Ket thuc - khi lich goi stopRecording thi KHONG restart, vi
+  // lan bat dau tiep theo se do lich Bat dau cua ngay hom sau lo).
   function stopRecording(i, restart) {
     const slot = camSlots[i];
     if (!slot.recording || !slot.mediaRecorder) return;
     slot.recording = false;
-    clearTimeout(slot.autoSaveTimer);
     slot._restartAfterFlush = !!restart;
     try { slot.mediaRecorder.stop(); } catch(e) {}
     slot.mediaRecorder = null;
@@ -2142,7 +2170,7 @@
     const chunks = slot.recordedChunks || [];
     slot.recordedChunks = [];
     if (!chunks.length) {
-      if (slot._restartAfterFlush) { slot._restartAfterFlush = false; startRecording(i); }
+      if (slot._restartAfterFlush) { slot._restartAfterFlush = false; startRecording(i, true); }
       return;
     }
     const blob = new Blob(chunks, { type: 'video/webm' });
@@ -2158,25 +2186,60 @@
     }
     if (slot._restartAfterFlush) {
       slot._restartAfterFlush = false;
-      startRecording(i);
+      startRecording(i, true);
     }
   }
 
-  // Len lich tu dong "luu va doi file moi" vao dung gio da chon MOI NGAY -
-  // tu tinh thoi diem ke tiep (hom nay neu chua qua gio do, mai neu da qua).
-  function _scheduleAutoSave(i) {
-    const slot = camSlots[i];
-    clearTimeout(slot.autoSaveTimer);
-    const settings = getRecordSettings(i);
-    if (!settings.autoSaveTime || !slot.recording) return;
-    const parts = settings.autoSaveTime.split(':').map(Number);
-    const hh = parts[0], mm = parts[1];
-    const now = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  // Tinh thoi diem TIEP THEO (hom nay neu con o phia truoc "now", mai neu da
+  // qua) ung voi 1 gio "HH:MM" cho truoc.
+  function _nextOccurrence(hhmm, now) {
+    const parts = hhmm.split(':').map(Number);
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], 0, 0);
     if (next <= now) next.setDate(next.getDate() + 1);
-    slot.autoSaveTimer = setTimeout(() => {
-      if (slot.recording) stopRecording(i, /*restart=*/true);
-    }, next.getTime() - now.getTime());
+    return next;
+  }
+
+  // Len lich CA HAI: tu dong BAT DAU quay luc gio startTime, tu dong DUNG +
+  // LUU luc gio stopTime - lap lai moi ngay. Neu stopTime <= startTime (vd
+  // bat dau 23:00, ket thuc 05:00) thi hieu la khung gio vat qua nua dem,
+  // van tinh dung nho so sanh thoi diem tuyet doi (Date), khong so sanh chuoi.
+  function _scheduleRecordingWindow(i) {
+    const slot = camSlots[i];
+    clearTimeout(slot.startTimer);
+    clearTimeout(slot.stopTimer);
+    const settings = getRecordSettings(i);
+    if (!settings.startTime || !settings.stopTime) return;
+
+    const now = new Date();
+    const nextStart = _nextOccurrence(settings.startTime, now);
+    let nextStop = _nextOccurrence(settings.stopTime, now);
+    // Neu diem dung ke tiep roi vao TRUOC diem bat dau ke tiep (vd dang trong
+    // khung gio qua dem, da qua gio bat dau nhung chua toi gio ket thuc), day
+    // diem dung sang dung ngay ngay sau diem bat dau do (khung gio vat dem).
+    if (nextStop <= nextStart) nextStop = new Date(nextStop.getTime() + 24*60*60*1000);
+
+    slot.startTimer = setTimeout(() => {
+      startRecording(i, true);
+      _scheduleRecordingWindow(i); // len lich lai cho ngay tiep theo
+    }, nextStart.getTime() - now.getTime());
+
+    slot.stopTimer = setTimeout(() => {
+      if (slot.recording) stopRecording(i, /*restart=*/false);
+    }, nextStop.getTime() - now.getTime());
+  }
+
+  // Neu HIEN TAI dang o giua 1 khung gio da dat (vd may vua mo app luc 8h30,
+  // lich la 8h-17h) thi bat dau quay NGAY, khong doi den ngay mai moi kich
+  // hoat. Goi ham nay moi khi 1 slot vua co stream san sang (ket noi thanh
+  // cong) VA co lich dang bat.
+  function _startRecordingIfWithinScheduledWindow(i) {
+    const settings = getRecordSettings(i);
+    if (!settings.startTime || !settings.stopTime) return;
+    const now = new Date();
+    const todayStart = _nextOccurrence(settings.startTime, new Date(now.getTime() - 24*60*60*1000));
+    let todayStop = _nextOccurrence(settings.stopTime, todayStart);
+    if (todayStop <= todayStart) todayStop = new Date(todayStop.getTime() + 24*60*60*1000);
+    if (now >= todayStart && now < todayStop) startRecording(i, true);
   }
 
   // Noi nut quay / nut cai dat gio / popover cho tung o
@@ -2184,37 +2247,50 @@
     const recordBtn = tile.querySelector('.cam-record-btn');
     const settingsBtn = tile.querySelector('.cam-record-settings-btn');
     const pop = tile.querySelector('.cam-record-settings-pop');
-    const timeInput = tile.querySelector('.cam-record-time-input');
+    const startInput = tile.querySelector('.cam-record-start-input');
+    const stopInput = tile.querySelector('.cam-record-stop-input');
     const saveBtn = tile.querySelector('.cam-record-time-save');
     const clearBtn = tile.querySelector('.cam-record-time-clear');
     if (!recordBtn) return;
 
     recordBtn.onclick = () => {
       if (camSlots[i].recording) stopRecording(i, false);
-      else startRecording(i);
+      else startRecording(i, false);
     };
 
     settingsBtn.onclick = () => {
       const settings = getRecordSettings(i);
-      timeInput.value = settings.autoSaveTime || '';
+      startInput.value = settings.startTime || '';
+      stopInput.value = settings.stopTime || '';
       pop.classList.toggle('show');
     };
 
     saveBtn.onclick = () => {
-      const val = timeInput.value || null;
-      saveRecordSettings(i, { autoSaveTime: val });
+      const startVal = startInput.value || null;
+      const stopVal = stopInput.value || null;
+      if ((startVal && !stopVal) || (!startVal && stopVal)) {
+        showCamSignalToast('Cần đặt đủ cả giờ bắt đầu và giờ kết thúc');
+        return;
+      }
+      saveRecordSettings(i, { startTime: startVal, stopTime: stopVal });
       pop.classList.remove('show');
-      if (camSlots[i].recording) _scheduleAutoSave(i);
-      showCamSignalToast(val ? ('Đã đặt giờ tự lưu ĐT ' + (i+1) + ': ' + val)
-                              : ('Đã tắt tự động lưu ĐT ' + (i+1)));
+      _scheduleRecordingWindow(i);
+      if (startVal && stopVal) {
+        _startRecordingIfWithinScheduledWindow(i);
+        showCamSignalToast('Đã đặt lịch quay ĐT ' + (i+1) + ': ' + startVal + ' → ' + stopVal + ' mỗi ngày');
+      } else {
+        showCamSignalToast('Đã tắt lịch quay ĐT ' + (i+1));
+      }
     };
 
     clearBtn.onclick = () => {
-      timeInput.value = '';
-      saveRecordSettings(i, { autoSaveTime: null });
-      clearTimeout(camSlots[i].autoSaveTimer);
+      startInput.value = '';
+      stopInput.value = '';
+      saveRecordSettings(i, { startTime: null, stopTime: null });
+      clearTimeout(camSlots[i].startTimer);
+      clearTimeout(camSlots[i].stopTimer);
       pop.classList.remove('show');
-      showCamSignalToast('Đã tắt tự động lưu ĐT ' + (i+1));
+      showCamSignalToast('Đã tắt lịch quay ĐT ' + (i+1));
     };
   });
 
@@ -3054,6 +3130,16 @@
     applyTopBg(themeStore.load().topBg || 'black');
     syncPhishingListToMain();
     if (window.camBridge) window.camBridge.setRetentionDays(camRetentionStore.load());
+    // Nhung o co MA DA LUU va LICH QUAY dang bat thi tu ket noi ngay tu luc
+    // khoi dong app - KHONG can nguoi dung phai mo trang QR Cam truoc, dung
+    // nhu yeu cau: "dat lich quay thi phai tu chay, khong phu thuoc panel".
+    // Cac o khac (co ma nhung khong co lich) van cho mo panel nhu binh
+    // thuong (dung quy tac "dong trang la ngat" da lam truoc do).
+    const savedCodesAtStartup = camRoomCodesStore.load();
+    camSlots.forEach((slot, i) => {
+      const saved = (savedCodesAtStartup[i] || '').trim();
+      if (saved && _hasActiveSchedule(i) && !slot.roomCode) connectSlot(i, saved);
+    });
     // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
     // truyen URL ban dau qua query string cua chinh trang index.html.
     const initialUrlFromQuery = new URLSearchParams(location.search).get('initialUrl');
