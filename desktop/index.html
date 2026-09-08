@@ -1667,6 +1667,7 @@
       startTimer: null,
       stopTimer: null,
       _restartAfterFlush: false,
+      _resumeRecordingOnReconnect: false,
     };
   }
 
@@ -1864,6 +1865,14 @@
         // phai doi den lan kich hoat ke tiep cua ngay mai).
         _scheduleRecordingWindow(i);
         _startRecordingIfWithinScheduledWindow(i);
+        // Neu truoc do dang quay (tay hoac theo lich) ma bi mat tin hieu giua
+        // chung, gio ket noi lai duoc thi tu bat dau QUAY FILE MOI ngay -
+        // khong can nguoi dung tu bam ⏺ lai. (startRecording() tu bo qua neu
+        // truong hop tren da lo bat roi, khong bi trung.)
+        if (slot._resumeRecordingOnReconnect) {
+          slot._resumeRecordingOnReconnect = false;
+          startRecording(i, true);
+        }
       } else if (s === 'disconnected' || s === 'failed') {
         _onSlotLostSignal(i);
       }
@@ -1933,6 +1942,16 @@
   function _onSlotLostSignal(i) {
     const slot = camSlots[i];
     if (!slot.roomCode) return;
+    // Neu dang quay (tay hoac theo lich) dung luc mat tin hieu: dung + luu
+    // NGAY - khong doi them, khong co ly do gi de tiep tuc "quay" 1 luong
+    // hinh da chet. Giao dien se hien "Mat tin hieu" thay vi "Dang quay" (vi
+    // slot.recording chuyen ve false ngay o day). Nho lai de tu bat dau 1
+    // FILE MOI khi ket noi lai duoc - khong the noi tiep chung 1 file cu vi
+    // gioi han ky thuat cua MediaRecorder (khong the doi nguon giua chung).
+    if (slot.recording) {
+      slot._resumeRecordingOnReconnect = true;
+      stopRecording(i, false);
+    }
     slot.connected = false;
     slot.signalLost = true;
     renderCamSlotList();
