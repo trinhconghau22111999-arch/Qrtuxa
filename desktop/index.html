@@ -279,6 +279,26 @@
     z-index:1; visibility:hidden; pointer-events:none;
   }
   webview.active-tab { z-index:2; visibility:visible; pointer-events:auto; }
+
+  /* Che do chia doi man hinh (Telegram/Zalo song song): chia thanh 7 phan bang
+     nhau theo cot - pane trai (Telegram/Zalo) chiem 2/7, pane phai (tab dang
+     active binh thuong) chiem 5/7 con lai. Webview cua pane trai duoc danh
+     dau rieng bang class "messenger-pane" (KHONG nam trong chu trinh tab
+     thuong/switchTab), nen giu nguyen noi dung du chuyen qua lai cac tab
+     khac ben pane phai. */
+  body.split-mode webview.active-tab { left:28.5714%; width:71.4286%; }
+  body.split-mode webview.messenger-pane {
+    visibility:visible !important; pointer-events:auto !important; z-index:2;
+    left:0; width:28.5714%;
+  }
+  #splitCloseBtn {
+    display:none; position:absolute; top:10px; left:calc(28.5714% - 38px);
+    z-index:6; width:30px; height:30px; border-radius:50%; border:none;
+    background:rgba(0,0,0,0.6); color:#fff; cursor:pointer; font-size:14px;
+    align-items:center; justify-content:center;
+  }
+  #splitCloseBtn:hover { background:rgba(0,0,0,0.85); }
+  body.split-mode #splitCloseBtn { display:flex; }
   #qrPanel {
     position:absolute; top:14px; right:14px; width:280px;
     background: #000000;
@@ -661,6 +681,8 @@
     <button id="backBtn">◀</button>
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
+    <button id="telegramSplitBtn" title="Mở Telegram song song (chia đôi màn hình)">✈️ Telegram</button>
+    <button id="zaloSplitBtn" title="Mở Zalo song song (chia đôi màn hình)">💬 Zalo</button>
     <div id="urlbarWrap">
       <input id="urlbar" value="https://www.google.com" />
       <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
@@ -719,6 +741,7 @@
 
   <div id="webviewWrap">
     <div id="webviewsContainer"></div>
+    <button id="splitCloseBtn" title="Đóng chia màn hình">✕</button>
 
     <div id="qrPanel">
       <span id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">⟳</span>
@@ -1243,6 +1266,53 @@
     renderTabs();
   }
 
+  // ====== Chia doi man hinh: Telegram/Zalo (pane trai, 2/7) song song voi tab
+  // dang xem (pane phai, 5/7) ======
+  // Pane trai la 1 <webview> RIENG, KHONG nam trong Map "tabs"/tabOrder/thanh
+  // tab - vi noi dung cua no co dinh (luon la Telegram hoac Zalo) va can GIU
+  // NGUYEN xuyen suot du nguoi dung chuyen qua lai cac tab khac ben pane
+  // phai. Danh dau bang class "messenger-pane" de CSS (.split-mode
+  // webview.messenger-pane) tu hien no dung vi tri khi bat che do chia man
+  // hinh, hoan toan tach biet voi chu trinh .active-tab cua tab thuong.
+  const SPLIT_URLS = {
+    telegram: 'https://web.telegram.org/k/',
+    zalo: 'https://chat.zalo.me/'
+  };
+  let splitViewActive = false;
+  let splitService = null; // 'telegram' | 'zalo' | null
+  let splitWebview = null;
+
+  function enterSplitView(service) {
+    const url = SPLIT_URLS[service];
+    if (!url) return;
+    if (!splitWebview) {
+      splitWebview = createWebviewElement(url);
+      splitWebview.classList.add('messenger-pane');
+    } else if (splitService !== service) {
+      // Doi tu Telegram sang Zalo (hoac nguoc lai) tren CUNG pane trai -
+      // dieu huong lai webview da co san thay vi tao them 1 webview moi.
+      splitWebview.loadURL(url).catch(() => splitWebview.setAttribute('src', url));
+    }
+    splitService = service;
+    splitViewActive = true;
+    document.body.classList.add('split-mode');
+  }
+
+  function exitSplitView() {
+    splitViewActive = false;
+    document.body.classList.remove('split-mode');
+    // KHONG huy webview cua pane trai - giu nguyen phien dang nhap Telegram/
+    // Zalo de lan bat lai chia man hinh sau khong phai dang nhap tu dau.
+  }
+
+  function toggleSplitView(service) {
+    if (splitViewActive && splitService === service) {
+      exitSplitView();
+    } else {
+      enterSplitView(service);
+    }
+  }
+
   // ====== Ngu tab (tiet kiem RAM): CHI ap dung khi dang mo tu 5 tab tro len,
   // tab dang phat nhac/video thi KHONG BAO GIO bi ngu du la lau khong active
   // - theo dung yeu cau. "Ngu" o day nghia la HUY HAN <webview> (giai phong
@@ -1457,6 +1527,9 @@
     const wv = getActiveWebview();
     if (wv) wv.reload();
   };
+  document.getElementById('telegramSplitBtn').onclick = () => toggleSplitView('telegram');
+  document.getElementById('zaloSplitBtn').onclick = () => toggleSplitView('zalo');
+  document.getElementById('splitCloseBtn').onclick = () => exitSplitView();
 
   function sanitizeText(text) {
     if (typeof text !== 'string') return '';
