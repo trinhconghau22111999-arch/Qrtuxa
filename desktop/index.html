@@ -96,6 +96,7 @@
     box-shadow: 0 0 12px var(--neon-a60);
     color: #fff;
   }
+  #toolbar button .brand-icon { vertical-align:-3px; margin-right:4px; }
   .tab-item {
     display:flex; align-items:center; gap:6px;
     max-width:150px;
@@ -681,8 +682,20 @@
     <button id="backBtn">◀</button>
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
-    <button id="telegramSplitBtn" title="Mở Telegram song song (chia đôi màn hình)">✈️ Telegram</button>
-    <button id="zaloSplitBtn" title="Mở Zalo song song (chia đôi màn hình)">💬 Zalo</button>
+    <button id="telegramSplitBtn" title="Mở Telegram song song (chia đôi màn hình)">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <circle cx="12" cy="12" r="12" fill="#29A9EB"/>
+        <path d="M5.4 11.8 17.8 7c.55-.2 1.03.13.86.96l-2.1 9.9c-.15.68-.55.85-1.11.53l-3.08-2.27-1.49 1.43c-.16.16-.3.3-.62.3l.22-3.13 5.7-5.15c.25-.22-.05-.34-.38-.12l-7.04 4.43-3.03-.95c-.66-.2-.67-.66.14-.98Z" fill="#fff"/>
+      </svg>
+      Telegram
+    </button>
+    <button id="zaloSplitBtn" title="Mở Zalo song song (chia đôi màn hình)">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <rect x="0" y="2" width="24" height="20" rx="6" fill="#0068FF"/>
+        <text x="12" y="16.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#fff">Za</text>
+      </svg>
+      Zalo
+    </button>
     <div id="urlbarWrap">
       <input id="urlbar" value="https://www.google.com" />
       <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
