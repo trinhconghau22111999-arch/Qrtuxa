@@ -71,18 +71,6 @@ contextBridge.exposeInMainWorld('localStoreBridge', {
   set: (key, value) => ipcRenderer.send('localstore:set', { key, value })
 });
 
-// QR Cam: renderer chi lo viec lang nghe Firebase va nhan khung hinh, con
-// LUU FILE THAT xuong dia thi giao het cho main.js qua day (renderer khong
-// co quyen ghi file truc tiep vi contextIsolation dang bat).
-contextBridge.exposeInMainWorld('camBridge', {
-  stopCam: (camId) => ipcRenderer.send('camrec:stop-cam', camId),
-  openFolder: (camId) => ipcRenderer.send('camrec:open-folder', camId),
-  list: () => ipcRenderer.invoke('camrec:list'),
-  delete: (camId, takeId) => ipcRenderer.send('camrec:delete', { camId, takeId }),
-  openFile: (filePath) => ipcRenderer.send('camrec:open-file', filePath),
-  setRetentionDays: (days) => ipcRenderer.send('camrec:set-retention', days)
-});
-
 // Quay video tung o xem QR Cam: chon thu muc luu (hop thoai that cua he
 // dieu hanh) + ghi file .webm that xuong dia - deu phai qua main.js vi
 // renderer khong co quyen dung fs truc tiep (contextIsolation dang bat).
