@@ -2354,33 +2354,52 @@
     return next;
   }
 
-  // Len lich CA HAI: tu dong BAT DAU quay luc gio startTime, tu dong DUNG +
-  // LUU luc gio stopTime - lap lai moi ngay. Neu stopTime <= startTime (vd
-  // bat dau 23:00, ket thuc 05:00) thi hieu la khung gio vat qua nua dem,
-  // van tinh dung nho so sanh thoi diem tuyet doi (Date), khong so sanh chuoi.
-  function _scheduleRecordingWindow(i) {
+  // Len lich BAT DAU va KET THUC hoan toan DOC LAP voi nhau, moi ben tu lap
+  // lich lai cho lan tiep theo cua CHINH NO sau khi ban than no vua chay
+  // xong - KHONG con dung chung 1 ham tinh ca 2 cung luc nhu truoc.
+  //
+  // LOI DA SUA ("dat lich xong no quay hoai khong dung/luu theo lich"):
+  // ban cu dung 1 ham _scheduleRecordingWindow() tinh CA HAI thoi diem cung
+  // luc, va sau khi gio Bat dau vua kich hoat thi TU GOI LAI chinh ham do de
+  // "len lich cho ngay mai". Nhung dung ngay thoi diem do, _nextOccurrence()
+  // cho gio Bat dau se tinh ra la NGAY MAI (vi gio do vua troi qua), khien
+  // dieu kien "phat hien khung gio vat qua nua dem" (nextStop <= nextStart)
+  // bi kich hoat NHAM - day luon ca gio Ket thuc (hoan toan chua toi, van
+  // con nguyen trong ngay hom nay) sang tan ngay mai, nen no khong bao gio
+  // tu dung/luu dung ngay nhu da dat. Tach rieng 2 lich, khong con so sanh
+  // cheo giua Bat dau va Ket thuc nua thi loi nay tu bien mat - truong hop
+  // khung gio vat qua nua dem (VD 23:00 -> 05:00) van tinh dung tu nhien vi
+  // _nextOccurrence() da tu dong lui/day sang ngay ke tiep dung theo GIO DO,
+  // khong can so sanh voi thoi diem con lai nua.
+  function _scheduleNextStart(i) {
     const slot = camSlots[i];
     clearTimeout(slot.startTimer);
+    const settings = getRecordSettings(i);
+    if (!settings.startTime || !settings.stopTime) return;
+    const now = new Date();
+    const next = _nextOccurrence(settings.startTime, now);
+    slot.startTimer = setTimeout(() => {
+      startRecording(i, true);
+      _scheduleNextStart(i); // tu len lich cho lan Bat dau TIEP THEO (ngay mai)
+    }, next.getTime() - now.getTime());
+  }
+
+  function _scheduleNextStop(i) {
+    const slot = camSlots[i];
     clearTimeout(slot.stopTimer);
     const settings = getRecordSettings(i);
     if (!settings.startTime || !settings.stopTime) return;
-
     const now = new Date();
-    const nextStart = _nextOccurrence(settings.startTime, now);
-    let nextStop = _nextOccurrence(settings.stopTime, now);
-    // Neu diem dung ke tiep roi vao TRUOC diem bat dau ke tiep (vd dang trong
-    // khung gio qua dem, da qua gio bat dau nhung chua toi gio ket thuc), day
-    // diem dung sang dung ngay ngay sau diem bat dau do (khung gio vat dem).
-    if (nextStop <= nextStart) nextStop = new Date(nextStop.getTime() + 24*60*60*1000);
-
-    slot.startTimer = setTimeout(() => {
-      startRecording(i, true);
-      _scheduleRecordingWindow(i); // len lich lai cho ngay tiep theo
-    }, nextStart.getTime() - now.getTime());
-
+    const next = _nextOccurrence(settings.stopTime, now);
     slot.stopTimer = setTimeout(() => {
       if (slot.recording) stopRecording(i, /*restart=*/false);
-    }, nextStop.getTime() - now.getTime());
+      _scheduleNextStop(i); // tu len lich cho lan Ket thuc TIEP THEO (ngay mai)
+    }, next.getTime() - now.getTime());
+  }
+
+  function _scheduleRecordingWindow(i) {
+    _scheduleNextStart(i);
+    _scheduleNextStop(i);
   }
 
   // Neu HIEN TAI dang o giua 1 khung gio da dat (vd may vua mo app luc 8h30,
