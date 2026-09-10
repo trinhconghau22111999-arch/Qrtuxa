@@ -457,9 +457,14 @@
 
   /* Nut quay video + nut cai dat gio tu dong luu moi ngay, dat goc duoi-phai
      tung o xem (goc tren-phai da danh cho nut "Ve truc tiep" tuy hien dang
-     an, de tranh dung do sau nay neu bat lai). */
+     an, de tranh dung do sau nay neu bat lai).
+     NANG LEN cao hon vi tri cu (tu bottom:10px len bottom:54px, tuong duong
+     cao them ~2 dong) - the <video> co thuoc tinh "controls" nen trinh duyet
+     tu ve them 1 thanh dieu khien goc rieng o duoi cung, trong do co nut
+     "phong to" (fullscreen) mac dinh cua trinh duyet nam dung o goc duoi-
+     phai - vi tri cu (bottom:10px) de 2 nut nay de len dung cho do. */
   .cam-tile-record-controls {
-    position:absolute; bottom:10px; right:10px; z-index:4;
+    position:absolute; bottom:54px; right:10px; z-index:4;
     display:flex; align-items:center; gap:6px;
   }
   .cam-record-btn, .cam-record-settings-btn {
@@ -2228,10 +2233,19 @@
   }
 
   function _pad2(n) { return String(n).padStart(2, '0'); }
+  function _weekdayAbbr(d) {
+    // Chu Nhat/Thu Hai/.../Thu Bay - dung ky hieu quen thuoc (giong lich
+    // Google) de ten file khong dau, khong khoang trang, an toan tren moi he
+    // dieu hanh.
+    const names = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    return names[d.getDay()];
+  }
   function _recordingFilename(i) {
     const d = new Date();
-    return 'qrcam_dt' + (i + 1) + '_' + d.getFullYear() + _pad2(d.getMonth() + 1) + _pad2(d.getDate()) +
-      '_' + _pad2(d.getHours()) + _pad2(d.getMinutes()) + _pad2(d.getSeconds()) + '.webm';
+    const weekday = _weekdayAbbr(d);
+    const dateStr = _pad2(d.getDate()) + '-' + _pad2(d.getMonth() + 1) + '-' + d.getFullYear();
+    const timeStr = _pad2(d.getHours()) + 'h' + _pad2(d.getMinutes());
+    return 'qrcam_dt' + (i + 1) + '_' + weekday + '_' + dateStr + '_' + timeStr + '.webm';
   }
   function _arrayBufferToBase64(buf) {
     let binary = '';
