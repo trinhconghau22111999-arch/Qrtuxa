@@ -1749,7 +1749,6 @@
       permissionError: false, // true khi Firebase tu choi doc/ghi (Rules chan) - khac voi "dang cho dien thoai"
       recording: false,
       mediaRecorder: null,
-      recordedChunks: [],
       startTimer: null,
       stopTimer: null,
       _restartAfterFlush: false,
@@ -2269,13 +2268,57 @@
       const folder = await window.recordingBridge.chooseFolder();
       if (!folder) return; // nguoi dung bam Huy trong hop thoai chon thu muc
       saveRecordSettings(i, { folder });
+      settings = getRecordSettings(i);
     }
+
+    // Mo san file that tren dia TRUOC khi bat dau quay - moi doan video sau
+    // do se duoc noi thang xuong day ngay khi co, khong gom trong RAM.
+    const filename = _recordingFilename(i);
+    const startResult = await window.recordingBridge.startFile(settings.folder, filename);
+    if (!startResult || !startResult.ok) {
+      if (!fromSchedule) showCamSignalToast('⚠️ Không thể tạo file lưu video ĐT ' + (i+1));
+      return;
+    }
+    const recordingId = startResult.recordingId;
+
     try {
       const mr = new MediaRecorder(slot.stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-      slot.recordedChunks = [];
-      mr.ondataavailable = (e) => { if (e.data && e.data.size) slot.recordedChunks.push(e.data); };
-      mr.onstop = () => { _flushRecording(i); };
-      mr.start(1000); // gom du lieu moi 1s - giam rui ro mat trang neu app tat dot ngot
+      // SUA LOI "quay cang lau RAM/bo nho tam cang tang khong gioi han":
+      // TRUOC DAY moi doan (moi 1s) duoc gom vao 1 mang trong RAM, chi ghi
+      // xuong dia MOT LAN DUY NHAT luc bam dung - quay hang gio (dung cho
+      // lich quay) se lam RAM tang dan mai khong dung, va luc dung phai gop
+      // + doi base64 ca khoi khong lo cung luc co the lam may khung. Gio ghi
+      // TUNG DOAN thang xuong dia ngay khi co - RAM chi giu dung 1 doan nho
+      // (~1 giay) tai 1 thoi diem, khong con tang theo thoi gian quay nua.
+      // writeChain la 1 bien closure RIENG (khong luu vao slot) de tranh
+      // dinh vao dung luc disconnectSlot() reset slot giua chung - dam bao
+      // cac doan duoc ghi DUNG THU TU xuong dia (goi IPC bat dong bo co the
+      // hoan tat khong theo thu tu neu khong xep hang can than).
+      let writeChain = Promise.resolve();
+      mr.ondataavailable = (e) => {
+        if (!e.data || !e.data.size) return;
+        writeChain = writeChain.then(async () => {
+          try {
+            const buf = await e.data.arrayBuffer();
+            const base64 = _arrayBufferToBase64(buf);
+            await window.recordingBridge.appendChunk(recordingId, base64);
+          } catch (err) { console.error('Lỗi ghi đoạn video ĐT ' + (i+1), err); }
+        });
+      };
+      mr.onstop = async () => {
+        // Doi het cac doan dang xep hang ghi xong roi moi dong file, dam
+        // bao khong mat doan cuoi cung vua ghi do.
+        await writeChain;
+        const result = await window.recordingBridge.finishFile(recordingId);
+        showCamSignalToast(result && result.ok
+          ? ('💾 Đã lưu video ĐT ' + (i+1) + ': ' + filename)
+          : ('⚠️ Lưu video ĐT ' + (i+1) + ' thất bại'));
+        if (slot._restartAfterFlush) {
+          slot._restartAfterFlush = false;
+          startRecording(i, true);
+        }
+      };
+      mr.start(1000); // xuat 1 doan moi 1 giay
       slot.mediaRecorder = mr;
       slot.recording = true;
       _updateRecordBtnUI(i);
@@ -2283,6 +2326,9 @@
     } catch (e) {
       console.error('Khong the bat dau quay video', e);
       if (!fromSchedule) showCamSignalToast('⚠️ Không thể bắt đầu quay video ĐT ' + (i+1));
+      // Da lo mo file rong o main.js roi nhung khong tao duoc MediaRecorder -
+      // dong lai ngay, tranh ro ri file descriptor.
+      window.recordingBridge.finishFile(recordingId).catch(() => {});
     }
   }
 
@@ -2297,31 +2343,6 @@
     try { slot.mediaRecorder.stop(); } catch(e) {}
     slot.mediaRecorder = null;
     _updateRecordBtnUI(i);
-  }
-
-  async function _flushRecording(i) {
-    const slot = camSlots[i];
-    const chunks = slot.recordedChunks || [];
-    slot.recordedChunks = [];
-    if (!chunks.length) {
-      if (slot._restartAfterFlush) { slot._restartAfterFlush = false; startRecording(i, true); }
-      return;
-    }
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    const buf = await blob.arrayBuffer();
-    const base64 = _arrayBufferToBase64(buf);
-    const settings = getRecordSettings(i);
-    if (settings.folder && window.recordingBridge) {
-      const filename = _recordingFilename(i);
-      const result = await window.recordingBridge.save(settings.folder, filename, base64);
-      showCamSignalToast(result && result.ok
-        ? ('💾 Đã lưu video ĐT ' + (i+1) + ': ' + filename)
-        : ('⚠️ Lưu video ĐT ' + (i+1) + ' thất bại'));
-    }
-    if (slot._restartAfterFlush) {
-      slot._restartAfterFlush = false;
-      startRecording(i, true);
-    }
   }
 
   // Tinh thoi diem TIEP THEO (hom nay neu con o phia truoc "now", mai neu da

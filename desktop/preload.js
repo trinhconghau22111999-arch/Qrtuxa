@@ -74,9 +74,13 @@ contextBridge.exposeInMainWorld('localStoreBridge', {
 // Quay video tung o xem QR Cam: chon thu muc luu (hop thoai that cua he
 // dieu hanh) + ghi file .webm that xuong dia - deu phai qua main.js vi
 // renderer khong co quyen dung fs truc tiep (contextIsolation dang bat).
+// Ghi TUNG DOAN thang xuong dia ngay khi co (khong gom het trong RAM roi
+// moi ghi 1 lan) - xem giai thich chi tiet trong main.js.
 contextBridge.exposeInMainWorld('recordingBridge', {
   chooseFolder: () => ipcRenderer.invoke('recording:choose-folder'),
-  save: (folder, filename, base64Data) => ipcRenderer.invoke('recording:save', { folder, filename, base64Data })
+  startFile: (folder, filename) => ipcRenderer.invoke('recording:start-file', { folder, filename }),
+  appendChunk: (recordingId, base64Data) => ipcRenderer.invoke('recording:append-chunk', { recordingId, base64Data }),
+  finishFile: (recordingId) => ipcRenderer.invoke('recording:finish-file', recordingId)
 });
 
 // Chup anh trang web: renderer tu chup (webview.capturePage()) roi gui du

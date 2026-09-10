@@ -344,6 +344,23 @@ function createWindow(initialUrl) {
   // ====== Quay video tung o xem QR Cam: chon thu muc luu + ghi file that ======
   // (renderer chi ghi hinh bang MediaRecorder trong bo nho - khong the tu
   // ghi file xuong dia vi contextIsolation dang bat, giong moi thu khac)
+  //
+  // SUA LOI "quay cang lau ton RAM cang nhieu": TRUOC DAY renderer gom HET
+  // cac doan video trong 1 mang o RAM suot ca luc quay, chi ghi xuong dia
+  // MOT LAN DUY NHAT luc bam dung - quay hang gio (dung cho tinh nang lich
+  // quay) se lam RAM tang dan khong gioi han, va luc dung phai gop + doi
+  // base64 + ghi 1 khoi khong lo cung luc co the lam may khung mot chut.
+  // Gio doi sang ghi TUNG DOAN (moi 1 giay) THANG XUONG DIA ngay khi co,
+  // noi tiep vao file dang mo (giu 1 file descriptor mo suot phien quay) -
+  // giong het ky thuat "noi truc tiep chunk MediaRecorder vao file" da dung
+  // truoc do cho he thong camrec cu: chi doan DAU TIEN cua ca phien co tieu
+  // de container (EBML header cua WebM), cac doan sau chi la du lieu noi
+  // tiep tho - noi truc tiep theo dung thu tu tao thanh 1 file .webm hop le,
+  // khong can gop toan bo truoc. RAM chi giu 1 doan nho (~1 giay) tai 1 thoi
+  // diem, khong con tang theo thoi gian quay nua.
+  const activeRecordingFiles = new Map(); // recordingId -> { fd, filePath }
+  let recordingIdCounter = 0;
+
   ipcMain.handle('recording:choose-folder', async (e) => {
     if (e.sender !== win.webContents) return null;
     const result = await dialog.showOpenDialog(win, {
@@ -353,17 +370,53 @@ function createWindow(initialUrl) {
     if (result.canceled || !result.filePaths.length) return null;
     return result.filePaths[0];
   });
-  ipcMain.handle('recording:save', async (e, { folder, filename, base64Data }) => {
+
+  ipcMain.handle('recording:start-file', (e, { folder, filename }) => {
     if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
     try {
       if (!folder || !filename) return { ok: false, error: 'missing folder/filename' };
       fs.mkdirSync(folder, { recursive: true });
-      const fullPath = path.join(folder, filename);
-      fs.writeFileSync(fullPath, Buffer.from(base64Data, 'base64'));
-      return { ok: true, path: fullPath };
+      const filePath = path.join(folder, filename);
+      const fd = fs.openSync(filePath, 'w');
+      const recordingId = 'rec_' + (++recordingIdCounter) + '_' + Date.now();
+      activeRecordingFiles.set(recordingId, { fd, filePath });
+      return { ok: true, recordingId, path: filePath };
     } catch (err) {
       return { ok: false, error: String(err) };
     }
+  });
+
+  ipcMain.handle('recording:append-chunk', (e, { recordingId, base64Data }) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    const entry = activeRecordingFiles.get(recordingId);
+    if (!entry) return { ok: false, error: 'recording not found (da finish hoac chua start)' };
+    try {
+      fs.writeSync(entry.fd, Buffer.from(base64Data, 'base64'));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
+  ipcMain.handle('recording:finish-file', (e, recordingId) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    const entry = activeRecordingFiles.get(recordingId);
+    if (!entry) return { ok: false, error: 'recording not found' };
+    try { fs.closeSync(entry.fd); } catch (err) {}
+    activeRecordingFiles.delete(recordingId);
+    return { ok: true, path: entry.filePath };
+  });
+
+  // Phong khi app bi tat dot ngot (hoac nguoi dung thoat) trong luc van con
+  // file dang ghi do (VD do disconnectSlot() reset slot truoc khi kip goi
+  // finish-file ve day) - dong het cac file descriptor con mo lai, tranh ro
+  // ri tai nguyen. Du liệu đã ghi bằng fs.writeSync là đồng bộ nên đã nằm
+  // trên đĩa từ trước, chỉ thiếu bước đóng fd cho gọn.
+  app.on('before-quit', () => {
+    for (const entry of activeRecordingFiles.values()) {
+      try { fs.closeSync(entry.fd); } catch (err) {}
+    }
+    activeRecordingFiles.clear();
   });
 
   win.on('maximize', () => win.webContents.send('win:maximized-state', true));
