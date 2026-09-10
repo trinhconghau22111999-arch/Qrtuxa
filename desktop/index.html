@@ -521,6 +521,7 @@
   /* ====== Panel Mau giao dien ====== */
   #themeSlider { width:100%; accent-color: var(--neon-1); margin:6px 0 14px 0; }
   #themeSwatchGrid { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; }
+  #themeSpecialGrid { display:grid; grid-template-columns: repeat(6, 1fr); gap:8px; margin-top:8px; margin-bottom:4px; }
   .theme-swatch {
     width:100%; aspect-ratio:1; border-radius:50%; cursor:pointer;
     border:2px solid transparent; box-sizing:border-box;
@@ -2968,20 +2969,29 @@
   }
 
   // ====== Panel Mau giao dien: 45 mau + thanh truot hue tuy chinh ======
-  const themeStore = makeJsonStore('theme', { hue: 291, topBg: 'black' });
+  const themeStore = makeJsonStore('theme', { hue: 291, sat: 91, light: 57, topBg: 'black' });
   const DEFAULT_HUE = 291; // hue cua tim neon goc (#c026ff)
+  const DEFAULT_SAT = 91;
+  const DEFAULT_LIGHT = 57;
 
   function hslStr(h, s, l) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%)`; }
   // Giong hslStr() nhung co them do trong suot (alpha) - dung cho vien/bong
   // do/nen mo trong suot (--neon-aXX, xem :root va applyTheme() ben duoi).
   function hslStrA(h, s, l, a) { return `hsl(${((h % 360) + 360) % 360}, ${s}%, ${l}%, ${a})`; }
 
-  function applyTheme(hue) {
+  // sat/light co gia tri mac dinh giong het truoc day (91/57) khi khong
+  // truyen vao - CHI can chi dinh rieng cho cac mau "dac biet" khong nam
+  // tren vong hue bao hoa cao binh thuong (Den/Xam/Nau - xem SPECIAL_
+  // SWATCHES ben duoi), vi ban than "hue" khong the nao dien ta duoc mau
+  // den/xam (khong mau, sat=0) hay mau nau (1 mau cam sam, bao hoa thap).
+  function applyTheme(hue, sat, light) {
     hue = ((hue % 360) + 360) % 360;
-    document.documentElement.style.setProperty('--neon-1', hslStr(hue, 91, 57));
-    document.documentElement.style.setProperty('--neon-2', hslStr(hue + 12, 84, 52));
-    document.documentElement.style.setProperty('--neon-3', hslStr(hue + 28, 100, 54));
-    document.documentElement.style.setProperty('--neon-soft', hslStr(hue, 100, 85));
+    const s = (typeof sat === 'number') ? sat : DEFAULT_SAT;
+    const l = (typeof light === 'number') ? light : DEFAULT_LIGHT;
+    document.documentElement.style.setProperty('--neon-1', hslStr(hue, s, l));
+    document.documentElement.style.setProperty('--neon-2', hslStr(hue + 12, Math.max(0, s - 7), Math.max(0, l - 5)));
+    document.documentElement.style.setProperty('--neon-3', hslStr(hue + 28, Math.min(100, s + 9), Math.min(100, l - 3)));
+    document.documentElement.style.setProperty('--neon-soft', hslStr(hue, Math.min(100, s + 9), Math.min(95, l + 28)));
     // Cac bien mau tim CO DO TRONG SUOT + 1 mau chu "mo" - dung cho vien/bong
     // do/nen mo o vung phia tren (title bar/toolbar/tab/dau trang). FIX theo
     // phan anh nguoi dung "nut doi mau chua doi het mau chu va duong vien phia
@@ -2990,9 +3000,9 @@
     // hue vua chon, khop voi --neon-1 o tren.
     const ALPHAS = [12, 15, 18, 25, 35, 40, 50, 55, 60];
     for (const a of ALPHAS) {
-      document.documentElement.style.setProperty(`--neon-a${a}`, hslStrA(hue, 91, 57, a / 100));
+      document.documentElement.style.setProperty(`--neon-a${a}`, hslStrA(hue, s, l, a / 100));
     }
-    document.documentElement.style.setProperty('--neon-text-dim', hslStr(hue, 70, 76));
+    document.documentElement.style.setProperty('--neon-text-dim', hslStr(hue, Math.max(0, s - 21), Math.min(90, l + 19)));
   }
 
   // Nen vung phia tren (thanh tab + thanh dia chi + thanh dau trang ghim) - den
@@ -3005,14 +3015,19 @@
     sidePanelBody.innerHTML = '';
     const saved = themeStore.load();
     const hue = typeof saved.hue === 'number' ? saved.hue : DEFAULT_HUE;
+    const sat = typeof saved.sat === 'number' ? saved.sat : DEFAULT_SAT;
+    const light = typeof saved.light === 'number' ? saved.light : DEFAULT_LIGHT;
 
     const slider = document.createElement('input');
     slider.type = 'range'; slider.min = 0; slider.max = 359; slider.value = hue;
     slider.id = 'themeSlider';
     slider.oninput = () => {
-      applyTheme(Number(slider.value));
-      themeStore.save({ ...themeStore.load(), hue: Number(slider.value) });
-      updateActiveSwatch(Number(slider.value));
+      // Keo thanh truot = chon mau thuong tren vong hue - LUON tro ve do bao
+      // hoa/do sang mac dinh (91/57), de neu truoc do dang chon Den/Xam/Nau
+      // (bao hoa thap/khong mau) thi gio tro ve mau neon ruc ro binh thuong.
+      applyTheme(Number(slider.value), DEFAULT_SAT, DEFAULT_LIGHT);
+      themeStore.save({ ...themeStore.load(), hue: Number(slider.value), sat: DEFAULT_SAT, light: DEFAULT_LIGHT });
+      updateActiveSwatch(Number(slider.value), DEFAULT_SAT, DEFAULT_LIGHT);
     };
     sidePanelBody.appendChild(slider);
 
@@ -3023,27 +3038,59 @@
       const h = i * 8;
       const sw = document.createElement('div');
       sw.className = 'theme-swatch';
-      sw.dataset.hue = h;
+      sw.dataset.hue = h; sw.dataset.sat = DEFAULT_SAT; sw.dataset.light = DEFAULT_LIGHT;
       sw.style.background = hslStr(h, 90, 55);
       sw.title = `Màu #${i + 1} (hue ${h}°)`;
       sw.onclick = () => {
         slider.value = h;
-        applyTheme(h);
-        themeStore.save({ ...themeStore.load(), hue: h });
-        updateActiveSwatch(h);
+        applyTheme(h, DEFAULT_SAT, DEFAULT_LIGHT);
+        themeStore.save({ ...themeStore.load(), hue: h, sat: DEFAULT_SAT, light: DEFAULT_LIGHT });
+        updateActiveSwatch(h, DEFAULT_SAT, DEFAULT_LIGHT);
       };
       grid.appendChild(sw);
     }
     sidePanelBody.appendChild(grid);
+
+    // 3 mau "dac biet" - KHONG the dien ta bang hue don thuan (Den/Xam la
+    // mau khong sac - sat=0; Nau la 1 mau cam sam, bao hoa thap) nen phai tu
+    // dinh nghia rieng ca 3 gia tri h/s/l cho tung mau, khac voi 45 o mau
+    // vong hue phia tren (luon co s=90,l=55 co dinh).
+    const SPECIAL_SWATCHES = [
+      { label: 'Đen', h: 0,  s: 0,  l: 22 },
+      { label: 'Xám', h: 0,  s: 0,  l: 55 },
+      { label: 'Nâu', h: 25, s: 55, l: 33 }
+    ];
+    const specialLabel = document.createElement('div');
+    specialLabel.className = 'sp-section-label';
+    specialLabel.textContent = 'Màu khác';
+    sidePanelBody.appendChild(specialLabel);
+
+    const specialGrid = document.createElement('div');
+    specialGrid.id = 'themeSpecialGrid';
+    SPECIAL_SWATCHES.forEach(spec => {
+      const sw = document.createElement('div');
+      sw.className = 'theme-swatch theme-swatch-special';
+      sw.dataset.hue = spec.h; sw.dataset.sat = spec.s; sw.dataset.light = spec.l;
+      sw.style.background = hslStr(spec.h, spec.s, spec.l);
+      sw.title = spec.label;
+      sw.onclick = () => {
+        slider.value = spec.h;
+        applyTheme(spec.h, spec.s, spec.l);
+        themeStore.save({ ...themeStore.load(), hue: spec.h, sat: spec.s, light: spec.l });
+        updateActiveSwatch(spec.h, spec.s, spec.l);
+      };
+      specialGrid.appendChild(sw);
+    });
+    sidePanelBody.appendChild(specialGrid);
 
     const resetBtn = document.createElement('button');
     resetBtn.id = 'themeResetBtn';
     resetBtn.textContent = 'Đặt lại màu mặc định (tím neon)';
     resetBtn.onclick = () => {
       slider.value = DEFAULT_HUE;
-      applyTheme(DEFAULT_HUE);
-      themeStore.save({ ...themeStore.load(), hue: DEFAULT_HUE });
-      updateActiveSwatch(DEFAULT_HUE);
+      applyTheme(DEFAULT_HUE, DEFAULT_SAT, DEFAULT_LIGHT);
+      themeStore.save({ ...themeStore.load(), hue: DEFAULT_HUE, sat: DEFAULT_SAT, light: DEFAULT_LIGHT });
+      updateActiveSwatch(DEFAULT_HUE, DEFAULT_SAT, DEFAULT_LIGHT);
     };
     sidePanelBody.appendChild(resetBtn);
 
@@ -3075,10 +3122,19 @@
     updateActiveSwatch(hue);
   }
 
-  function updateActiveSwatch(hue) {
+  function updateActiveSwatch(hue, sat, light) {
     const closest = Math.round(hue / 8) * 8;
+    const s = (typeof sat === 'number') ? sat : DEFAULT_SAT;
+    const l = (typeof light === 'number') ? light : DEFAULT_LIGHT;
     document.querySelectorAll('.theme-swatch').forEach(sw => {
-      sw.classList.toggle('active', Number(sw.dataset.hue) === (closest % 360));
+      const swHue = Number(sw.dataset.hue);
+      const swSat = Number(sw.dataset.sat);
+      const swLight = Number(sw.dataset.light);
+      const isSpecial = sw.classList.contains('theme-swatch-special');
+      const match = isSpecial
+        ? (swHue === hue && swSat === s && swLight === l)
+        : (swHue === (closest % 360) && swSat === s && swLight === l);
+      sw.classList.toggle('active', match);
     });
   }
 
@@ -3243,7 +3299,7 @@
   localStoreReady.then(() => {
     renderBookmarks();
     // Ap mau giao dien da luu (neu co) va dong bo danh sach chan web den xuong main.js
-    applyTheme((themeStore.load().hue));
+    applyTheme(themeStore.load().hue, themeStore.load().sat, themeStore.load().light);
     applyTopBg(themeStore.load().topBg || 'black');
     syncPhishingListToMain();
     // Nhung o co MA DA LUU va LICH QUAY dang bat thi tu ket noi ngay tu luc
