@@ -61,7 +61,14 @@
     color:#fff; border-color:var(--neon-a50); background:var(--neon-a15);
   }
   #titleBar #tabsBar {
-    -webkit-app-region: no-drag; /* vung co nut/tab phai tat drag de bam duoc */
+    /* TRUOC DAY ca vung nay bi tat keo-cua-so (no-drag) HOAN TOAN, ke ca
+       phan trong KHONG co tab nao (ben phai tab cuoi/nut +, ben trai 3 nut
+       thu nho/phong to/dong) - bam-keo vao do chi lam trinh duyet bam-chon
+       (select) linh tinh chu khong keo duoc cua so. Gio ke thua "drag" tu
+       #titleBar (cha) nhu binh thuong; CHI rieng tung tab/nut (.tab-item,
+       #newTabBtn) moi tu tat drag rieng no (xem CSS ben duoi) de van bam
+       duoc - phan trong con lai tu dong tro thanh vung keo di chuyen cua so.
+    */
     flex: 1 1 auto; min-width:0;
     display:flex; align-items:center; gap:4px;
     overflow-x:auto; white-space:nowrap; height:100%;
@@ -98,6 +105,7 @@
   }
   #toolbar button .brand-icon { vertical-align:-3px; margin-right:4px; }
   .tab-item {
+    -webkit-app-region: no-drag; /* tab phai bam duoc, khac voi khoang trong xung quanh */
     display:flex; align-items:center; gap:6px;
     max-width:150px;
     background:#000000; border:1px solid var(--neon-a40);
@@ -129,6 +137,7 @@
   }
   .tab-close:hover { color:#fff; background:rgba(255,60,90,0.6); }
   #newTabBtn {
+    -webkit-app-region: no-drag; /* nut + phai bam duoc, khac voi khoang trong xung quanh */
     flex-shrink:0; width:22px; height:22px; border-radius:6px;
     border:1px solid var(--neon-1); background:#000000; color:var(--neon-soft);
     cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;
