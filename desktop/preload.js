@@ -80,7 +80,8 @@ contextBridge.exposeInMainWorld('recordingBridge', {
   chooseFolder: () => ipcRenderer.invoke('recording:choose-folder'),
   startFile: (folder, filename) => ipcRenderer.invoke('recording:start-file', { folder, filename }),
   appendChunk: (recordingId, base64Data) => ipcRenderer.invoke('recording:append-chunk', { recordingId, base64Data }),
-  finishFile: (recordingId) => ipcRenderer.invoke('recording:finish-file', recordingId)
+  finishFile: (recordingId) => ipcRenderer.invoke('recording:finish-file', recordingId),
+  cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId)
 });
 
 // Chup anh trang web: renderer tu chup (webview.capturePage()) roi gui du

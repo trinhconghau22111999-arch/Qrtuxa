@@ -407,6 +407,21 @@ function createWindow(initialUrl) {
     return { ok: true, path: entry.filePath };
   });
 
+  // Huy 1 phien nhan tep dang do (VD dien thoai bao file-cancel, hoac ket
+  // noi rot giua chung) - dong file NHUNG XOA LUON phan da nhan, khong giu
+  // lai file loi/thieu tren dia. Dung cho ca tinh nang nhan tep/anh moi
+  // (Giai doan 3) - KHONG dung cho tinh nang quay video hien co (van dung
+  // finish-file nhu cu, khong doi gi).
+  ipcMain.handle('recording:cancel-file', (e, recordingId) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    const entry = activeRecordingFiles.get(recordingId);
+    if (!entry) return { ok: false, error: 'recording not found' };
+    try { fs.closeSync(entry.fd); } catch (err) {}
+    activeRecordingFiles.delete(recordingId);
+    try { fs.unlinkSync(entry.filePath); } catch (err) {}
+    return { ok: true };
+  });
+
   // Phong khi app bi tat dot ngot (hoac nguoi dung thoat) trong luc van con
   // file dang ghi do (VD do disconnectSlot() reset slot truoc khi kip goi
   // finish-file ve day) - dong het cac file descriptor con mo lai, tranh ro

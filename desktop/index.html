@@ -1772,6 +1772,8 @@
       stopTimer: null,
       _restartAfterFlush: false,
       _resumeRecordingOnReconnect: false,
+      dataChannel: null,      // DataChannel nhan tep/anh tu dien thoai (Giai doan 3)
+      incomingTransfer: null, // { transferId, recordingId, name, mimeType, size, totalChunks, receivedChunks }
     };
   }
 
@@ -1918,6 +1920,14 @@
     const pc = new RTCPeerConnection({ iceServers: CAM_ICE_SERVERS });
     slot.pc = pc;
 
+    // Nhan kenh gui tep/anh (DataChannel) tu dien thoai - THEM VAO SONG SONG
+    // voi video track o duoi, khong dung/thay doi gi phan xem truc tiep hien
+    // co. Dien thoai (truyentep) luon la ben tao kenh nay.
+    pc.ondatachannel = (event) => {
+      if (slot.pc !== pc) return;
+      _setupIncomingDataChannel(i, event.channel);
+    };
+
     // Nhan video track tu dien thoai
     pc.ontrack = e => {
       // Chi nhan neu day van la pc HIEN TAI cua slot - phong truong hop su
@@ -2056,6 +2066,12 @@
       slot._resumeRecordingOnReconnect = true;
       stopRecording(i, false);
     }
+    // Dang nhan tep/anh tu dien thoai (Giai doan 3) ma mat tin hieu giua
+    // chung - HUY NGAY, xoa phan da nhan (dung yeu cau "loi ket noi la huy",
+    // khong co gang giu/noi tiep phan dang do).
+    if (slot.incomingTransfer) {
+      _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/false);
+    }
     slot.connected = false;
     slot.signalLost = true;
     renderCamSlotList();
@@ -2089,6 +2105,11 @@
     // Dung sach neu dang quay video o - tranh MediaRecorder con treo lai chay
     // ngam sau khi stream/pc da bi dong, khong bao gio duoc luu xuong file.
     if (slot.recording) stopRecording(i, false);
+    // Huy phien nhan tep/anh dang do (neu co) - cung ly do voi mat tin hieu.
+    if (slot.incomingTransfer) {
+      _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/true);
+    }
+    slot.dataChannel = null;
     // Don Firebase
     if (slot.fbOfferListener && slot.fbGenRef) slot.fbGenRef.child('offer').off('value', slot.fbOfferListener);
     if (slot.fbIceListener   && slot.fbGenRef) slot.fbGenRef.child('iceCandidatesHost').off('value', slot.fbIceListener);
@@ -2269,6 +2290,121 @@
       binary += String.fromCharCode.apply(null, bytes.subarray(idx, idx + chunkSize));
     }
     return btoa(binary);
+  }
+
+  // ====== Nhan tep/anh tu dien thoai qua DataChannel (Giai doan 3) ======
+  // THEM VAO SONG SONG voi tinh nang xem truc tiep/quay video hien co - dung
+  // chung ha tang ket noi (RTCPeerConnection) nhung la 1 kenh du lieu HOAN
+  // TOAN RIENG (DataChannel), khong dung/anh huong gi den video track.
+  //
+  // Giao thuc (khop voi PeerConnectionManager.sendFile() ben Android):
+  //   1. 1 tin nhan JSON dang CHUOI: {type:"file-start", transferId, name,
+  //      mimeType, size, totalChunks}
+  //   2. Lan luot totalChunks tin nhan NHI PHAN (ArrayBuffer) - moi tin la 1
+  //      doan du lieu, GHI THANG XUONG DIA ngay khi nhan (tai dung ky thuat
+  //      "ghi tung doan" da lam cho tinh nang quay video - khong gom RAM).
+  //   3. 1 tin nhan JSON ket thuc: {type:"file-end", transferId} - hoan tat,
+  //      dong file.
+  //   HOAC {type:"file-cancel", transferId} bat cu luc nao - dien thoai bao
+  //   huy (vd nguoi dung thoat man hinh gui giua chung) -> XOA phan da nhan.
+  //
+  // "Chi cho phep truyen khi ca 2 dang ket noi thanh cong...loi ket noi la
+  // huy": neu RTCPeerConnection rot GIUA CHUNG luc dang nhan (pc.onconnection
+  // statechange chuyen disconnected/failed - da co san o _onSlotLostSignal),
+  // goi _cancelIncomingTransfer() de xoa phan dang do, khong giu file loi/
+  // thieu tren dia.
+  function _setupIncomingDataChannel(i, channel) {
+    const slot = camSlots[i];
+    channel.binaryType = 'arraybuffer';
+    slot.dataChannel = channel;
+
+    channel.onmessage = async (e) => {
+      if (slot.dataChannel !== channel) return; // kenh cu, khong con hieu luc
+      if (typeof e.data === 'string') {
+        let msg;
+        try { msg = JSON.parse(e.data); } catch (err) { return; }
+        if (msg.type === 'file-start') {
+          await _startIncomingTransfer(i, msg);
+        } else if (msg.type === 'file-end') {
+          await _finishIncomingTransfer(i, msg.transferId);
+        } else if (msg.type === 'file-cancel') {
+          await _cancelIncomingTransfer(i, msg.transferId, /*silent=*/false);
+        }
+        return;
+      }
+      // Du lieu nhi phan = 1 doan cua tep dang nhan
+      const t = slot.incomingTransfer;
+      if (!t || !t.recordingId) return; // chua co file-start hop le hoac chua co thu muc luu
+      try {
+        const base64 = _arrayBufferToBase64(e.data);
+        await window.recordingBridge.appendChunk(t.recordingId, base64);
+        t.receivedChunks++;
+      } catch (err) {
+        console.error('Loi ghi doan tep nhan tu ĐT ' + (i + 1), err);
+      }
+    };
+  }
+
+  async function _startIncomingTransfer(i, msg) {
+    const slot = camSlots[i];
+    // Neu dang co 1 phien nhan dang do (chua ket thuc) ma lai nhan file-start
+    // moi - coi nhu phien cu bi bo do, huy no truoc (khong de rac file dang
+    // ghi do lai tren dia).
+    if (slot.incomingTransfer) {
+      await _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/true);
+    }
+
+    const settings = getRecordSettings(i);
+    if (!settings.folder) {
+      showCamSignalToast('⚠️ ĐT ' + (i + 1) + ' muốn gửi tệp nhưng chưa chọn thư mục lưu (bấm ⏺ ở ô này 1 lần để chọn trước)');
+      slot.incomingTransfer = { transferId: msg.transferId, recordingId: null }; // danh dau da biet transferId de bo qua chunk sau nay
+      return;
+    }
+
+    const safeName = String(msg.name || ('tep_' + Date.now())).replace(/[\\/:*?"<>|]/g, '_');
+    const startResult = await window.recordingBridge.startFile(settings.folder, safeName);
+    if (!startResult || !startResult.ok) {
+      showCamSignalToast('⚠️ Không thể tạo file nhận từ ĐT ' + (i + 1));
+      slot.incomingTransfer = { transferId: msg.transferId, recordingId: null };
+      return;
+    }
+
+    slot.incomingTransfer = {
+      transferId: msg.transferId,
+      recordingId: startResult.recordingId,
+      path: startResult.path,
+      name: safeName,
+      mimeType: msg.mimeType || 'application/octet-stream',
+      size: msg.size || 0,
+      totalChunks: msg.totalChunks || 0,
+      receivedChunks: 0
+    };
+  }
+
+  async function _finishIncomingTransfer(i, transferId) {
+    const slot = camSlots[i];
+    const t = slot.incomingTransfer;
+    if (!t || t.transferId !== transferId) return;
+    slot.incomingTransfer = null;
+    if (!t.recordingId) return; // chua tung mo file that (thieu thu muc luu...)
+    const result = await window.recordingBridge.finishFile(t.recordingId);
+    if (result && result.ok) {
+      showCamSignalToast('📥 ĐT ' + (i + 1) + ' đã gửi: ' + t.name);
+      // Giai doan 5-6: hien anh xem + thong bao canh nut QR Cam se noi vao day.
+    } else {
+      showCamSignalToast('⚠️ Nhận tệp từ ĐT ' + (i + 1) + ' thất bại');
+    }
+  }
+
+  async function _cancelIncomingTransfer(i, transferId, silent) {
+    const slot = camSlots[i];
+    const t = slot.incomingTransfer;
+    if (!t || t.transferId !== transferId) return;
+    slot.incomingTransfer = null;
+    if (t.recordingId && window.recordingBridge.cancelFile) {
+      try { await window.recordingBridge.cancelFile(t.recordingId); } catch (err) {}
+    }
+    if (!silent) showCamSignalToast('❌ Đã hủy nhận tệp từ ĐT ' + (i + 1) + ' (mất kết nối giữa chừng)');
   }
 
   function _updateRecordBtnUI(i) {
