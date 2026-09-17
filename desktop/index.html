@@ -427,7 +427,7 @@
     background:rgba(0,0,0,0.8);
     align-items:center; justify-content:center;
     opacity:0; pointer-events:none;
-    transition: opacity .28s ease;
+    transition: opacity .55s ease;
   }
   #imageReviewOverlay.show { opacity:1; pointer-events:auto; }
   #closeImageReview {
@@ -440,10 +440,11 @@
     display:flex; flex-direction:column; align-items:flex-end; gap:12px;
     /* Anh "duoc day" tu dien thoai len - trang thai an: nam thap hon + mo dan,
        khi overlay co class .show thi truot len dung vi tri + hien ro (xem quy tac
-       #imageReviewOverlay.show #imageReviewInner ben duoi). */
-    transform: translateY(90px);
+       #imageReviewOverlay.show #imageReviewInner ben duoi). Thoi luong keo dai
+       de mat nhin thay ro rang hieu ung truot, khong bi "chop" qua nhanh. */
+    transform: translateY(160px);
     opacity: 0;
-    transition: transform .42s cubic-bezier(.19,1,.22,1), opacity .32s ease;
+    transition: transform .85s cubic-bezier(.16,.84,.28,1), opacity .6s ease;
   }
   #imageReviewOverlay.show #imageReviewInner { transform: translateY(0); opacity: 1; }
   #imageReviewCanvasWrap {
@@ -870,7 +871,7 @@
         <button id="imgToolCrop" title="Cắt ảnh">✂️ Cắt</button>
         <button id="imgToolRotate" title="Xoay ảnh 90°">🔄 Xoay</button>
         <button id="imgToolDraw" title="Vẽ lên ảnh">✏️ Vẽ</button>
-        <button id="imgToolCaption" title="Thêm chữ chú thích">🔤 Nhập liệu</button>
+        <button id="imgToolMark" title="Đánh dấu ô vuông lên ảnh">🔲 Đánh dấu</button>
       </div>
     </div>
   </div>
@@ -2491,14 +2492,16 @@
   const imgToolCrop = document.getElementById('imgToolCrop');
   const imgToolRotate = document.getElementById('imgToolRotate');
   const imgToolDraw = document.getElementById('imgToolDraw');
-  const imgToolCaption = document.getElementById('imgToolCaption');
+  const imgToolMark = document.getElementById('imgToolMark');
   const icx = imageReviewCanvas.getContext('2d');
 
   let currentImagePath = null;
-  let activeImageTool = null; // 'crop' | 'draw' | null
+  let activeImageTool = null; // 'crop' | 'draw' | 'mark' | null
   let cropStart = null;       // {x,y} trong toa do canvas (khong phai toa do man hinh) luc bat dau keo chon
   let cropPreviewSnapshot = null; // ImageData chup lai truoc khi ve khung chon, de xoa khung cu moi lan mousemove
   let isDrawing = false;
+  let markStart = null;           // {x,y} luc bat dau keo chon vung danh dau (giong cropStart)
+  let markPreviewSnapshot = null; // ImageData chup lai truoc khi ve khung xem truoc, de xoa khung cu moi lan mousemove
 
   function _filePathToUrl(filePath) {
     // Chuyen duong dan tuyet doi tren dia thanh URL file:// hop le, ma hoa
@@ -2538,8 +2541,11 @@
     activeImageTool = tool;
     imgToolCrop.classList.toggle('active', tool === 'crop');
     imgToolDraw.classList.toggle('active', tool === 'draw');
+    imgToolMark.classList.toggle('active', tool === 'mark');
     cropStart = null;
     cropPreviewSnapshot = null;
+    markStart = null;
+    markPreviewSnapshot = null;
   }
 
   async function _saveEditedImage() {
@@ -2587,25 +2593,11 @@
     _setActiveImageTool(activeImageTool === 'draw' ? null : 'draw');
   };
 
-  // --- Cong cu 4: Nhap lieu (chu thich) - hoi noi dung roi dong thang len
-  //     anh, canh giua phia duoi, co nen mo phia sau cho de doc ---
-  imgToolCaption.onclick = () => {
-    const text = window.prompt('Nhập chú thích muốn thêm vào ảnh:');
-    if (!text) return;
-    const fontSize = Math.max(20, Math.round(imageReviewCanvas.width / 20));
-    icx.font = fontSize + 'px sans-serif';
-    const textWidth = icx.measureText(text).width;
-    const padX = 16, padY = 10;
-    const boxW = textWidth + padX * 2;
-    const boxH = fontSize + padY * 2;
-    const boxX = (imageReviewCanvas.width - boxW) / 2;
-    const boxY = imageReviewCanvas.height - boxH - 24;
-    icx.fillStyle = 'rgba(0,0,0,0.55)';
-    icx.fillRect(boxX, boxY, boxW, boxH);
-    icx.fillStyle = '#FFFFFF';
-    icx.textBaseline = 'middle';
-    icx.fillText(text, boxX + padX, boxY + boxH / 2);
-    _saveEditedImage();
+  // --- Cong cu 4: Danh dau o vuong - keo chuot de chon 1 vung hinh chu nhat,
+  //     tha chuot ra la dong khung mau vang len vi tri do luon (ap dung ngay,
+  //     khong can nut xac nhan rieng, giong cach hoat dong cua cong cu Cat) ---
+  imgToolMark.onclick = () => {
+    _setActiveImageTool(activeImageTool === 'mark' ? null : 'mark');
   };
 
   // Xu ly chuot tren canvas - dung chung cho ca cong cu Cat va Ve, re nhanh
@@ -2622,6 +2614,9 @@
       icx.strokeStyle = '#ff3b30';
       icx.lineWidth = Math.max(3, imageReviewCanvas.width / 200);
       icx.lineCap = 'round';
+    } else if (activeImageTool === 'mark') {
+      markStart = _canvasCoords(e);
+      markPreviewSnapshot = icx.getImageData(0, 0, imageReviewCanvas.width, imageReviewCanvas.height);
     }
   });
   imageReviewCanvas.addEventListener('mousemove', (e) => {
@@ -2638,6 +2633,16 @@
       const p = _canvasCoords(e);
       icx.lineTo(p.x, p.y);
       icx.stroke();
+    } else if (activeImageTool === 'mark' && markStart) {
+      const p = _canvasCoords(e);
+      icx.putImageData(markPreviewSnapshot, 0, 0);
+      icx.save();
+      icx.strokeStyle = '#ffd400';
+      icx.lineWidth = Math.max(4, imageReviewCanvas.width / 150);
+      icx.fillStyle = 'rgba(255,212,0,0.18)';
+      icx.fillRect(markStart.x, markStart.y, p.x - markStart.x, p.y - markStart.y);
+      icx.strokeRect(markStart.x, markStart.y, p.x - markStart.x, p.y - markStart.y);
+      icx.restore();
     }
   });
   imageReviewCanvas.addEventListener('mouseup', (e) => {
@@ -2659,6 +2664,23 @@
       _saveEditedImage();
     } else if (activeImageTool === 'draw' && isDrawing) {
       isDrawing = false;
+      _saveEditedImage();
+    } else if (activeImageTool === 'mark' && markStart) {
+      const p = _canvasCoords(e);
+      icx.putImageData(markPreviewSnapshot, 0, 0); // xoa khung xem truoc truoc khi dong dau that
+      const x = Math.min(markStart.x, p.x), y = Math.min(markStart.y, p.y);
+      const w = Math.abs(p.x - markStart.x), h = Math.abs(p.y - markStart.y);
+      markStart = null;
+      markPreviewSnapshot = null;
+      if (w < 10 || h < 10) return; // vung chon qua nho, coi nhu khong dinh danh dau
+      icx.save();
+      icx.strokeStyle = '#ffd400';
+      icx.lineWidth = Math.max(4, imageReviewCanvas.width / 150);
+      icx.fillStyle = 'rgba(255,212,0,0.18)';
+      icx.fillRect(x, y, w, h);
+      icx.strokeRect(x, y, w, h);
+      icx.restore();
+      _setActiveImageTool(null);
       _saveEditedImage();
     }
   });
