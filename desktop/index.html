@@ -423,18 +423,29 @@
 
   /* ====== Xem/sua anh nhan tu dien thoai (Giai doan 5) ====== */
   #imageReviewOverlay {
-    position:fixed; inset:0; z-index:60; display:none;
+    position:fixed; inset:0; z-index:60; display:flex;
     background:rgba(0,0,0,0.8);
     align-items:center; justify-content:center;
+    opacity:0; pointer-events:none;
+    transition: opacity .28s ease;
   }
-  #imageReviewOverlay.show { display:flex; }
+  #imageReviewOverlay.show { opacity:1; pointer-events:auto; }
   #closeImageReview {
     position:absolute; top:14px; right:18px; z-index:2;
     padding:8px 18px; border-radius:22px; cursor:pointer;
     border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.12); color:var(--text); font-size:13px;
   }
   #closeImageReview:hover { background:rgba(192,38,255,0.3); color:#fff; }
-  #imageReviewInner { display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+  #imageReviewInner {
+    display:flex; flex-direction:column; align-items:flex-end; gap:12px;
+    /* Anh "duoc day" tu dien thoai len - trang thai an: nam thap hon + mo dan,
+       khi overlay co class .show thi truot len dung vi tri + hien ro (xem quy tac
+       #imageReviewOverlay.show #imageReviewInner ben duoi). */
+    transform: translateY(90px);
+    opacity: 0;
+    transition: transform .42s cubic-bezier(.19,1,.22,1), opacity .32s ease;
+  }
+  #imageReviewOverlay.show #imageReviewInner { transform: translateY(0); opacity: 1; }
   #imageReviewCanvasWrap {
     max-width:80vw; max-height:70vh; display:flex;
     border:1px solid rgba(192,38,255,0.35); background:#0d0715;
