@@ -84,6 +84,12 @@ contextBridge.exposeInMainWorld('recordingBridge', {
   cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId)
 });
 
+// Sua anh nhan tu dien thoai (Giai doan 5: cat/xoay/ve/nhap lieu) - ghi DE
+// thang len file da nhan, khong qua hop thoai "Luu thanh".
+contextBridge.exposeInMainWorld('imageEditBridge', {
+  save: (path, dataUrl) => ipcRenderer.invoke('imageEdit:save', { path, dataUrl })
+});
+
 // Chup anh trang web: renderer tu chup (webview.capturePage()) roi gui du
 // lieu anh (dataURL) qua day cho main.js hien hop thoai "Luu thanh..." va
 // ghi file that xuong dia (renderer khong co quyen ghi file truc tiep vi

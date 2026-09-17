@@ -422,6 +422,20 @@ function createWindow(initialUrl) {
     return { ok: true };
   });
 
+  // ====== Sua anh nhan tu dien thoai (Giai doan 5): cat/xoay/ve/nhap lieu ======
+  // Ghi DE thang len dung file da nhan (khong hien hop thoai "Luu thanh" vi
+  // day la sua-tai-cho, khac voi tinh nang chup man hinh trang web).
+  ipcMain.handle('imageEdit:save', (e, { path: filePath, dataUrl }) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    try {
+      const base64 = String(dataUrl || '').replace(/^data:image\/\w+;base64,/, '');
+      fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
   // Phong khi app bi tat dot ngot (hoac nguoi dung thoat) trong luc van con
   // file dang ghi do (VD do disconnectSlot() reset slot truoc khi kip goi
   // finish-file ve day) - dong het cac file descriptor con mo lai, tranh ro

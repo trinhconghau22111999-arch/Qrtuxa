@@ -274,6 +274,7 @@
     filter: brightness(1.1);
   }
   #camQrBtn {
+    position:relative;
     background: linear-gradient(135deg, var(--neon-2), var(--neon-1));
     border: none; font-weight:600;
     box-shadow: 0 0 14px rgba(192,38,255,0.4);
@@ -282,6 +283,16 @@
     box-shadow: 0 0 22px rgba(192,38,255,0.8);
     filter: brightness(1.1);
   }
+  /* Cham thong bao khi nhan duoc tep/anh moi tu dien thoai (Giai doan 6) -
+     an mac dinh, chi hien khi #camQrBtn co class "has-notify". Tu tat khi
+     nguoi dung mo panel QR Cam (coi nhu da xem). */
+  #camQrBtn .cam-notify-badge {
+    display:none;
+    position:absolute; top:-4px; right:-4px;
+    width:10px; height:10px; border-radius:50%;
+    background:#ff3b5c; box-shadow:0 0 6px rgba(255,59,92,0.9);
+  }
+  #camQrBtn.has-notify .cam-notify-badge { display:block; }
   #webviewWrap { position:relative; flex: 1 1 auto; min-height:0; }
   #webviewsContainer { position:relative; width:100%; height:100%; }
   webview {
@@ -409,6 +420,36 @@
   }
   #camLiveBtn:hover { transform: scale(1.06); }
   #camLiveBtn svg { width:22px; height:22px; margin-left:3px; }
+
+  /* ====== Xem/sua anh nhan tu dien thoai (Giai doan 5) ====== */
+  #imageReviewOverlay {
+    position:fixed; inset:0; z-index:60; display:none;
+    background:rgba(0,0,0,0.8);
+    align-items:center; justify-content:center;
+  }
+  #imageReviewOverlay.show { display:flex; }
+  #closeImageReview {
+    position:absolute; top:14px; right:18px; z-index:2;
+    padding:8px 18px; border-radius:22px; cursor:pointer;
+    border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.12); color:var(--text); font-size:13px;
+  }
+  #closeImageReview:hover { background:rgba(192,38,255,0.3); color:#fff; }
+  #imageReviewInner { display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+  #imageReviewCanvasWrap {
+    max-width:80vw; max-height:70vh; display:flex;
+    border:1px solid rgba(192,38,255,0.35); background:#0d0715;
+    box-shadow:0 0 30px rgba(0,0,0,0.6);
+  }
+  #imageReviewCanvas { max-width:80vw; max-height:70vh; display:block; cursor:crosshair; }
+  #imageReviewTools { display:flex; gap:10px; }
+  #imageReviewTools button {
+    padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;
+    border:1px solid rgba(192,38,255,0.4); background:rgba(192,38,255,0.12); color:var(--text);
+  }
+  #imageReviewTools button:hover { background:rgba(192,38,255,0.3); color:#fff; }
+  #imageReviewTools button.active {
+    background:linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; border-color:transparent;
+  }
 
   /* ====== Trang xem truc tiep camera (bam vao nut tam giac), chia 1/2/3/4 o ====== */
   #camLiveOverlay {
@@ -721,7 +762,7 @@
     </div>
     <button id="screenshotBtn" title="Chụp ảnh trang web">📷</button>
     <button id="qrBtn">📱 Chia sẻ QR</button>
-    <button id="camQrBtn">📷 QR Cam</button>
+    <button id="camQrBtn">📷 QR Cam<span class="cam-notify-badge"></span></button>
   </div>
 
   <div id="bookmarksBar">
@@ -805,6 +846,23 @@
        - z-index cao hon moi lop phu khac trong app de luon nhin thay duoc, ke ca dang
        mo Xem truc tiep/Cai dat. -->
   <div id="camSignalToast"></div>
+
+  <!-- Xem/sua anh nhan duoc tu dien thoai (Giai doan 5) - hien "phia tren"
+       tab dang mo (overlay phu kin, nen mo nhin xuyen thay tab ben duoi) -->
+  <div id="imageReviewOverlay">
+    <button id="closeImageReview" title="Đóng">✕</button>
+    <div id="imageReviewInner">
+      <div id="imageReviewCanvasWrap">
+        <canvas id="imageReviewCanvas"></canvas>
+      </div>
+      <div id="imageReviewTools">
+        <button id="imgToolCrop" title="Cắt ảnh">✂️ Cắt</button>
+        <button id="imgToolRotate" title="Xoay ảnh 90°">🔄 Xoay</button>
+        <button id="imgToolDraw" title="Vẽ lên ảnh">✏️ Vẽ</button>
+        <button id="imgToolCaption" title="Thêm chữ chú thích">🔤 Nhập liệu</button>
+      </div>
+    </div>
+  </div>
 
   <div id="camLiveOverlay">
     <div id="camLiveControls">
@@ -2161,6 +2219,7 @@
   // the dang dong) se khong bao gio co co hoi kich hoat.
   async function openCamQrPanelAndAutoConnect() {
     camQrPanel.classList.add('show');
+    document.getElementById('camQrBtn').classList.remove('has-notify');
     renderCamSlotList();
     await localStoreReady; // dam bao da doc xong ma da luu tu file truoc khi dung
     const savedCodes = camRoomCodesStore.load();
@@ -2390,7 +2449,12 @@
     const result = await window.recordingBridge.finishFile(t.recordingId);
     if (result && result.ok) {
       showCamSignalToast('📥 ĐT ' + (i + 1) + ' đã gửi: ' + t.name);
-      // Giai doan 5-6: hien anh xem + thong bao canh nut QR Cam se noi vao day.
+      // Cham thong bao canh nut QR Cam - tat khi nguoi dung mo panel QR Cam.
+      document.getElementById('camQrBtn').classList.add('has-notify');
+      // Neu la anh, hien luon overlay xem + sua anh phia tren tab dang mo.
+      if ((t.mimeType || '').startsWith('image/')) {
+        _showImageReviewOverlay(result.path, t.name);
+      }
     } else {
       showCamSignalToast('⚠️ Nhận tệp từ ĐT ' + (i + 1) + ' thất bại');
     }
@@ -2406,6 +2470,182 @@
     }
     if (!silent) showCamSignalToast('❌ Đã hủy nhận tệp từ ĐT ' + (i + 1) + ' (mất kết nối giữa chừng)');
   }
+
+  // ====== Xem/sua anh nhan tu dien thoai (Giai doan 5) ======
+  // Canvas la be mat chinh: MOI cong cu (cat/xoay/ve/nhap lieu) deu thao tac
+  // truc tiep tren du lieu pixel cua canvas nay, luu de LAI xuong dung file
+  // goc tren dia ngay sau moi lan sua (khong can nut "Luu" rieng).
+  const imageReviewOverlay = document.getElementById('imageReviewOverlay');
+  const imageReviewCanvas = document.getElementById('imageReviewCanvas');
+  const imgToolCrop = document.getElementById('imgToolCrop');
+  const imgToolRotate = document.getElementById('imgToolRotate');
+  const imgToolDraw = document.getElementById('imgToolDraw');
+  const imgToolCaption = document.getElementById('imgToolCaption');
+  const icx = imageReviewCanvas.getContext('2d');
+
+  let currentImagePath = null;
+  let activeImageTool = null; // 'crop' | 'draw' | null
+  let cropStart = null;       // {x,y} trong toa do canvas (khong phai toa do man hinh) luc bat dau keo chon
+  let cropPreviewSnapshot = null; // ImageData chup lai truoc khi ve khung chon, de xoa khung cu moi lan mousemove
+  let isDrawing = false;
+
+  function _showImageReviewOverlay(filePath, fileName) {
+    currentImagePath = filePath;
+    const img = new Image();
+    img.onload = () => {
+      imageReviewCanvas.width = img.naturalWidth;
+      imageReviewCanvas.height = img.naturalHeight;
+      icx.drawImage(img, 0, 0);
+      imageReviewOverlay.classList.add('show');
+      _setActiveImageTool(null);
+    };
+    img.onerror = () => {
+      showCamSignalToast('⚠️ Không mở được ảnh để xem: ' + fileName);
+    };
+    // File path tuyet doi tren dia -> URL file:// (ma hoa dung cac ky tu dac
+    // biet nhu khoang trang, dau tieng Viet co the co trong ten tep).
+    img.src = 'file://' + filePath.split(/[\\/]/).map(encodeURIComponent).join('/').replace('file://%3A', 'file://:');
+    // Tren Windows duong dan dang "C:\..." sau khi encode tung phan roi noi
+    // lai van giu nguyen dau ":" sau o dia - dong tren chi de phong truong
+    // hop encodeURIComponent lam hong ky tu ":" (thuc te no khong dong, giu
+    // lai cho chac vi duong dan Windows rat hay gap).
+  }
+
+  function _closeImageReview() {
+    imageReviewOverlay.classList.remove('show');
+    _setActiveImageTool(null);
+    currentImagePath = null;
+  }
+  document.getElementById('closeImageReview').onclick = _closeImageReview;
+
+  function _setActiveImageTool(tool) {
+    activeImageTool = tool;
+    imgToolCrop.classList.toggle('active', tool === 'crop');
+    imgToolDraw.classList.toggle('active', tool === 'draw');
+    cropStart = null;
+    cropPreviewSnapshot = null;
+  }
+
+  async function _saveEditedImage() {
+    if (!currentImagePath || !window.imageEditBridge) return;
+    const dataUrl = imageReviewCanvas.toDataURL('image/jpeg', 0.92);
+    const result = await window.imageEditBridge.save(currentImagePath, dataUrl);
+    if (!result || !result.ok) {
+      showCamSignalToast('⚠️ Lưu chỉnh sửa ảnh thất bại');
+    }
+  }
+
+  // Doi toa do chuot tren MAN HINH sang toa do THAT tren canvas - can thiet
+  // vi canvas hien thi co the bi CSS thu nho (max-width/max-height) so voi
+  // do phan giai thuc su (width/height) cua no.
+  function _canvasCoords(evt) {
+    const rect = imageReviewCanvas.getBoundingClientRect();
+    const scaleX = imageReviewCanvas.width / rect.width;
+    const scaleY = imageReviewCanvas.height / rect.height;
+    return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
+  }
+
+  // --- Cong cu 1: Cat anh - keo chuot de chon 1 vung hinh chu nhat, tha
+  //     chuot ra la cat luon (ap dung ngay, khong can nut xac nhan rieng) ---
+  imgToolCrop.onclick = () => {
+    _setActiveImageTool(activeImageTool === 'crop' ? null : 'crop');
+  };
+
+  // --- Cong cu 2: Xoay 90 do - ap dung ngay khi bam, khong can giu/tha ---
+  imgToolRotate.onclick = () => {
+    const w = imageReviewCanvas.width, h = imageReviewCanvas.height;
+    const rotated = document.createElement('canvas');
+    rotated.width = h; rotated.height = w;
+    const rctx = rotated.getContext('2d');
+    rctx.translate(h / 2, w / 2);
+    rctx.rotate(Math.PI / 2);
+    rctx.drawImage(imageReviewCanvas, -w / 2, -h / 2);
+    imageReviewCanvas.width = rotated.width;
+    imageReviewCanvas.height = rotated.height;
+    icx.drawImage(rotated, 0, 0);
+    _saveEditedImage();
+  };
+
+  // --- Cong cu 3: Ve tu do - giu chuot va keo de ve net mau do ---
+  imgToolDraw.onclick = () => {
+    _setActiveImageTool(activeImageTool === 'draw' ? null : 'draw');
+  };
+
+  // --- Cong cu 4: Nhap lieu (chu thich) - hoi noi dung roi dong thang len
+  //     anh, canh giua phia duoi, co nen mo phia sau cho de doc ---
+  imgToolCaption.onclick = () => {
+    const text = window.prompt('Nhập chú thích muốn thêm vào ảnh:');
+    if (!text) return;
+    const fontSize = Math.max(20, Math.round(imageReviewCanvas.width / 20));
+    icx.font = fontSize + 'px sans-serif';
+    const textWidth = icx.measureText(text).width;
+    const padX = 16, padY = 10;
+    const boxW = textWidth + padX * 2;
+    const boxH = fontSize + padY * 2;
+    const boxX = (imageReviewCanvas.width - boxW) / 2;
+    const boxY = imageReviewCanvas.height - boxH - 24;
+    icx.fillStyle = 'rgba(0,0,0,0.55)';
+    icx.fillRect(boxX, boxY, boxW, boxH);
+    icx.fillStyle = '#FFFFFF';
+    icx.textBaseline = 'middle';
+    icx.fillText(text, boxX + padX, boxY + boxH / 2);
+    _saveEditedImage();
+  };
+
+  // Xu ly chuot tren canvas - dung chung cho ca cong cu Cat va Ve, re nhanh
+  // theo activeImageTool.
+  imageReviewCanvas.addEventListener('mousedown', (e) => {
+    if (activeImageTool === 'crop') {
+      cropStart = _canvasCoords(e);
+      cropPreviewSnapshot = icx.getImageData(0, 0, imageReviewCanvas.width, imageReviewCanvas.height);
+    } else if (activeImageTool === 'draw') {
+      isDrawing = true;
+      const p = _canvasCoords(e);
+      icx.beginPath();
+      icx.moveTo(p.x, p.y);
+      icx.strokeStyle = '#ff3b30';
+      icx.lineWidth = Math.max(3, imageReviewCanvas.width / 200);
+      icx.lineCap = 'round';
+    }
+  });
+  imageReviewCanvas.addEventListener('mousemove', (e) => {
+    if (activeImageTool === 'crop' && cropStart) {
+      const p = _canvasCoords(e);
+      icx.putImageData(cropPreviewSnapshot, 0, 0);
+      icx.save();
+      icx.strokeStyle = '#00e5ff';
+      icx.lineWidth = Math.max(2, imageReviewCanvas.width / 400);
+      icx.setLineDash([8, 6]);
+      icx.strokeRect(cropStart.x, cropStart.y, p.x - cropStart.x, p.y - cropStart.y);
+      icx.restore();
+    } else if (activeImageTool === 'draw' && isDrawing) {
+      const p = _canvasCoords(e);
+      icx.lineTo(p.x, p.y);
+      icx.stroke();
+    }
+  });
+  imageReviewCanvas.addEventListener('mouseup', (e) => {
+    if (activeImageTool === 'crop' && cropStart) {
+      const p = _canvasCoords(e);
+      icx.putImageData(cropPreviewSnapshot, 0, 0); // xoa khung chon truoc khi cat that
+      const x = Math.min(cropStart.x, p.x), y = Math.min(cropStart.y, p.y);
+      const w = Math.abs(p.x - cropStart.x), h = Math.abs(p.y - cropStart.y);
+      cropStart = null;
+      cropPreviewSnapshot = null;
+      if (w < 10 || h < 10) return; // vung chon qua nho, coi nhu khong dinh cat
+      const cropped = document.createElement('canvas');
+      cropped.width = w; cropped.height = h;
+      cropped.getContext('2d').drawImage(imageReviewCanvas, x, y, w, h, 0, 0, w, h);
+      imageReviewCanvas.width = w;
+      imageReviewCanvas.height = h;
+      icx.drawImage(cropped, 0, 0);
+      _setActiveImageTool(null);
+      _saveEditedImage();
+    } else if (activeImageTool === 'draw' && isDrawing) {
+      isDrawing = false;
+      _saveEditedImage();
+    }
+  });
 
   function _updateRecordBtnUI(i) {
     const btn = camLiveTiles[i].querySelector('.cam-record-btn');
