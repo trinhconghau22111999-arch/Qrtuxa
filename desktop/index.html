@@ -2500,6 +2500,15 @@
   let cropPreviewSnapshot = null; // ImageData chup lai truoc khi ve khung chon, de xoa khung cu moi lan mousemove
   let isDrawing = false;
 
+  function _filePathToUrl(filePath) {
+    // Chuyen duong dan tuyet doi tren dia thanh URL file:// hop le, ma hoa
+    // dung cac ky tu dac biet (khoang trang, dau tieng Viet...) nhung khong
+    // dong vao dau ":" sau ten o dia tren Windows (vd "C:").
+    let p = filePath.replace(/\\/g, '/');
+    if (/^[a-zA-Z]:\//.test(p)) p = '/' + p; // "C:/..." -> "/C:/..." de ra file:///C:/...
+    return 'file://' + p.split('/').map(seg => seg.includes(':') ? seg : encodeURIComponent(seg)).join('/');
+  }
+
   function _showImageReviewOverlay(filePath, fileName) {
     currentImagePath = filePath;
     const img = new Image();
@@ -2515,11 +2524,7 @@
     };
     // File path tuyet doi tren dia -> URL file:// (ma hoa dung cac ky tu dac
     // biet nhu khoang trang, dau tieng Viet co the co trong ten tep).
-    img.src = 'file://' + filePath.split(/[\\/]/).map(encodeURIComponent).join('/').replace('file://%3A', 'file://:');
-    // Tren Windows duong dan dang "C:\..." sau khi encode tung phan roi noi
-    // lai van giu nguyen dau ":" sau o dia - dong tren chi de phong truong
-    // hop encodeURIComponent lam hong ky tu ":" (thuc te no khong dong, giu
-    // lai cho chac vi duong dan Windows rat hay gap).
+    img.src = _filePathToUrl(filePath);
   }
 
   function _closeImageReview() {

@@ -238,6 +238,7 @@ function createWindow(initialUrl) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      backgroundThrottling: false,
       preload: path.join(__dirname, 'preload.js')
     }
   });
