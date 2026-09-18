@@ -2402,18 +2402,32 @@
   //   1. 1 tin nhan JSON dang CHUOI: {type:"file-start", transferId, name,
   //      mimeType, size, totalChunks}
   //   2. Lan luot totalChunks tin nhan NHI PHAN (ArrayBuffer) - moi tin la 1
-  //      doan du lieu, GHI THANG XUONG DIA ngay khi nhan (tai dung ky thuat
-  //      "ghi tung doan" da lam cho tinh nang quay video - khong gom RAM).
+  //      doan du lieu, GOM VAO RAM (khong ghi dia tung doan nhu truoc nua -
+  //      xem ghi chu o duoi vi sao doi cach nay).
   //   3. 1 tin nhan JSON ket thuc: {type:"file-end", transferId} - hoan tat,
-  //      dong file.
+  //      GHI XUONG DIA DUNG 1 LAN toan bo du lieu da gom.
   //   HOAC {type:"file-cancel", transferId} bat cu luc nao - dien thoai bao
-  //   huy (vd nguoi dung thoat man hinh gui giua chung) -> XOA phan da nhan.
+  //   huy (vd nguoi dung thoat man hinh gui giua chung) -> huy, khong ghi gi.
+  //
+  // SUA TOC DO: truoc day moi doan 64KB nhan duoc phai ma hoa base64 + round-
+  // trip qua IPC (`recordingBridge.appendChunk`) + `fs.writeSync` DONG BO ben
+  // main process (chan ca tien trinh Electron trong luc ghi) - 1 anh vai MB
+  // ~ vai chuc lan "dung lai cho ghi dia" tuan tu nhu vay, cham hon nhieu so
+  // voi toc do mang thuc te co the dat duoc. Doi thanh: gom thang cac doan
+  // ArrayBuffer nhan duoc vao mang trong bo nho (KHONG IPC, KHONG base64 cho
+  // tung doan), roi chi ghi xuong dia DUNG 1 LAN khi nhan du (file-end) qua
+  // `recordingBridge.saveWholeFile()` - giong cach du lieu video duoc gom
+  // trong bo nho truoc khi hien thi, khong co buoc I/O dia chan giua chung.
+  // (Rieng tinh nang QUAY VIDEO LIEN TUC/rat dai o duoi van dung appendChunk
+  // ghi tung doan nhu cu - phu hop hon vi khong the gom ca video dai trong
+  // RAM. Chi doi cach cho duong nhan tep/anh nay, vi day la du lieu 1 lan,
+  // kich thuoc gioi han (may B da doc het vao RAM truoc khi gui).)
   //
   // "Chi cho phep truyen khi ca 2 dang ket noi thanh cong...loi ket noi la
   // huy": neu RTCPeerConnection rot GIUA CHUNG luc dang nhan (pc.onconnection
   // statechange chuyen disconnected/failed - da co san o _onSlotLostSignal),
-  // goi _cancelIncomingTransfer() de xoa phan dang do, khong giu file loi/
-  // thieu tren dia.
+  // goi _cancelIncomingTransfer() de huy phan dang do (chi xoa trong RAM, vi
+  // chua ghi gi xuong dia).
   function _setupIncomingDataChannel(i, channel) {
     const slot = camSlots[i];
     channel.binaryType = 'arraybuffer';
@@ -2437,24 +2451,18 @@
         }
         return;
       }
-      // Du lieu nhi phan = 1 doan cua tep dang nhan
+      // Du lieu nhi phan = 1 doan cua tep dang nhan - gom vao RAM, KHONG ghi dia o day.
       const t = slot.incomingTransfer;
-      if (!t || !t.recordingId) return; // chua co file-start hop le hoac chua co thu muc luu
-      try {
-        const base64 = _arrayBufferToBase64(e.data);
-        await window.recordingBridge.appendChunk(t.recordingId, base64);
-        t.receivedChunks++;
-      } catch (err) {
-        console.error('Loi ghi doan tep nhan tu ĐT ' + (i + 1), err);
-      }
+      if (!t || !t.awaitingChunks) return; // chua co file-start hop le hoac chua co thu muc luu
+      t.chunks.push(e.data);
+      t.receivedChunks++;
     };
   }
 
   async function _startIncomingTransfer(i, msg) {
     const slot = camSlots[i];
     // Neu dang co 1 phien nhan dang do (chua ket thuc) ma lai nhan file-start
-    // moi - coi nhu phien cu bi bo do, huy no truoc (khong de rac file dang
-    // ghi do lai tren dia).
+    // moi - coi nhu phien cu bi bo do, huy no truoc (giai phong RAM da gom).
     if (slot.incomingTransfer) {
       await _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/true);
     }
@@ -2462,22 +2470,16 @@
     const settings = getRecordSettings(i);
     if (!settings.folder) {
       showCamSignalToast('⚠️ ĐT ' + (i + 1) + ' muốn gửi tệp nhưng chưa chọn thư mục lưu (bấm ⏺ ở ô này 1 lần để chọn trước)');
-      slot.incomingTransfer = { transferId: msg.transferId, recordingId: null }; // danh dau da biet transferId de bo qua chunk sau nay
+      slot.incomingTransfer = { transferId: msg.transferId, awaitingChunks: false }; // danh dau da biet transferId de bo qua chunk sau nay
       return;
     }
 
     const safeName = String(msg.name || ('tep_' + Date.now())).replace(/[\\/:*?"<>|]/g, '_');
-    const startResult = await window.recordingBridge.startFile(settings.folder, safeName);
-    if (!startResult || !startResult.ok) {
-      showCamSignalToast('⚠️ Không thể tạo file nhận từ ĐT ' + (i + 1));
-      slot.incomingTransfer = { transferId: msg.transferId, recordingId: null };
-      return;
-    }
-
     slot.incomingTransfer = {
       transferId: msg.transferId,
-      recordingId: startResult.recordingId,
-      path: startResult.path,
+      awaitingChunks: true,
+      folder: settings.folder,
+      chunks: [], // mang cac ArrayBuffer nhan duoc, gom trong RAM cho toi khi file-end
       name: safeName,
       mimeType: msg.mimeType || 'application/octet-stream',
       size: msg.size || 0,
@@ -2491,8 +2493,20 @@
     const t = slot.incomingTransfer;
     if (!t || t.transferId !== transferId) return;
     slot.incomingTransfer = null;
-    if (!t.recordingId) return; // chua tung mo file that (thieu thu muc luu...)
-    const result = await window.recordingBridge.finishFile(t.recordingId);
+    if (!t.awaitingChunks) return; // chua tung gom du lieu that (thieu thu muc luu...)
+
+    // Ghep toan bo cac doan da gom thanh 1 Uint8Array lien tuc, ghi xuong dia
+    // DUNG 1 LAN (xem ghi chu o dau khoi "Nhan tep/anh tu dien thoai" phia tren).
+    const totalBytes = t.chunks.reduce((sum, c) => sum + c.byteLength, 0);
+    const merged = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of t.chunks) {
+      merged.set(new Uint8Array(chunk), offset);
+      offset += chunk.byteLength;
+    }
+    t.chunks = null; // giai phong som, khong giu 2 ban sao trong RAM lau hon can thiet
+
+    const result = await window.recordingBridge.saveWholeFile(t.folder, t.name, merged);
     if (result && result.ok) {
       showCamSignalToast('📥 ĐT ' + (i + 1) + ' đã gửi: ' + t.name);
       // Cham thong bao canh nut QR Cam - tat khi nguoi dung mo panel QR Cam.
@@ -2511,9 +2525,7 @@
     const t = slot.incomingTransfer;
     if (!t || t.transferId !== transferId) return;
     slot.incomingTransfer = null;
-    if (t.recordingId && window.recordingBridge.cancelFile) {
-      try { await window.recordingBridge.cancelFile(t.recordingId); } catch (err) {}
-    }
+    t.chunks = null; // chi can bo trong RAM - chua tung ghi gi xuong dia (khac co che cu)
     if (!silent) showCamSignalToast('❌ Đã hủy nhận tệp từ ĐT ' + (i + 1) + ' (mất kết nối giữa chừng)');
   }
 

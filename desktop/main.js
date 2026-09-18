@@ -408,6 +408,29 @@ function createWindow(initialUrl) {
     return { ok: true, path: entry.filePath };
   });
 
+  // Ghi 1 file NGUYEN VEN trong 1 lan (khong mo fd roi ghi tung doan qua
+  // nhieu vong IPC + fs.writeSync dong bo nhu recording:append-chunk o tren -
+  // cach do phu hop cho quay video LIEN TUC/rat dai, khong the gom het trong
+  // RAM, nhung lai la nut that co chai KHONG CAN THIET cho tep/anh nhan tu
+  // dien thoai qua DataChannel: 1 anh vai tram KB - vai MB chia lam vai chuc
+  // doan 64KB, moi doan truoc day phai round-trip IPC + writeSync RIENG,
+  // cong don lai lam cham han. Voi truong hop nay renderer da gom san toan
+  // bo du lieu trong RAM (mang cac ArrayBuffer chunk) roi moi goi xuong day
+  // DUNG 1 LAN - `data` la Uint8Array/Buffer truyen thang qua IPC (khong can
+  // ma hoa base64, tranh phinh ~33% kich thuoc + chi phi encode/decode).
+  ipcMain.handle('recording:save-whole-file', (e, { folder, filename, data }) => {
+    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    try {
+      if (!folder || !filename || !data) return { ok: false, error: 'missing folder/filename/data' };
+      fs.mkdirSync(folder, { recursive: true });
+      const filePath = path.join(folder, filename);
+      fs.writeFileSync(filePath, Buffer.from(data.buffer || data, data.byteOffset || 0, data.byteLength ?? data.length));
+      return { ok: true, path: filePath };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
   // Huy 1 phien nhan tep dang do (VD dien thoai bao file-cancel, hoac ket
   // noi rot giua chung) - dong file NHUNG XOA LUON phan da nhan, khong giu
   // lai file loi/thieu tren dia. Dung cho ca tinh nang nhan tep/anh moi

@@ -81,7 +81,12 @@ contextBridge.exposeInMainWorld('recordingBridge', {
   startFile: (folder, filename) => ipcRenderer.invoke('recording:start-file', { folder, filename }),
   appendChunk: (recordingId, base64Data) => ipcRenderer.invoke('recording:append-chunk', { recordingId, base64Data }),
   finishFile: (recordingId) => ipcRenderer.invoke('recording:finish-file', recordingId),
-  cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId)
+  cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId),
+  // Ghi 1 file NGUYEN VEN trong 1 lan (khong mo fd + ghi tung doan qua nhieu
+  // vong IPC nhu appendChunk o tren) - dung cho tep/anh nhan tu dien thoai qua
+  // DataChannel (Giai doan 3): cac doan duoc gom san trong RAM o renderer, chi
+  // ghi xuong dia DUNG 1 LAN khi da nhan du - xem giai thich trong main.js.
+  saveWholeFile: (folder, filename, data) => ipcRenderer.invoke('recording:save-whole-file', { folder, filename, data })
 });
 
 // Sua anh nhan tu dien thoai (Giai doan 5: cat/xoay/ve/nhap lieu) - ghi DE
