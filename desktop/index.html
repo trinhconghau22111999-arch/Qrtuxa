@@ -3771,15 +3771,16 @@
     applyTheme(themeStore.load().hue, themeStore.load().sat, themeStore.load().light);
     applyTopBg(themeStore.load().topBg || 'black');
     syncPhishingListToMain();
-    // Nhung o co MA DA LUU va LICH QUAY dang bat thi tu ket noi ngay tu luc
-    // khoi dong app - KHONG can nguoi dung phai mo trang QR Cam truoc, dung
-    // nhu yeu cau: "dat lich quay thi phai tu chay, khong phu thuoc panel".
-    // Cac o khac (co ma nhung khong co lich) van cho mo panel nhu binh
-    // thuong (dung quy tac "dong trang la ngat" da lam truoc do).
+    // Bat ky o nao co MA DA LUU deu tu ket noi lai ngay tu luc khoi dong app -
+    // KHONG can nguoi dung phai tu mo panel QR Cam len truoc (truoc day chi
+    // lam vay cho o co Lich quay dang bat, cac o con lai phai doi mo panel
+    // moi tu noi lai - gay cam giac "phai nhap lai ma" moi lan mo app, dung
+    // nhu nguoi dung phan anh). O nao dang co Lich quay van duoc uu tien nhu
+    // cu (van nam trong dieu kien "saved" o day, khong can rieng nua).
     const savedCodesAtStartup = camRoomCodesStore.load();
     camSlots.forEach((slot, i) => {
       const saved = (savedCodesAtStartup[i] || '').trim();
-      if (saved && _hasActiveSchedule(i) && !slot.roomCode) connectSlot(i, saved);
+      if (saved && !slot.roomCode) connectSlot(i, saved);
     });
     // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
     // truyen URL ban dau qua query string cua chinh trang index.html.
