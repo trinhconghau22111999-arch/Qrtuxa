@@ -1844,6 +1844,7 @@
       _resumeRecordingOnReconnect: false,
       dataChannel: null,      // DataChannel nhan tep/anh tu dien thoai (Giai doan 3)
       incomingTransfer: null, // { transferId, recordingId, name, mimeType, size, totalChunks, receivedChunks }
+      lastPingAt: 0,          // Lan gan nhat nhan duoc "ping" heartbeat tu dien thoai qua DataChannel
     };
   }
 
@@ -2038,6 +2039,7 @@
         slot.connected = true;
         slot.signalLost = false;
         slot.lastConnectedAt = Date.now();
+        slot.lastPingAt = Date.now(); // moc thoi gian ban dau, tranh watchdog bao mat tin hieu ngay khi vua ket noi truoc khi ping dau tien toi
         clearTimeout(slot.signalLostTimer);
         renderCamSlotList();
         updateLiveTileState(i);
@@ -2154,15 +2156,43 @@
     }, 4000);
   }
 
+  // Bao lau khong nhan duoc ping heartbeat qua DataChannel thi coi la mat tin hieu -
+  // phai lon hon HEARTBEAT_INTERVAL_MS ben dien thoai (5s) de co du choi cho 1-2 lan
+  // ping bi that lac tren mang khong bi bao nham.
+  const CAM_HEARTBEAT_TIMEOUT_MS = 15000;
+
+  // SUA LOI: ham nay TRUOC DAY chi tu goi lai chinh no (setTimeout tiep theo) o trong
+  // nhanh "if (slot.connected && slot.stream)" - voi ket noi CHI gui tep (khong co video
+  // track, dung voi app truyentep hien tai) thi slot.stream luon la null, nen watchdog
+  // chay dung 1 lan roi "chet" vinh vien, khong con lan nao kiem tra lai nua. Ket qua:
+  // khi ket noi "treo" (connectionState khong chuyen sang disconnected/failed dung luc,
+  // rat hay gap khi doi mang di dong wifi<->4G / NAT timeout ngam) thi khong co gi phat
+  // hien ra ca - phai bam ✕ nhap lai ma moi noi lai duoc. Sua: LUON tu dat lai timer o
+  // cuoi ham (bat ke co stream hay khong), va voi ket noi khong co video thi dung do
+  // "im lang qua lau" cua heartbeat (xem PeerConnectionManager.kt phia dien thoai) thay
+  // cho kiem tra video track.
   function _startSignalLostCheck(i) {
     const slot = camSlots[i];
     clearTimeout(slot.signalLostTimer);
     slot.signalLostTimer = setTimeout(() => {
-      if (slot.connected && slot.stream) {
+      if (!slot.connected) return; // da dung vi ly do khac (vd nguoi dung tu ngat) - khong can lap lai nua
+
+      let lost = false;
+      if (slot.stream) {
+        // Co video track (may camera kieu cu / QrtuxaCam) -> kiem tra track con "song" khong
         const tracks = slot.stream.getVideoTracks();
-        if (!tracks.length || tracks[0].readyState === 'ended') _onSlotLostSignal(i);
-        else _startSignalLostCheck(i); // van oke -> lap lai kiem tra
+        lost = !tracks.length || tracks[0].readyState === 'ended';
+      } else if (slot.dataChannel) {
+        // Chi co DataChannel (truyentep, gui tep - khong video) -> dua vao heartbeat
+        if (slot.dataChannel.readyState === 'closed' || slot.dataChannel.readyState === 'closing') {
+          lost = true;
+        } else if (slot.lastPingAt && Date.now() - slot.lastPingAt > CAM_HEARTBEAT_TIMEOUT_MS) {
+          lost = true;
+        }
       }
+
+      if (lost) { _onSlotLostSignal(i); return; }
+      _startSignalLostCheck(i); // van oke -> luon lap lai kiem tra, du co stream hay khong
     }, CAM_SIGNAL_LOST_MS);
   }
 
@@ -2394,7 +2424,11 @@
       if (typeof e.data === 'string') {
         let msg;
         try { msg = JSON.parse(e.data); } catch (err) { return; }
-        if (msg.type === 'file-start') {
+        if (msg.type === 'ping') {
+          // Heartbeat tu dien thoai - dung lam moc "du lieu THUC SU con chay qua" cho
+          // watchdog _startSignalLostCheck() o tren, khong lien quan gi den truyen tep.
+          slot.lastPingAt = Date.now();
+        } else if (msg.type === 'file-start') {
           await _startIncomingTransfer(i, msg);
         } else if (msg.type === 'file-end') {
           await _finishIncomingTransfer(i, msg.transferId);
