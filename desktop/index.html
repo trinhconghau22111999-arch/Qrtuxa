@@ -2149,10 +2149,21 @@
     renderCamSlotList();
     updateLiveTileState(i);
     showCamSignalToast('⚠️ Mất tín hiệu ĐT ' + (i+1) + ' — đang thử kết nối lại...');
-    // Thu ket noi lai sau 4 giay
+    // SUA LOI "chi thu lai DUNG 1 LAN roi bo cuoc": truoc day sau 4 giay chi
+    // goi _doConnect(i) DUNG 1 LAN - neu dien thoai chua san sang ngay luc do
+    // (vd nguoi dung tat han app, mot luc sau moi mo lai) thi may tinh dung
+    // yen mai o "Dang ket noi...", KHONG bao gio thu lai nua, du dien thoai co
+    // quay lai sau do di nua. Gio: sau moi lan _doConnect(), doi them 1 khoang
+    // - neu VAN chua ket noi duoc (slot.connected van false) thi tu goi lai
+    // _onSlotLostSignal(i) de LAP LAI chu ky nay, cho toi khi ket noi duoc
+    // that su hoac nguoi dung tu bam ngat (✕, luc do roomCode = null).
     clearTimeout(slot.reconnectTimer);
     slot.reconnectTimer = setTimeout(() => {
-      if (slot.roomCode) _doConnect(i);
+      if (!slot.roomCode) return;
+      _doConnect(i);
+      setTimeout(() => {
+        if (slot.roomCode && !slot.connected) _onSlotLostSignal(i);
+      }, 8000);
     }, 4000);
   }
 
