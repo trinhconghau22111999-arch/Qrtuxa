@@ -2148,7 +2148,10 @@
     slot.signalLost = true;
     renderCamSlotList();
     updateLiveTileState(i);
-    showCamSignalToast('⚠️ Mất tín hiệu ĐT ' + (i+1) + ' — đang thử kết nối lại...');
+    // AN toast "Mat tin hieu... dang thu ket noi lai" theo yeu cau - trang
+    // thai van hien du trong panel QR Cam (renderCamSlotList) va co che tu
+    // ket noi lai ben duoi VAN chay binh thuong, chi la khong con lam phien
+    // bang thong bao nhap nhay moi lan tin hieu chap chon nua.
     // SUA LOI "chi thu lai DUNG 1 LAN roi bo cuoc": truoc day sau 4 giay chi
     // goi _doConnect(i) DUNG 1 LAN - neu dien thoai chua san sang ngay luc do
     // (vd nguoi dung tat han app, mot luc sau moi mo lai) thi may tinh dung
