@@ -2040,7 +2040,6 @@
         slot.signalLost = false;
         slot.lastConnectedAt = Date.now();
         slot.lastPingAt = Date.now(); // moc thoi gian ban dau, tranh watchdog bao mat tin hieu ngay khi vua ket noi truoc khi ping dau tien toi
-        slot._lastFramesDecoded = null; // reset moc dem khung hinh - tranh so sanh nham voi phien ket noi TRUOC do
         clearTimeout(slot.signalLostTimer);
         renderCamSlotList();
         updateLiveTileState(i);
@@ -2186,7 +2185,7 @@
   function _startSignalLostCheck(i) {
     const slot = camSlots[i];
     clearTimeout(slot.signalLostTimer);
-    slot.signalLostTimer = setTimeout(async () => {
+    slot.signalLostTimer = setTimeout(() => {
       if (!slot.connected) return; // da dung vi ly do khac (vd nguoi dung tu ngat) - khong can lap lai nua
 
       let lost = false;
@@ -2194,36 +2193,6 @@
         // Co video track (may camera kieu cu / QrtuxaCam) -> kiem tra track con "song" khong
         const tracks = slot.stream.getVideoTracks();
         lost = !tracks.length || tracks[0].readyState === 'ended';
-
-        // SUA LOI "camera cu (QrtuxaCam) treo hinh phai tu bam vao o ket noi lai
-        // moi chiu ket noi lai": track.readyState CHI chuyen 'ended' khi track
-        // THAT SU dong (vd dien thoai tat han app) - khi mang chi "treo ngam"
-        // giua chung (doi wifi<->4G, NAT timeout...) ma pc.connectionState
-        // khong kip bao 'disconnected'/'failed', track van bao 'live' mai du
-        // KHONG con khung hinh nao moi ca, nen nhanh kiem tra o tren khong bao
-        // gio phat hien ra - nguoi dung phai tu bam ✕ roi nhap lai ma moi noi
-        // lai duoc. Kiem tra them so khung hinh da giai ma (framesDecoded qua
-        // getStats()) - neu con "song" (chua lost) nhung so nay KHONG doi sau
-        // ca 1 chu ky (CAM_SIGNAL_LOST_MS) thi coi nhu da treo/mat tin hieu,
-        // giong y het co che dua vao heartbeat da dung cho ket noi chi truyen
-        // tep (truyentep, xem nhanh else-if ben duoi).
-        if (!lost && slot.pc) {
-          try {
-            const stats = await slot.pc.getStats();
-            let framesDecoded = null;
-            stats.forEach(report => {
-              if (report.type === 'inbound-rtp' && report.kind === 'video') {
-                framesDecoded = report.framesDecoded;
-              }
-            });
-            if (framesDecoded != null) {
-              if (slot._lastFramesDecoded != null && framesDecoded === slot._lastFramesDecoded) {
-                lost = true;
-              }
-              slot._lastFramesDecoded = framesDecoded;
-            }
-          } catch (e) { /* getStats loi (vd pc da dong giua chung) - bo qua, van dua vao readyState o tren */ }
-        }
       } else if (slot.dataChannel) {
         // Chi co DataChannel (truyentep, gui tep - khong video) -> dua vao heartbeat
         if (slot.dataChannel.readyState === 'closed' || slot.dataChannel.readyState === 'closing') {
@@ -2289,18 +2258,21 @@
     camSignalToastTimer = setTimeout(() => el.classList.remove('show'), 6000);
   }
 
-  // Dong/mo panel — CHUC NANG QR Cam CHI hoat dong trong luc panel dang mo:
-  // mo panel se tu dong ket noi lai bang (cac) ma da luu tu truoc (neu co); o
-  // nao chua co ma thi cu de trong cho nhap. Dong panel se tam ngat HET moi
-  // ket noi dang chay (may tinh se KHONG con ket noi voi dien thoai nua cho
-  // toi khi mo lai) - nhung KHONG xoa ma da luu, mo lai la tu ket noi lai
-  // ngay, khong phai nhap lai tu dau.
+  // Dong/mo panel QR Cam.
   //
-  // NGOAI LE: o nao dang quay HOAC co lich Bat dau/Ket thuc dang bat thi GIU
-  // NGUYEN ket noi ngam du dong panel (xem ham _shouldKeepAliveOnClose dinh
-  // nghia cung khoi lich quay ben duoi) - vi neu ngat, phien quay dang chay se
-  // bi cat ngang, va lich cho mot thoi diem trong tuong lai (luc do panel co
-  // the dang dong) se khong bao gio co co hoi kich hoat.
+  // SUA LOI "phai bam vao nut 📷 Kết nối thi may tinh moi chiu ket noi lai,
+  // khong bam la khong ket noi luon": TRUOC DAY dong panel (bam ✕ hoac bam
+  // lai nut 📷 Kết nối luc dang mo) se NGAT HET moi ket noi dang chay (tru o
+  // nao dang quay/co lich), va CHI mo panel len (bam nut 📷 Kết nối) moi tu
+  // dong ket noi lai bang ma da luu. Nghia la moi lan dong panel (hoac chi don
+  // gian la chua bam mo panel lan nao) thi dien thoai KHONG HE duoc ket noi,
+  // ke ca ma da luu san - phai TU TAY bam vao nut do moi thay may tinh chiu
+  // ket noi. Gio: dong/mo panel CHI la AN/HIEN giao dien - KHONG con dung hay
+  // khoi dong ket noi nua. Ket noi (voi ma da luu) duoc tu dong thiet lap va
+  // duy tri ngay tu luc khoi dong app (xem doan localStoreReady.then() o cuoi
+  // file) va tu ket noi lai khi mat tin hieu (_onSlotLostSignal) CHAY NGAM
+  // LIEN TUC, khong phu thuoc panel dang mo hay dong - dung nut 📷 Kết noi de
+  // xem/nhap ma khi can, khong phai de "bat/tat" ket noi nua.
   async function openCamQrPanelAndAutoConnect() {
     camQrPanel.classList.add('show');
     document.getElementById('camQrBtn').classList.remove('has-notify');
@@ -2314,15 +2286,7 @@
   }
   function closeCamQrPanelAndPause() {
     camQrPanel.classList.remove('show');
-    let keptAlive = false;
-    camSlots.forEach((slot, i) => {
-      if (!slot.roomCode) return;
-      if (_shouldKeepAliveOnClose(i)) { keptAlive = true; return; }
-      disconnectSlot(i, true, true); // silent + giu nguyen ma da luu
-    });
-    if (keptAlive) {
-      showCamSignalToast('🔴 Một số ĐT vẫn giữ kết nối ngầm để tiếp tục quay theo lịch tự lưu đã đặt');
-    }
+    // Chi an giao dien - KHONG con ngat ket noi o day nua (xem ghi chu o tren).
   }
   document.getElementById('camQrBtn').onclick = () => {
     if (camQrPanel.classList.contains('show')) {
@@ -2397,19 +2361,6 @@
     all[i] = Object.assign({}, all[i], patch);
     camRecordSettingsStore.save(all);
   }
-  // Co lich dang bat (ca 2 gio bat dau + ket thuc deu da dat) hay khong.
-  function _hasActiveSchedule(i) {
-    const s = getRecordSettings(i);
-    return !!(s.startTime && s.stopTime);
-  }
-  // Dung cho ngoai le "giu ket noi ngam khi dong trang QR Cam": can giu neu
-  // DANG quay (bat ke co lich hay khong, tranh cat ngang phien dang chay) HOAC
-  // co lich dang bat (de con co co hoi tu bat dau dung gio, ke ca khi chua
-  // bat dau quay tai thoi diem dong trang).
-  function _shouldKeepAliveOnClose(i) {
-    return camSlots[i].recording || _hasActiveSchedule(i);
-  }
-
   function _pad2(n) { return String(n).padStart(2, '0'); }
   function _weekdayAbbr(d) {
     // Chu Nhat/Thu Hai/.../Thu Bay - dung ky hieu quen thuoc (giong lich
