@@ -3775,6 +3775,44 @@
     } catch (err) {}
   };
 
+  // Cho Firebase KET NOI THAT SU (socket da "bat tay" xong voi server) truoc
+  // khi tu ket noi cac ma da luu luc khoi dong app - day la NGUYEN NHAN chinh
+  // khien lan ket noi DAU TIEN sau khi mo app luon cham hon han (vai giay) so
+  // voi cac lan nhap/ket noi lai thu cong sau do (chua toi 1s): luc trang vua
+  // tai xong, ket noi ngam (websocket) cua Firebase SDK con dang thiet lap -
+  // goi connectSlot() ngay luc nay khien MOI buoc dam phan (ghi 'present',
+  // doi offer, doi answer, trao ICE candidate...) deu phai xep hang cho toi
+  // khi socket do len xong roi moi thuc su gui di duoc, cong don lai thanh
+  // vai giay. Trong khi do, luc ban tu tay nhap lai ma (thuong la sau khi app
+  // da chay duoc 1 luc), socket nay da san sang tu truoc nen moi buoc phia
+  // tren chay gan nhu tuc thi. Dung '.info/connected' (gia tri dac biet duoc
+  // chinh Firebase SDK tu cap nhat true/false dung theo trang thai socket) de
+  // biet CHINH XAC khi nao da san sang, thay vi doan mo hoac cho co dinh 1
+  // khoang thoi gian co dinh (co the thua hoac thieu tuy toc do mang).
+  function _waitForFirebaseConnected(timeoutMs) {
+    return new Promise(resolve => {
+      if (!db) { resolve(); return; }
+      let done = false;
+      const ref = firebase.database().ref('.info/connected');
+      const listener = ref.on('value', snap => {
+        if (snap.val() === true && !done) {
+          done = true;
+          ref.off('value', listener);
+          resolve();
+        }
+      });
+      // Du sao cung phai tu ket noi (vd dang mat mang that su) - khong cho vo han,
+      // qua thoi gian nay thi cu thu ket noi binh thuong (giu hanh vi cu lam phuong
+      // an du phong, chi la khong con duoc "cho san" nua).
+      setTimeout(() => {
+        if (done) return;
+        done = true;
+        ref.off('value', listener);
+        resolve();
+      }, timeoutMs);
+    });
+  }
+
   // Cho doc xong du lieu THAT tu file (qua main.js) roi moi ve giao dien,
   // tranh truong hop hien tam thoi gia tri mac dinh/rong roi lai "nhay" sang
   // du lieu that ngay sau do.
@@ -3790,10 +3828,14 @@
     // moi tu noi lai - gay cam giac "phai nhap lai ma" moi lan mo app, dung
     // nhu nguoi dung phan anh). O nao dang co Lich quay van duoc uu tien nhu
     // cu (van nam trong dieu kien "saved" o day, khong can rieng nua).
-    const savedCodesAtStartup = camRoomCodesStore.load();
-    camSlots.forEach((slot, i) => {
-      const saved = (savedCodesAtStartup[i] || '').trim();
-      if (saved && !slot.roomCode) connectSlot(i, saved);
+    // CHAY RIENG (khong await o day, xem ham _waitForFirebaseConnected o tren) -
+    // khong lam cham cac viec con lai (mo tab dau tien...) ben duoi trong luc cho.
+    _waitForFirebaseConnected(3000).then(() => {
+      const savedCodesAtStartup = camRoomCodesStore.load();
+      camSlots.forEach((slot, i) => {
+        const saved = (savedCodesAtStartup[i] || '').trim();
+        if (saved && !slot.roomCode) connectSlot(i, saved);
+      });
     });
     // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
     // truyen URL ban dau qua query string cua chinh trang index.html.
