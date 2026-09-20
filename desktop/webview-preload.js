@@ -13,7 +13,7 @@
 //    chuot phai "Mo lien ket trong tab moi" van hoat dong binh thuong du bat
 //    hay tat (do la 1 su kien 'contextmenu' rieng, khong bi chan o day).
 // Khong dinh gi den logic tab/UI, giu that gon va an toan.
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, webFrame } = require('electron');
 
 function findUsernameField(form, pwInput) {
   const candidates = form.querySelectorAll(
@@ -149,18 +149,17 @@ window.open = function (url, target, features) {
 
 // ====== Ctrl + lan chuot de phong to/thu nho trang dang xem (co NHO LAI theo
 // tung trang, xem lai tren luc dong/mo app) ======
-// FIX (phan anh nguoi dung: "dinh dang kich co trang toi sua roi, out ra vao
-// lai no quay ve nhu cu"): truoc day doan script nay duoc TIEM VAO TRANG
-// (executeJavaScript) chu khong nam trong file preload nay - vi vay no chay
-// trong "the gioi chinh" (main world) cua trang khach, KHONG co ipcRenderer
-// de bao ve host luu lai, va bien "zoom" chi la 1 bien JS binh thuong nen moi
-// lan trang tai lai (kem ca luc mo lai app) deu bi reset ve 1 (100%) tu dau.
-// Chuyen han logic nay vao DAY (webview-preload.js) vi file nay co san
-// ipcRenderer (giong cach luu mat khau o tren) - moi khi zoom thay doi, bao
-// ve host qua sendToHost de host GHI XUONG FILE THAT (qua zoomStore trong
-// desktop/index.html, KHONG phai localStorage) nen se con nguyen sau khi
-// dong/mo lai app. Host se goi lai gia tri da luu cho DUNG trang nay ngay khi
-// no tai xong, qua kenh 'qr-browser:apply-zoom' o duoi.
+// FIX QUAN TRONG (phan anh nguoi dung: sau khi them tinh nang nay, "nhieu
+// trang web khong phat duoc video" va "tai xuong luon bi treo that su o 0%"):
+// ban truoc dung `document.documentElement.style.zoom` - day la thuoc tinh
+// CSS KHONG CHUAN cua Chromium, khi gan gia tri (KE CA gan = 1 tren MOI trang
+// vua tai xong nhu code truoc day tung lam) se kich hoat 1 CHE DO TINH BO CUC
+// KHAC cua trinh duyet, pha vo cach cac trang tinh kich thuoc <video>,
+// position:fixed, va co the lam ket qua tai xuong bi "ket" do bo cuc trang
+// phai tinh lai. Doi han sang webFrame.setZoomFactor() - day moi la co che
+// ZOOM GOC (native) cua chinh Chromium/Electron (giong phim Ctrl +/- that su
+// cua trinh duyet That), duoc trinh duyet ho tro day du moi noi, KHONG dung
+// hack CSS nen KHONG con pha layout/video/tai xuong cua trang nua.
 let currentZoom = 1;
 let zoomReportTimer = null;
 function reportZoomToHost() {
@@ -175,7 +174,7 @@ function reportZoomToHost() {
 }
 function applyZoom(z) {
   currentZoom = Math.min(3, Math.max(0.5, z || 1));
-  try { document.documentElement.style.zoom = currentZoom; } catch (err) { /* trang co CSP la, bo qua */ }
+  try { webFrame.setZoomFactor(currentZoom); } catch (err) { /* im lang, khong lam vo trang khach */ }
 }
 window.addEventListener('wheel', function (e) {
   if (!e.ctrlKey) return;
