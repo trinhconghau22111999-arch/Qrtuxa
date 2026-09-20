@@ -111,6 +111,18 @@
   /* Chuot phai vao 1 trong 4 nut Telegram/Zalo/Facebook/YouTube -> an han nut
      do (chi rieng nut vua bam, khong anh huong cac nut con lai). */
   #toolbar button.icon-only-btn.hidden-by-user { display:none; }
+  /* Icon chup anh man hinh (📷) truoc day dung chung font-size 12px nhu chu
+     binh thuong trong toolbar - nhin nho le, thua nhieu khoang trong quanh
+     no. Phong to icon nay len rieng va thu gon padding tuong ung de icon vua
+     khit voi khung cua chinh nut, khong con khoang trong thua nua. */
+  #screenshotBtn {
+    font-size:19px;
+    line-height:1;
+    padding:2px 6px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
   .tab-item {
     -webkit-app-region: no-drag; /* tab phai bam duoc, khac voi khoang trong xung quanh */
     display:flex; align-items:center; gap:6px;
@@ -366,10 +378,10 @@
     background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
     -webkit-background-clip:text; background-clip:text; color:transparent;
     letter-spacing:.2px;
-    /* An chu "GHN" nhung GIU NGUYEN khoang trong no chiem (dung visibility,
-       khong dung display:none) - de cac nut ben canh (Back/Forward/Reload/
-       Telegram/Zalo/...) KHONG bi don sang trai lap vao cho trong. */
-    visibility:hidden;
+    /* Truoc day dung visibility:hidden de an chu "GHN" nhung GIU cho trong -
+       theo yeu cau moi nhat, gio BO LUON ca cho trong do (display:none) de
+       nut Back don sang trai lap vao vi tri cu cua no. */
+    display:none;
   }
   #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
   #closeQr:hover { color:#fff; }
