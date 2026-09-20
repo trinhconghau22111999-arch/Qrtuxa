@@ -707,6 +707,20 @@
   .sp-empty { color:#a879e0; font-size:12px; padding:12px 4px; }
   .sp-progress { height:4px; background:rgba(192,38,255,0.2); border-radius:2px; margin-top:4px; overflow:hidden; }
   .sp-progress-fill { height:100%; background:var(--neon-1); }
+  /* Nhieu link tai xuong (server khong tra Content-Length, hoac dang chunked)
+     KHONG BAO GIO co totalBytes -> truoc day thanh % luon tinh ra 0% va thanh
+     tien trinh dung im o 0% suot qua trinh tai, nhin giong nhu bi "treo" du
+     file van dang tai binh thuong ngam ben duoi. Truong hop nay dung thanh
+     chay qua lai (indeterminate) de nguoi dung biet no VAN DANG CHAY, khong
+     phai bi dung. */
+  .sp-progress-fill.indeterminate {
+    width:35% !important;
+    animation: sp-indeterminate 1.1s ease-in-out infinite;
+  }
+  @keyframes sp-indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(285%); }
+  }
 
   /* ====== Modal hoi luu mat khau ====== */
   #savePasswordOverlay {
@@ -3484,15 +3498,23 @@
       downloadsList.forEach((d) => {
         const item = document.createElement('div');
         item.className = 'sp-item';
-        const pct = d.totalBytes ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
+        // FIX (phan anh: "bam tai xuong no treo tai 0%"): nhieu link khong co
+        // Content-Length (totalBytes = 0) nen % luon tinh ra 0 va DUNG YEN o
+        // do suot toan bo qua trinh tai - nhin y het nhu bi treo du thuc te
+        // van dang tai binh thuong ben duoi. Voi truong hop nay, KHONG hien
+        // "0%" gay hieu lam nua ma hien dung luong da tai (tang dan) + thanh
+        // chay indeterminate de nguoi dung thay no van dang chay.
+        const knownSize = !!d.totalBytes;
+        const pct = knownSize ? Math.round((d.receivedBytes / d.totalBytes) * 100) : 0;
         const stateLabel = d.state === 'completed' ? 'Hoàn tất'
           : d.state === 'cancelled' ? 'Đã hủy'
           : d.state === 'interrupted' ? 'Lỗi tải xuống'
-          : `Đang tải… ${pct}%`;
+          : knownSize ? `Đang tải… ${pct}%`
+          : `Đang tải… ${fmtBytes(d.receivedBytes)}`;
         item.innerHTML = `<div class="sp-main">
           <div class="sp-title"></div>
           <div class="sp-sub"></div>
-          ${d.state === 'progressing' ? `<div class="sp-progress"><div class="sp-progress-fill" style="width:${pct}%"></div></div>` : ''}
+          ${d.state === 'progressing' ? `<div class="sp-progress"><div class="sp-progress-fill${knownSize ? '' : ' indeterminate'}" style="width:${knownSize ? pct : 35}%"></div></div>` : ''}
         </div>`;
         item.querySelector('.sp-title').textContent = d.filename;
         item.querySelector('.sp-sub').textContent = stateLabel + (d.totalBytes ? ' · ' + fmtBytes(d.totalBytes) : '');
