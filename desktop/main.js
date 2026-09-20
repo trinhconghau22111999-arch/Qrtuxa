@@ -249,64 +249,45 @@ ipcMain.handle('screenshot:save', async (e, dataUrl) => {
   }
 });
 
-function createWindow(initialUrl) {
-  const win = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 480,
-    minHeight: 360,
-    resizable: true,
-    icon: path.join(__dirname, 'build', 'icon.ico'),
-    autoHideMenuBar: true,
-    frame: false,
-    webPreferences: {
-      webviewTag: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: false,
-      preload: path.join(__dirname, 'preload.js')
-    }
-  });
+// ====== Cac lenh IPC dieu khien cua so / quay video / luu anh - DUNG CHUNG
+// cho MOI cua so (ke ca cua so tach tu 1 tab ra) ======
+// LOI NGHIEM TRONG DA SUA (nguoi dung phan anh: "video/trang web quay vong
+// vong khong tai duoc", kem anh chup loi that "A JavaScript error occurred
+// in the main process... Attempted to register a second handler for
+// 'win:get-bounds'" va "TypeError: Object has been destroyed"):
+// TRUOC DAY toan bo cac ipcMain.on/ipcMain.handle ben duoi nam BEN TRONG ham
+// createWindow(), dong lai bien `win` cua CHINH LAN GOI DO qua closure. Ham
+// createWindow() lai duoc goi THEM MOI LAN nguoi dung keo 1 tab tach thanh
+// cua so rieng (xem ipcMain.on('tab:detach',...) o cuoi file) - nghia la moi
+// lan tach tab, TOAN BO cac dong ipcMain.handle(...) ben duoi bi chay dang
+// ky LAN THU HAI. Electron CHI cho phep 1 handler duy nhat cho moi ten kenh
+// ('win:get-bounds' la kenh dau tien gap phai) - dang ky lan 2 nem loi NGAY
+// LAP TUC, lam dut quang giua chung viec khoi tao cua so moi (cac dong dang
+// ky con lai phia sau khong con chay duoc nua) va dan den loi "Object has
+// been destroyed" ve sau khi trang goi lai nhung lenh chua kip dang ky xong/
+// dang ky vao cua so da bi dong. Sua tan goc: dua HET cac dang ky nay ra
+// NGOAI createWindow(), CHI dang ky DUY NHAT 1 LAN cho toan bo app (giong
+// cac ham *Once() khac trong file nay), va MOI handler tu tim dung cua so
+// cua chinh no qua BrowserWindow.fromWebContents(e.sender) thay vi khoa
+// cung vao 1 bien `win` co dinh - hoat dong dung cho MOI cua so, du la cua
+// so chinh hay cua so tach tu tab.
+//
+// Rieng du lieu quay video/nhan tep (activeRecordingFiles) chuyen tu bien
+// cuc bo trong tung cua so thanh 1 Map DUNG CHUNG toan app - an toan vi
+// recordingId da bao gom timestamp + so dem tang dan nen luon duy nhat, du
+// phat sinh tu cua so nao.
+const activeRecordingFiles = new Map(); // recordingId -> { fd, filePath }
+let recordingIdCounter = 0;
 
-  const query = initialUrl ? { initialUrl } : undefined;
-  win.loadFile('index.html', query ? { query } : undefined);
-
-  attachDownloadListenerOnce();
-  attachRequestFilterOnce();
-  attachVietnameseLangHeaderOnce();
-
-  // Cho phep cua so popup THAT (vd: window.open co kich thuoc rieng de xem
-  // anh POD) duoc mo va hien thi binh thuong. Con lai - click link co
-  // target="_blank", giua-click chuot, ctrl/cmd+click - Chromium coi la yeu
-  // cau mo "tab" (disposition 'foreground-tab' / 'background-tab') chu
-  // khong phai popup that, nen ta CHAN khong cho bat cua so Electron moi ma
-  // bao renderer (index.html) tu mo 1 TAB MOI trong chinh app, giong hanh vi
-  // trinh duyet Chrome.
-  win.webContents.on('did-attach-webview', (event, webContents) => {
-    webContents.setWindowOpenHandler((details) => {
-      const isRealPopup = details.disposition === 'new-window' || details.disposition === 'other';
-      if (isRealPopup) {
-        return {
-          action: 'allow',
-          overrideBrowserWindowOptions: {
-            width: 900,
-            height: 700,
-            webPreferences: {
-              contextIsolation: true,
-              nodeIntegration: false
-            }
-          }
-        };
-      }
-      if (details.url) win.webContents.send('open-new-tab', details.url);
-      return { action: 'deny' };
-    });
-  });
+let windowControlsIpcAttached = false;
+function attachWindowControlsIpcOnce() {
+  if (windowControlsIpcAttached) return;
+  windowControlsIpcAttached = true;
 
   // ====== Menu chuot phai (giong Chrome) khi bam vao link/vung chu ben trong webview ======
   ipcMain.on('context-menu:show', (e, params) => {
-    if (e.sender !== win.webContents) return;
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return;
     const template = [];
 
     if (params && params.linkURL) {
@@ -340,26 +321,30 @@ function createWindow(initialUrl) {
 
   // ====== Dieu khien cua so tu thanh tieu de tu ve (minimize / maximize / close) ======
   ipcMain.on('win:minimize', (e) => {
-    if (e.sender === win.webContents) win.minimize();
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (win) win.minimize();
   });
   ipcMain.on('win:toggleMaximize', (e) => {
-    if (e.sender !== win.webContents) return;
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return;
     if (win.isMaximized()) win.unmaximize();
     else win.maximize();
   });
   ipcMain.on('win:close', (e) => {
-    if (e.sender === win.webContents) win.close();
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (win) win.close();
   });
 
   // ====== Ho tro tay cam keo-gian vien cua so tu ve trong renderer ======
   // (can vi cua so frame:false + noi dung phu kin sat mep khien HDH khong
   // con nhan dien duoc thao tac keo-gian mac dinh o vien nua - xem index.html)
   ipcMain.handle('win:get-bounds', (e) => {
-    if (e.sender !== win.webContents) return null;
-    return win.getBounds();
+    const win = BrowserWindow.fromWebContents(e.sender);
+    return win ? win.getBounds() : null;
   });
   ipcMain.on('win:set-bounds', (e, bounds) => {
-    if (e.sender !== win.webContents || !bounds) return;
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win || !bounds) return;
     const MIN_W = 480, MIN_H = 360;
     win.setBounds({
       x: Math.round(bounds.x),
@@ -386,11 +371,9 @@ function createWindow(initialUrl) {
   // tiep tho - noi truc tiep theo dung thu tu tao thanh 1 file .webm hop le,
   // khong can gop toan bo truoc. RAM chi giu 1 doan nho (~1 giay) tai 1 thoi
   // diem, khong con tang theo thoi gian quay nua.
-  const activeRecordingFiles = new Map(); // recordingId -> { fd, filePath }
-  let recordingIdCounter = 0;
-
   ipcMain.handle('recording:choose-folder', async (e) => {
-    if (e.sender !== win.webContents) return null;
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
     const result = await dialog.showOpenDialog(win, {
       title: 'Chọn nơi lưu video ghi hình',
       properties: ['openDirectory', 'createDirectory']
@@ -400,7 +383,7 @@ function createWindow(initialUrl) {
   });
 
   ipcMain.handle('recording:start-file', (e, { folder, filename }) => {
-    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     try {
       if (!folder || !filename) return { ok: false, error: 'missing folder/filename' };
       fs.mkdirSync(folder, { recursive: true });
@@ -415,7 +398,7 @@ function createWindow(initialUrl) {
   });
 
   ipcMain.handle('recording:append-chunk', (e, { recordingId, base64Data }) => {
-    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     const entry = activeRecordingFiles.get(recordingId);
     if (!entry) return { ok: false, error: 'recording not found (da finish hoac chua start)' };
     try {
@@ -427,7 +410,7 @@ function createWindow(initialUrl) {
   });
 
   ipcMain.handle('recording:finish-file', (e, recordingId) => {
-    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     const entry = activeRecordingFiles.get(recordingId);
     if (!entry) return { ok: false, error: 'recording not found' };
     try { fs.closeSync(entry.fd); } catch (err) {}
@@ -446,7 +429,7 @@ function createWindow(initialUrl) {
   // DUNG 1 LAN - `data` la Uint8Array/Buffer truyen thang qua IPC (khong can
   // ma hoa base64, tranh phinh ~33% kich thuoc + chi phi encode/decode).
   ipcMain.handle('recording:save-whole-file', (e, { folder, filename, data }) => {
-    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     try {
       if (!folder || !filename || !data) return { ok: false, error: 'missing folder/filename/data' };
       fs.mkdirSync(folder, { recursive: true });
@@ -464,7 +447,7 @@ function createWindow(initialUrl) {
   // (Giai doan 3) - KHONG dung cho tinh nang quay video hien co (van dung
   // finish-file nhu cu, khong doi gi).
   ipcMain.handle('recording:cancel-file', (e, recordingId) => {
-    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     const entry = activeRecordingFiles.get(recordingId);
     if (!entry) return { ok: false, error: 'recording not found' };
     try { fs.closeSync(entry.fd); } catch (err) {}
@@ -477,7 +460,7 @@ function createWindow(initialUrl) {
   // Ghi DE thang len dung file da nhan (khong hien hop thoai "Luu thanh" vi
   // day la sua-tai-cho, khac voi tinh nang chup man hinh trang web).
   ipcMain.handle('imageEdit:save', (e, { path: filePath, dataUrl }) => {
-    if (e.sender !== win.webContents) return { ok: false, error: 'invalid sender' };
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     try {
       const base64 = String(dataUrl || '').replace(/^data:image\/\w+;base64,/, '');
       fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
@@ -497,6 +480,63 @@ function createWindow(initialUrl) {
       try { fs.closeSync(entry.fd); } catch (err) {}
     }
     activeRecordingFiles.clear();
+  });
+}
+
+function createWindow(initialUrl) {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 480,
+    minHeight: 360,
+    resizable: true,
+    icon: path.join(__dirname, 'build', 'icon.ico'),
+    autoHideMenuBar: true,
+    frame: false,
+    webPreferences: {
+      webviewTag: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      backgroundThrottling: false,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  const query = initialUrl ? { initialUrl } : undefined;
+  win.loadFile('index.html', query ? { query } : undefined);
+
+  attachDownloadListenerOnce();
+  attachRequestFilterOnce();
+  attachVietnameseLangHeaderOnce();
+  attachWindowControlsIpcOnce();
+
+  // Cho phep cua so popup THAT (vd: window.open co kich thuoc rieng de xem
+  // anh POD) duoc mo va hien thi binh thuong. Con lai - click link co
+  // target="_blank", giua-click chuot, ctrl/cmd+click - Chromium coi la yeu
+  // cau mo "tab" (disposition 'foreground-tab' / 'background-tab') chu
+  // khong phai popup that, nen ta CHAN khong cho bat cua so Electron moi ma
+  // bao renderer (index.html) tu mo 1 TAB MOI trong chinh app, giong hanh vi
+  // trinh duyet Chrome.
+  win.webContents.on('did-attach-webview', (event, webContents) => {
+    webContents.setWindowOpenHandler((details) => {
+      const isRealPopup = details.disposition === 'new-window' || details.disposition === 'other';
+      if (isRealPopup) {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            width: 900,
+            height: 700,
+            webPreferences: {
+              contextIsolation: true,
+              nodeIntegration: false
+            }
+          }
+        };
+      }
+      if (details.url) win.webContents.send('open-new-tab', details.url);
+      return { action: 'deny' };
+    });
   });
 
   win.on('maximize', () => win.webContents.send('win:maximized-state', true));
