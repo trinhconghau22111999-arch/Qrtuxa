@@ -201,6 +201,40 @@ function attachRequestFilterOnce() {
   });
 }
 
+// ====== Gia User-Agent giong trinh duyet Chrome that, bo dau vet Electron
+// (nguoi dung phan anh: nhieu trang video/nguon phim VA ca tai file tu Google
+// Drive deu bi tu choi phuc vu - "quay vong vong khong tai duoc") ======
+// Mac dinh Electron TU GAN THEM 2 doan vao cuoi chuoi User-Agent chuan cua
+// Chromium: " TenApp/PhienBan" (lay tu package.json - o day la
+// "qr-remote-input-browser/1.0.0") va " Electron/PhienBanElectron". Nhieu
+// dich vu (Google Drive/Docs, mot so CDN video chong bot...) do chuoi nay,
+// thay khac voi trinh duyet that -> tu choi phuc vu hoac bat xac thuc them
+// ma khong bao gio hoan tat, giao dien client chi thay nhu "dang tai mai
+// khong xong". Cach xu ly CHUAN (khong phai gia mao trinh duyet khac, chi
+// dung LAI dung phien ban Chromium ma Electron nay dang dung san, bo di 2
+// doan rieng cua Electron): lay UA goc cua chinh session nay roi cat bo 2
+// doan do, KHONG hardcode 1 chuoi UA co dinh de tranh lech phien ban thuc te
+// (vd khi nang cap Electron len sau nay).
+function stripElectronFromUserAgent(rawUA) {
+  let ua = rawUA;
+  // Bo " Electron/x.y.z"
+  ua = ua.replace(/\s*Electron\/\S+/i, '');
+  // Bo " TenApp/PhienBan" - ten/phien ban lay dung tu package.json cua CHINH
+  // app nay (co the doi ten/phien ban sau nay, nen lay dong chu khong hardcode).
+  const appToken = `${app.getName()}/${app.getVersion()}`;
+  const escaped = appToken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  ua = ua.replace(new RegExp('\\s*' + escaped, 'i'), '');
+  return ua.replace(/\s{2,}/g, ' ').trim();
+}
+let userAgentOverrideAttached = false;
+function attachUserAgentOverrideOnce() {
+  if (userAgentOverrideAttached) return;
+  userAgentOverrideAttached = true;
+  const ses = session.fromPartition(DOWNLOAD_PARTITION);
+  const cleanUA = stripElectronFromUserAgent(ses.getUserAgent());
+  ses.setUserAgent(cleanUA);
+}
+
 // ====== Ep 4 trang Telegram/Zalo/Facebook/YouTube (nut chia doi man hinh o
 // toolbar) hien THEO GIAO DIEN TIENG VIET ======
 // Nhieu trang doc ngon ngu uu tien tu header HTTP "Accept-Language" cua trinh
@@ -510,6 +544,7 @@ function createWindow(initialUrl) {
   attachRequestFilterOnce();
   attachVietnameseLangHeaderOnce();
   attachWindowControlsIpcOnce();
+  attachUserAgentOverrideOnce();
 
   // Cho phep cua so popup THAT (vd: window.open co kich thuoc rieng de xem
   // anh POD) duoc mo va hien thi binh thuong. Con lai - click link co
