@@ -567,28 +567,10 @@ function createWindow(initialUrl) {
   // Cho phep cua so popup THAT (vd: window.open co kich thuoc rieng de xem
   // anh POD) duoc mo va hien thi binh thuong. Con lai - click link co
   // target="_blank", giua-click chuot, ctrl/cmd+click - Chromium coi la yeu
-  // cau mo "tab" (disposition 'foreground-tab' / 'background-tab'), va
-  // trai nghiem mong muon la mo 1 TAB MOI trong chinh app (giong Chrome)
-  // thay vi 1 cua so Electron rieng.
-  //
-  // VAN DE: nguoi dung phan anh video o 1 so trang phim (nguon nhung/embed
-  // co "cong khoa" quang cao) bi quay vong tai vo han khi xem trong app nay,
-  // nhung XEM DUOC BINH THUONG trong Chrome that. Da xac dinh duoc nguyen
-  // nhan: truoc day khi tu choi (deny) khong cho mo cua so that, ham
-  // window.open() phia trang web se tra ve null - nhieu script "cong khoa
-  // video" (cho popup quang cao mo thanh cong roi moi chiu nha video ra)
-  // kiem tra gia tri tra ve nay, thay null (bi tuong nhu popup bi chan) nen
-  // dung lai cho vo han, video khong bao gio duoc tai. Trong Chrome that,
-  // popup mo duoc that (co object tra ve khac null) nen script chay tiep
-  // binh thuong.
-  //
-  // CACH SUA: VAN cho window.open() mo 1 cua so That (de tra ve object
-  // khac null, thoa man cac script kieu tren) - nhung an ngay (show:false,
-  // kich thuoc 1x1) va TU DONG DONG sau vai giay, khong lam phien nguoi
-  // dung; DONG THOI van gui URL do ve renderer de mo 1 TAB MOI trong app
-  // nhu truoc - trai nghiem nguoi dung xem nhu KHONG DOI (van la mo tab,
-  // khong phai popup that hien ra tren man hinh), chi la co them 1 cua so
-  // an chay ngam that nhanh dang sau de "danh lua" cac script kieu do.
+  // cau mo "tab" (disposition 'foreground-tab' / 'background-tab') chu
+  // khong phai popup that, nen ta CHAN khong cho bat cua so Electron moi ma
+  // bao renderer (index.html) tu mo 1 TAB MOI trong chinh app, giong hanh vi
+  // trinh duyet Chrome.
   win.webContents.on('did-attach-webview', (event, webContents) => {
     webContents.setWindowOpenHandler((details) => {
       const isRealPopup = details.disposition === 'new-window' || details.disposition === 'other';
@@ -606,27 +588,7 @@ function createWindow(initialUrl) {
         };
       }
       if (details.url) win.webContents.send('open-new-tab', details.url);
-      return {
-        action: 'allow',
-        overrideBrowserWindowOptions: {
-          show: false,
-          width: 1,
-          height: 1,
-          webPreferences: {
-            contextIsolation: true,
-            nodeIntegration: false
-          }
-        }
-      };
-    });
-    webContents.on('did-create-window', (createdWindow, details) => {
-      const isRealPopup = details.disposition === 'new-window' || details.disposition === 'other';
-      if (isRealPopup) return; // popup that (vd xem anh POD) - de nguyen, khong tu dong dong
-      // Cua so an dung de "danh lua" cong khoa video (xem giai thich o tren) -
-      // tu dong dong lai sau vai giay, khong bao gio hien ra man hinh nguoi dung.
-      setTimeout(() => {
-        if (!createdWindow.isDestroyed()) createdWindow.close();
-      }, 4000);
+      return { action: 'deny' };
     });
   });
 
