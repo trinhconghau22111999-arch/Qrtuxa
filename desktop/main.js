@@ -201,6 +201,32 @@ function attachRequestFilterOnce() {
   });
 }
 
+// ====== Ep 4 trang Telegram/Zalo/Facebook/YouTube (nut chia doi man hinh o
+// toolbar) hien THEO GIAO DIEN TIENG VIET ======
+// Nhieu trang doc ngon ngu uu tien tu header HTTP "Accept-Language" cua trinh
+// duyet (Telegram Web, Zalo Web la 2 vi du - khong co tham so URL nao doi
+// ngon ngu duoc ca), nen cach chac chan nhat la ep header nay thanh tieng
+// Viet CHI RIENG cho 4 domain nay (dung "urls" filter, KHONG anh huong cac
+// trang khac nguoi dung dang xem trong cac tab thuong).
+const VIETNAMESE_LANG_URL_PATTERNS = [
+  '*://web.telegram.org/*',
+  '*://*.telegram.org/*',
+  '*://chat.zalo.me/*',
+  '*://*.zalo.me/*',
+  '*://*.facebook.com/*',
+  '*://*.youtube.com/*'
+];
+let vietnameseLangHeaderAttached = false;
+function attachVietnameseLangHeaderOnce() {
+  if (vietnameseLangHeaderAttached) return;
+  vietnameseLangHeaderAttached = true;
+  const ses = session.fromPartition(DOWNLOAD_PARTITION);
+  ses.webRequest.onBeforeSendHeaders({ urls: VIETNAMESE_LANG_URL_PATTERNS }, (details, callback) => {
+    details.requestHeaders['Accept-Language'] = 'vi-VN,vi;q=0.9';
+    callback({ requestHeaders: details.requestHeaders });
+  });
+}
+
 // Chup anh trang web: renderer da tu chup xong (webview.capturePage() ->
 // dataURL), o day chi lo hien hop thoai "Luu thanh..." de nguoi dung chon
 // noi luu, roi ghi file PNG that xuong dung cho do (renderer khong co quyen
@@ -248,6 +274,7 @@ function createWindow(initialUrl) {
 
   attachDownloadListenerOnce();
   attachRequestFilterOnce();
+  attachVietnameseLangHeaderOnce();
 
   // Cho phep cua so popup THAT (vd: window.open co kich thuoc rieng de xem
   // anh POD) duoc mo va hien thi binh thuong. Con lai - click link co

@@ -146,3 +146,50 @@ window.open = function (url, target, features) {
     };
   } catch (e) { /* mot so trang co CSP chat chan override - bo qua, cac lop khac van hoat dong */ }
 })();
+
+// ====== Ctrl + lan chuot de phong to/thu nho trang dang xem (co NHO LAI theo
+// tung trang, xem lai tren luc dong/mo app) ======
+// FIX (phan anh nguoi dung: "dinh dang kich co trang toi sua roi, out ra vao
+// lai no quay ve nhu cu"): truoc day doan script nay duoc TIEM VAO TRANG
+// (executeJavaScript) chu khong nam trong file preload nay - vi vay no chay
+// trong "the gioi chinh" (main world) cua trang khach, KHONG co ipcRenderer
+// de bao ve host luu lai, va bien "zoom" chi la 1 bien JS binh thuong nen moi
+// lan trang tai lai (kem ca luc mo lai app) deu bi reset ve 1 (100%) tu dau.
+// Chuyen han logic nay vao DAY (webview-preload.js) vi file nay co san
+// ipcRenderer (giong cach luu mat khau o tren) - moi khi zoom thay doi, bao
+// ve host qua sendToHost de host GHI XUONG FILE THAT (qua zoomStore trong
+// desktop/index.html, KHONG phai localStorage) nen se con nguyen sau khi
+// dong/mo lai app. Host se goi lai gia tri da luu cho DUNG trang nay ngay khi
+// no tai xong, qua kenh 'qr-browser:apply-zoom' o duoi.
+let currentZoom = 1;
+let zoomReportTimer = null;
+function reportZoomToHost() {
+  clearTimeout(zoomReportTimer);
+  // Debounce 400ms: luc cuon chuot giu Ctrl ban ra rat nhieu su kien wheel/giay,
+  // khong can ghi file ngay tung su kien mot, chi can ghi lai gia tri CUOI CUNG.
+  zoomReportTimer = setTimeout(() => {
+    try {
+      ipcRenderer.sendToHost('qr-browser:zoom-changed', { origin: location.origin, zoom: currentZoom });
+    } catch (err) { /* im lang */ }
+  }, 400);
+}
+function applyZoom(z) {
+  currentZoom = Math.min(3, Math.max(0.5, z || 1));
+  try { document.documentElement.style.zoom = currentZoom; } catch (err) { /* trang co CSP la, bo qua */ }
+}
+window.addEventListener('wheel', function (e) {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  // Gioi han muc thay doi theo TUNG su kien wheel (thay vi buoc co dinh 0.1),
+  // vi trackpad co the ban ra hang chuc su kien wheel/giay khi giu Ctrl,
+  // truoc day lam zoom tut rat nhanh xuong toi thieu -> trang bi "thu gon"
+  // ngay lap tuc. Ngoai ra nang san toi thieu tu 0.3 len 0.5 de trang khong
+  // bi co qua nho du bi cuon lien tuc.
+  const delta = Math.max(-1, Math.min(1, -e.deltaY)) * 0.03;
+  applyZoom(currentZoom + delta);
+  reportZoomToHost();
+}, { passive: false });
+// Host (index.html) goi el.send('qr-browser:apply-zoom', savedZoom) ngay luc
+// trang tai xong (dom-ready), voi gia tri da luu rieng cho origin nay (mac
+// dinh 1 neu chua tung chinh o trang do bao gio) - xem createWebviewElement().
+ipcRenderer.on('qr-browser:apply-zoom', (e, z) => applyZoom(z));
