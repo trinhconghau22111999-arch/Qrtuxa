@@ -104,6 +104,13 @@
     color: #fff;
   }
   #toolbar button .brand-icon { vertical-align:-3px; margin-right:4px; }
+  /* Nut chi co icon (Telegram/Zalo/Facebook/YouTube) - khong con chu, nen bo
+     margin-right cua icon va thu gon padding ngang cho vua khit voi icon. */
+  #toolbar button.icon-only-btn { padding:4px 7px; }
+  #toolbar button.icon-only-btn .brand-icon { margin-right:0; vertical-align:middle; }
+  /* Chuot phai vao 1 trong 4 nut Telegram/Zalo/Facebook/YouTube -> an han nut
+     do (chi rieng nut vua bam, khong anh huong cac nut con lai). */
+  #toolbar button.icon-only-btn.hidden-by-user { display:none; }
   .tab-item {
     -webkit-app-region: no-drag; /* tab phai bam duoc, khac voi khoang trong xung quanh */
     display:flex; align-items:center; gap:6px;
@@ -333,7 +340,12 @@
     box-shadow: 0 0 16px rgba(192,38,255,0.4);
   }
   #qrLinkRow { display:flex; align-items:center; gap:6px; margin-top:10px; }
-  #qrLink { font-size:11px; word-break:break-all; color: var(--neon-soft); flex:1; min-width:0; }
+  /* An ca phan chu duong link lan nut sao chep ben duoi ma QR (theo yeu cau).
+     Cac phan tu #qrLink/#copyLinkBtn van ton tai trong DOM va JS lien quan
+     (gan href, xu ly copy...) khong bi dong cham - chi khong hien thi ra man
+     hinh nua. */
+  #qrLink { display:none; }
+  #copyLinkBtn { display:none; }
   #copyLinkBtn {
     flex-shrink:0; width:28px; height:28px; border-radius:6px;
     border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
@@ -354,6 +366,10 @@
     background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
     -webkit-background-clip:text; background-clip:text; color:transparent;
     letter-spacing:.2px;
+    /* An chu "GHN" nhung GIU NGUYEN khoang trong no chiem (dung visibility,
+       khong dung display:none) - de cac nut ben canh (Back/Forward/Reload/
+       Telegram/Zalo/...) KHONG bi don sang trai lap vao cho trong. */
+    visibility:hidden;
   }
   #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
   #closeQr:hover { color:#fff; }
@@ -737,6 +753,8 @@
         <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
         <div class="settings-item" data-panel="oneclickopen">👆 Mở link bằng 1 chạm</div>
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
+        <div class="settings-sep"></div>
+        <div class="settings-item" data-action="restoreMessengerBtns">↩ Hiện lại nút Telegram/Zalo/Facebook/YouTube đã ẩn</div>
       </div>
     </div>
     <div id="tabsBar">
@@ -754,19 +772,29 @@
     <button id="backBtn">◀</button>
     <button id="fwdBtn">▶</button>
     <button id="reloadBtn">⟳</button>
-    <button id="telegramSplitBtn" title="Mở Telegram song song (chia đôi màn hình)">
+    <button id="telegramSplitBtn" class="icon-only-btn" title="Mở Telegram song song (chia đôi màn hình) — chuột phải để ẩn nút này">
       <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
         <circle cx="12" cy="12" r="12" fill="#29A9EB"/>
         <path d="M5.4 11.8 17.8 7c.55-.2 1.03.13.86.96l-2.1 9.9c-.15.68-.55.85-1.11.53l-3.08-2.27-1.49 1.43c-.16.16-.3.3-.62.3l.22-3.13 5.7-5.15c.25-.22-.05-.34-.38-.12l-7.04 4.43-3.03-.95c-.66-.2-.67-.66.14-.98Z" fill="#fff"/>
       </svg>
-      Telegram
     </button>
-    <button id="zaloSplitBtn" title="Mở Zalo song song (chia đôi màn hình)">
+    <button id="zaloSplitBtn" class="icon-only-btn" title="Mở Zalo song song (chia đôi màn hình) — chuột phải để ẩn nút này">
       <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
         <rect x="0" y="2" width="24" height="20" rx="6" fill="#0068FF"/>
         <text x="12" y="16.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#fff">Za</text>
       </svg>
-      Zalo
+    </button>
+    <button id="facebookSplitBtn" class="icon-only-btn" title="Mở Facebook song song (chia đôi màn hình) — chuột phải để ẩn nút này">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <circle cx="12" cy="12" r="12" fill="#1877F2"/>
+        <path d="M13.6 21v-7.3h2.45l.37-2.85h-2.82V9.02c0-.83.23-1.39 1.42-1.39h1.51V5.1c-.26-.04-1.16-.11-2.2-.11-2.18 0-3.67 1.33-3.67 3.77v2.1H8.2v2.85h2.36V21h3.04Z" fill="#fff"/>
+      </svg>
+    </button>
+    <button id="youtubeSplitBtn" class="icon-only-btn" title="Mở YouTube song song (chia đôi màn hình) — chuột phải để ẩn nút này">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <rect x="0" y="4" width="24" height="16" rx="5" fill="#FF0000"/>
+        <path d="M10 8.6 16 12l-6 3.4V8.6Z" fill="#fff"/>
+      </svg>
     </button>
     <div id="urlbarWrap">
       <input id="urlbar" value="https://www.google.com" />
@@ -1378,7 +1406,9 @@
   // hinh, hoan toan tach biet voi chu trinh .active-tab cua tab thuong.
   const SPLIT_URLS = {
     telegram: 'https://web.telegram.org/k/',
-    zalo: 'https://chat.zalo.me/'
+    zalo: 'https://chat.zalo.me/',
+    facebook: 'https://www.facebook.com/',
+    youtube: 'https://www.youtube.com/'
   };
   let splitViewActive = false;
   let splitService = null; // 'telegram' | 'zalo' | null
@@ -1631,7 +1661,68 @@
   };
   document.getElementById('telegramSplitBtn').onclick = () => toggleSplitView('telegram');
   document.getElementById('zaloSplitBtn').onclick = () => toggleSplitView('zalo');
+  document.getElementById('facebookSplitBtn').onclick = () => toggleSplitView('facebook');
+  document.getElementById('youtubeSplitBtn').onclick = () => toggleSplitView('youtube');
   document.getElementById('splitCloseBtn').onclick = () => exitSplitView();
+
+  // Chuot phai vao 1 trong 4 nut Telegram/Zalo/Facebook/YouTube -> an rieng
+  // nut do (khong hien menu chuot phai mac dinh cua he thong). Neu nut dang
+  // an la nut dang mo split-view thi dong split-view lai luon. Trang thai an
+  // duoc luu vao localStorage nen se duoc nho lai o lan mo app sau.
+  const MESSENGER_BTN_IDS = ['telegramSplitBtn', 'zaloSplitBtn', 'facebookSplitBtn', 'youtubeSplitBtn'];
+  const HIDDEN_MESSENGER_BTNS_KEY = 'hiddenMessengerBtns';
+
+  function loadHiddenMessengerBtns() {
+    try {
+      const raw = localStorage.getItem(HIDDEN_MESSENGER_BTNS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHiddenMessengerBtns(list) {
+    try {
+      localStorage.setItem(HIDDEN_MESSENGER_BTNS_KEY, JSON.stringify(list));
+    } catch {
+      // localStorage co the bi chan (vd che do an danh) - bo qua, chi mat
+      // trang thai nho giua cac lan mo app, khong lam vo tinh nang an nut.
+    }
+  }
+
+  function restoreHiddenMessengerBtns() {
+    MESSENGER_BTN_IDS.forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.remove('hidden-by-user');
+    });
+    saveHiddenMessengerBtns([]);
+  }
+
+  // Ap dung ngay trang thai da luu tu lan truoc (an cac nut nguoi dung da tung
+  // an bang chuot phai).
+  const hiddenMessengerBtns = loadHiddenMessengerBtns();
+  MESSENGER_BTN_IDS.forEach(id => {
+    if (hiddenMessengerBtns.includes(id)) {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.add('hidden-by-user');
+    }
+  });
+
+  MESSENGER_BTN_IDS.forEach(id => {
+    const btn = document.getElementById(id);
+    const service = id.replace('SplitBtn', '');
+    btn.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      btn.classList.add('hidden-by-user');
+      if (splitViewActive && splitService === service) exitSplitView();
+      const current = loadHiddenMessengerBtns();
+      if (!current.includes(id)) {
+        current.push(id);
+        saveHiddenMessengerBtns(current);
+      }
+    });
+  });
 
   function sanitizeText(text) {
     if (typeof text !== 'string') return '';
@@ -3295,6 +3386,10 @@
     el.onclick = (e) => {
       e.stopPropagation();
       settingsMenu.classList.remove('show');
+      if (el.dataset.action === 'restoreMessengerBtns') {
+        restoreHiddenMessengerBtns();
+        return;
+      }
       openSidePanel(el.dataset.panel);
     };
   });
