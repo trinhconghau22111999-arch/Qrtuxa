@@ -782,6 +782,7 @@
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
         <div class="settings-sep"></div>
         <div class="settings-item" data-action="clearCache" title="Xoá cache duyệt web - KHÔNG đăng xuất các tài khoản đã đăng nhập trên máy">🧹 Xoá cache</div>
+        <div class="settings-item" data-action="openDevTools" title="Mở công cụ debug cho tab đang xem (xem lỗi kỹ thuật khi trang không hoạt động đúng)">🛠 Công cụ debug (tab hiện tại)</div>
         <div class="settings-item" data-action="restoreMessengerBtns">↩ Hiện lại nút Telegram/Zalo/Facebook/YouTube đã ẩn</div>
       </div>
     </div>
@@ -3447,6 +3448,14 @@
       }
       if (el.dataset.action === 'clearCache') {
         clearBrowserCache();
+        return;
+      }
+      if (el.dataset.action === 'openDevTools') {
+        const wv = getActiveWebview();
+        if (wv) {
+          if (wv.isDevToolsOpened()) wv.closeDevTools();
+          else wv.openDevTools();
+        }
         return;
       }
       openSidePanel(el.dataset.panel);
