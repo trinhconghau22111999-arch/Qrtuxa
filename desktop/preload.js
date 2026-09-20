@@ -71,6 +71,12 @@ contextBridge.exposeInMainWorld('localStoreBridge', {
   set: (key, value) => ipcRenderer.send('localstore:set', { key, value })
 });
 
+// Xoa cache HTTP cua cac trang dang duyet (KHONG dong cham cookie nen tai
+// khoan dang nhap tren cac trang web van giu nguyen) - xem main.js.
+contextBridge.exposeInMainWorld('cacheBridge', {
+  clear: () => ipcRenderer.invoke('cache:clear')
+});
+
 // Quay video tung o xem QR Cam: chon thu muc luu (hop thoai that cua he
 // dieu hanh) + ghi file .webm that xuong dia - deu phai qua main.js vi
 // renderer khong co quyen dung fs truc tiep (contextIsolation dang bat).

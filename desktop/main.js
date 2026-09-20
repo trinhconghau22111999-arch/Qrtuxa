@@ -89,6 +89,24 @@ function ensureDirSafe(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
+// Xoa cache HTTP cua cac trang web dang duyet (webview dung chung partition
+// 'persist:browse', xem DOWNLOAD_PARTITION ben duoi). CHI xoa cache mang
+// (Cache-Control/disk cache) - KHONG dong cham cookie/localStorage/
+// indexedDB/service worker cua trang, nen tai khoan dang dang nhap tren cac
+// trang web (Facebook, Gmail...) VAN GIU NGUYEN, khong bi dang xuat. Du lieu
+// rieng cua app (dau trang/lich su/mat khau da luu) nam trong APP_DATA_DIR,
+// khong lien quan gi toi ham nay nen cung khong bi mat.
+ipcMain.handle('cache:clear', async () => {
+  try {
+    const ses = session.fromPartition(DOWNLOAD_PARTITION);
+    await ses.clearCache();
+    await ses.clearStorageData({ storages: ['cachestorage'] });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+});
+
 // ====== Theo doi Tai xuong (dung chung cho moi cua so vi cac webview deu
 // dung chung 1 partition 'persist:browse') ======
 const DOWNLOAD_PARTITION = 'persist:browse';

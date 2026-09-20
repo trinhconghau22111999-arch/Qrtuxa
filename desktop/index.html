@@ -781,6 +781,7 @@
         <div class="settings-item" data-panel="oneclickopen">👆 Mở link bằng 1 chạm</div>
         <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
         <div class="settings-sep"></div>
+        <div class="settings-item" data-action="clearCache" title="Xoá cache duyệt web - KHÔNG đăng xuất các tài khoản đã đăng nhập trên máy">🧹 Xoá cache</div>
         <div class="settings-item" data-action="restoreMessengerBtns">↩ Hiện lại nút Telegram/Zalo/Facebook/YouTube đã ẩn</div>
       </div>
     </div>
@@ -1727,6 +1728,30 @@
       if (btn) btn.classList.remove('hidden-by-user');
     });
     saveHiddenMessengerBtns([]);
+  }
+
+  // Thong bao nho, tu bien mat - dung cho cac hanh dong tuc thi khong co
+  // panel rieng (vd xoa cache) can 1 xac nhan ngan cho nguoi dung yen tam.
+  function showQuickToast(text) {
+    const toast = document.createElement('div');
+    toast.textContent = text;
+    toast.style.cssText = 'position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:rgba(20,10,30,0.95);color:#e9d8ff;border:1px solid rgba(192,38,255,0.5);padding:8px 16px;border-radius:8px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+  }
+
+  // Xoa cache HTTP cua cac trang web dang duyet (qua main.js, session
+  // 'persist:browse'). CHI xoa cache mang - KHONG dong den cookie nen KHONG
+  // dang xuat bat ky tai khoan nao dang dang nhap tren cac trang web; cung
+  // khong dong den dau trang/lich su/mat khau da luu cua app (o APP_DATA_DIR,
+  // hoan toan tach biet).
+  async function clearBrowserCache() {
+    try {
+      const result = await window.cacheBridge.clear();
+      showQuickToast(result && result.ok ? '✓ Đã xoá cache trình duyệt' : 'Xoá cache thất bại, thử lại sau');
+    } catch (err) {
+      showQuickToast('Xoá cache thất bại, thử lại sau');
+    }
   }
 
   // Ap dung ngay trang thai da luu tu lan truoc (an cac nut nguoi dung da tung
@@ -3418,6 +3443,10 @@
       settingsMenu.classList.remove('show');
       if (el.dataset.action === 'restoreMessengerBtns') {
         restoreHiddenMessengerBtns();
+        return;
+      }
+      if (el.dataset.action === 'clearCache') {
+        clearBrowserCache();
         return;
       }
       openSidePanel(el.dataset.panel);
