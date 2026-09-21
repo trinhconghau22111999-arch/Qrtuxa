@@ -827,6 +827,15 @@
         <path d="M10 8.6 16 12l-6 3.4V8.6Z" fill="#fff"/>
       </svg>
     </button>
+    <button id="googleSplitBtn" class="icon-only-btn" title="Mở Google song song (chia đôi màn hình) — chuột phải để ẩn nút này">
+      <svg class="brand-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <circle cx="12" cy="12" r="12" fill="#fff"/>
+        <path d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.23c1.9-1.75 2.99-4.32 2.99-7.35Z" fill="#4285F4"/>
+        <path d="M12 22c2.7 0 4.96-.9 6.61-2.42l-3.23-2.5c-.9.6-2.04.96-3.38.96-2.6 0-4.8-1.75-5.59-4.11H3.07v2.58A10 10 0 0 0 12 22Z" fill="#34A853"/>
+        <path d="M6.41 13.93a5.99 5.99 0 0 1 0-3.86V7.49H3.07a10 10 0 0 0 0 9.02l3.34-2.58Z" fill="#FBBC05"/>
+        <path d="M12 6.06c1.47 0 2.79.5 3.82 1.5l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.93 5.49l3.34 2.58C7.2 7.81 9.4 6.06 12 6.06Z" fill="#EA4335"/>
+      </svg>
+    </button>
     <div id="urlbarWrap">
       <input id="urlbar" value="https://www.google.com" />
       <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang">★</button>
@@ -1442,7 +1451,8 @@
     // khong co tham so URL nao ca, phai ep bang header Accept-Language ben
     // main.js - xem attachVietnameseLangHeaderOnce).
     facebook: 'https://www.facebook.com/?locale=vi_VN',
-    youtube: 'https://www.youtube.com/?hl=vi&gl=VN&persist_hl=1'
+    youtube: 'https://www.youtube.com/?hl=vi&gl=VN&persist_hl=1',
+    google: 'https://www.google.com/?hl=vi'
   };
   let splitViewActive = false;
   let splitService = null; // 'telegram' | 'zalo' | null
@@ -1697,13 +1707,14 @@
   document.getElementById('zaloSplitBtn').onclick = () => toggleSplitView('zalo');
   document.getElementById('facebookSplitBtn').onclick = () => toggleSplitView('facebook');
   document.getElementById('youtubeSplitBtn').onclick = () => toggleSplitView('youtube');
+  document.getElementById('googleSplitBtn').onclick = () => toggleSplitView('google');
   document.getElementById('splitCloseBtn').onclick = () => exitSplitView();
 
   // Chuot phai vao 1 trong 4 nut Telegram/Zalo/Facebook/YouTube -> an rieng
   // nut do (khong hien menu chuot phai mac dinh cua he thong). Neu nut dang
   // an la nut dang mo split-view thi dong split-view lai luon. Trang thai an
   // duoc luu vao localStorage nen se duoc nho lai o lan mo app sau.
-  const MESSENGER_BTN_IDS = ['telegramSplitBtn', 'zaloSplitBtn', 'facebookSplitBtn', 'youtubeSplitBtn'];
+  const MESSENGER_BTN_IDS = ['telegramSplitBtn', 'zaloSplitBtn', 'facebookSplitBtn', 'youtubeSplitBtn', 'googleSplitBtn'];
   const HIDDEN_MESSENGER_BTNS_KEY = 'hiddenMessengerBtns';
 
   function loadHiddenMessengerBtns() {
