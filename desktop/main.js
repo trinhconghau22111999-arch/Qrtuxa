@@ -258,6 +258,23 @@ function attachRequestFilterOnce() {
 
     callback({ cancel: false });
   });
+
+  // Ghi log rieng cho cac request MANG that su bi loi (status >= 400) hoac
+  // co ve lien quan xac thuc/khoa video (key/token/auth/license/drm trong
+  // URL) - de bat dung request nao bi tu choi (vd xin "key" giai ma video
+  // bi 403) MA KHONG CAN MO DEVTOOLS (tranh bay chong-DevTools cua trang -
+  // xem CONSOLE_LOG_FILE). Chi log request dang nghi van, KHONG log tat ca
+  // moi request (se qua nhieu, khong doc noi).
+  const AUTH_LIKE_URL_RE = /key|token|auth|license|drm|verify|sign/i;
+  ses.webRequest.onCompleted((details) => {
+    const looksAuthRelated = AUTH_LIKE_URL_RE.test(details.url);
+    const isError = details.statusCode >= 400;
+    if (!looksAuthRelated && !isError) return;
+    const time = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+    appendConsoleLog(
+      `[${time}] [NETWORK] ${details.method} ${details.statusCode} ${details.url}`
+    );
+  });
 }
 
 // ====== Gia User-Agent giong trinh duyet Chrome that, bo dau vet Electron
