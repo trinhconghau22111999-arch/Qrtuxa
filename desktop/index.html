@@ -3818,7 +3818,7 @@
     sidePanelBody.appendChild(row);
     const note = document.createElement('div');
     note.className = 'sp-note';
-    note.textContent = 'Chỉ áp dụng riêng cho YouTube (không còn chặn quảng cáo theo domain cho các trang khác như trước). Khi bật: tự động bấm "Bỏ qua quảng cáo" ngay khi nút này xuất hiện; với quảng cáo bắt buộc xem (không có nút bỏ qua) sẽ tự tắt tiếng và tua nhanh đến hết thay vì phải ngồi xem; đồng thời ẩn các banner/quảng cáo dạng hiển thị (không phải video) chèn trong nguồn cấp hoặc phủ lên video.';
+    note.textContent = 'Áp dụng cho MỌI nơi mở YouTube trong app - cả tab duyệt web bình thường lẫn nút YouTube nhỏ (song song). Kết hợp 2 lớp: (1) chặn thẳng ở tầng mạng các domain quảng cáo/theo dõi phổ biến (doubleclick, googlesyndication...) - quảng cáo không có cơ hội tải về ngay từ đầu; (2) với phần quảng cáo lọt qua lớp 1, tự động bấm "Bỏ qua quảng cáo" ngay khi nút này xuất hiện, quảng cáo bắt buộc xem thì tự tắt tiếng và tua nhanh đến hết, đồng thời ẩn banner/quảng cáo hiển thị chèn trong nguồn cấp hoặc phủ lên video.';
     sidePanelBody.appendChild(note);
 
     const checkbox = document.getElementById('adblockToggle');
