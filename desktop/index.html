@@ -783,6 +783,8 @@
         <div class="settings-sep"></div>
         <div class="settings-item" data-action="clearCache" title="Xoá cache duyệt web - KHÔNG đăng xuất các tài khoản đã đăng nhập trên máy">🧹 Xoá cache</div>
         <div class="settings-item" data-action="openDevTools" title="Mở công cụ debug cho tab đang xem (xem lỗi kỹ thuật khi trang không hoạt động đúng)">🛠 Công cụ debug (tab hiện tại)</div>
+        <div class="settings-item" data-action="clearDebugLog" title="Xoá log cũ, bắt đầu ghi lại từ đầu - làm bước này TRƯỚC khi tái hiện lỗi">🧹 Xoá log lỗi cũ</div>
+        <div class="settings-item" data-action="openDebugLog" title="Xem log console của trang đang mở - KHÔNG cần bật DevTools nên không bị trang tự chặn">📋 Xem log lỗi (không cần bật DevTools)</div>
         <div class="settings-item" data-action="restoreMessengerBtns">↩ Hiện lại nút Telegram/Zalo/Facebook/YouTube đã ẩn</div>
       </div>
     </div>
@@ -3456,6 +3458,16 @@
           if (wv.isDevToolsOpened()) wv.closeDevTools();
           else wv.openDevTools();
         }
+        return;
+      }
+      if (el.dataset.action === 'clearDebugLog') {
+        window.debugLogBridge.clear().then(() => showQuickToast('✓ Đã xoá log cũ, bắt đầu ghi lại từ đầu'));
+        return;
+      }
+      if (el.dataset.action === 'openDebugLog') {
+        window.debugLogBridge.open().then(r => {
+          if (!r || !r.ok) showQuickToast('Không mở được file log, thử lại sau');
+        });
         return;
       }
       openSidePanel(el.dataset.panel);

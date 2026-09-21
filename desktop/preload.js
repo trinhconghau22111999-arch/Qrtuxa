@@ -77,6 +77,13 @@ contextBridge.exposeInMainWorld('cacheBridge', {
   clear: () => ipcRenderer.invoke('cache:clear')
 });
 
+// Log console cua trang web dang xem, ghi lai am tham (khong bat DevTools
+// that su nen khong bi cac trang tu phat hien DevTools dang mo) - xem main.js.
+contextBridge.exposeInMainWorld('debugLogBridge', {
+  open: () => ipcRenderer.invoke('debuglog:open'),
+  clear: () => ipcRenderer.invoke('debuglog:clear')
+});
+
 // Quay video tung o xem QR Cam: chon thu muc luu (hop thoai that cua he
 // dieu hanh) + ghi file .webm that xuong dia - deu phai qua main.js vi
 // renderer khong co quyen dung fs truc tiep (contextIsolation dang bat).

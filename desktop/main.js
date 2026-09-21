@@ -14,6 +14,25 @@ Menu.setApplicationMenu(null);
 // that su cua ban build truoc, gio sua triet de bang cach nay).
 // Moi may tinh co du lieu RIENG, KHONG dong bo qua may nao khac/dam may nao ca.
 const APP_DATA_DIR = path.join(os.homedir(), '.ghn-browser');
+// File log gon nhe ghi lai console.log/warn/error tu CHINH trang web dang
+// xem, KHONG can mo DevTools that su - vi 1 so trang tu phat hien DevTools
+// dang mo (do lech kich thuoc cua so) roi chan video, ghi log kieu nay
+// (dung su kien noi bo 'console-message' cua Electron, khong bat DevTools
+// that) tranh duoc bay do hoan toan.
+const CONSOLE_LOG_FILE = path.join(APP_DATA_DIR, 'console-log.txt');
+function appendConsoleLog(line) {
+  try {
+    if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
+    fs.appendFileSync(CONSOLE_LOG_FILE, line + '\n', 'utf8');
+    const stat = fs.statSync(CONSOLE_LOG_FILE);
+    // Gioi han file khong qua 2MB, tranh phinh to sau nhieu phien dung -
+    // giu lai phan MOI NHAT (1MB cuoi) khi vuot nguong.
+    if (stat.size > 2 * 1024 * 1024) {
+      const content = fs.readFileSync(CONSOLE_LOG_FILE, 'utf8');
+      fs.writeFileSync(CONSOLE_LOG_FILE, content.slice(-1024 * 1024), 'utf8');
+    }
+  } catch (err) { /* log la tinh nang phu, loi thi bo qua, khong lam sap app */ }
+}
 function localStoreFile(key) {
   // chi cho phep ky tu chu/so/gach ngang trong ten key, tranh path traversal
   const safeKey = String(key).replace(/[^a-zA-Z0-9_-]/g, '');
@@ -101,6 +120,28 @@ ipcMain.handle('cache:clear', async () => {
     const ses = session.fromPartition(DOWNLOAD_PARTITION);
     await ses.clearCache();
     await ses.clearStorageData({ storages: ['cachestorage'] });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+});
+
+// Mo file log console (bang app mac dinh, vd Notepad) va xoa trang lam moi
+// truoc khi bat dau ghi lai 1 phien loi - xem CONSOLE_LOG_FILE phia tren.
+ipcMain.handle('debuglog:open', async () => {
+  try {
+    if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
+    if (!fs.existsSync(CONSOLE_LOG_FILE)) fs.writeFileSync(CONSOLE_LOG_FILE, '', 'utf8');
+    const err = await shell.openPath(CONSOLE_LOG_FILE);
+    return { ok: !err, error: err || null };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+});
+ipcMain.handle('debuglog:clear', async () => {
+  try {
+    if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
+    fs.writeFileSync(CONSOLE_LOG_FILE, '', 'utf8');
     return { ok: true };
   } catch (err) {
     return { ok: false, error: String((err && err.message) || err) };
@@ -572,6 +613,15 @@ function createWindow(initialUrl) {
   // bao renderer (index.html) tu mo 1 TAB MOI trong chinh app, giong hanh vi
   // trinh duyet Chrome.
   win.webContents.on('did-attach-webview', (event, webContents) => {
+    // Ghi log console cua trang (xem giai thich o phan khai bao CONSOLE_LOG_FILE
+    // phia tren) - hoan toan tham lang, khong bat DevTools, khong bi trang phat hien.
+    webContents.on('console-message', (e, level, message, line, sourceId) => {
+      const levelNames = { 0: 'LOG', 1: 'INFO', 2: 'WARN', 3: 'ERROR' };
+      const levelName = levelNames[level] || ('LEVEL' + level);
+      const time = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+      const shortSource = String(sourceId || '').split('/').pop();
+      appendConsoleLog(`[${time}] [${levelName}] ${message}  (${shortSource}:${line})`);
+    });
     webContents.setWindowOpenHandler((details) => {
       const isRealPopup = details.disposition === 'new-window' || details.disposition === 'other';
       if (isRealPopup) {
