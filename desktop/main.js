@@ -275,6 +275,20 @@ function attachRequestFilterOnce() {
       `[${time}] [NETWORK] ${details.method} ${details.statusCode} ${details.url}`
     );
   });
+  // QUAN TRONG: onCompleted o tren CHI bat duoc request DA HOAN TAT (ke ca
+  // loi 403/404). Request bi CHAN/GAY GIUA CHUNG truoc khi hoan tat - vd bi
+  // CORS chan, bi tu choi ket noi, DNS loi... - se KHONG bao gio kich hoat
+  // onCompleted, ma kich hoat 'onErrorOccurred' rieng. Day thuong moi la
+  // nguyen nhan that su cua loi "jwplayer Authentication failed" (request
+  // xin khoa video bi chan hoan toan, khong he co status code tra ve).
+  ses.webRequest.onErrorOccurred((details) => {
+    if (!AUTH_LIKE_URL_RE.test(details.url) && details.resourceType !== 'xhr'
+      && details.resourceType !== 'fetch' && details.resourceType !== 'media') return;
+    const time = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+    appendConsoleLog(
+      `[${time}] [NETWORK-ERROR] ${details.method} ${details.error} ${details.url}`
+    );
+  });
 }
 
 // ====== Gia User-Agent giong trinh duyet Chrome that, bo dau vet Electron
