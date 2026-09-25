@@ -436,6 +436,12 @@
     border:1px solid rgba(255,90,90,0.5); background:transparent; color:#ff9090;
   }
   .cam-slot-disconnect-btn:hover { background:rgba(255,90,90,0.15); }
+  .cam-slot-sendfile-btn {
+    padding:5px 8px; border-radius:7px; cursor:pointer; font-size:12px;
+    border:1px solid rgba(126,255,192,0.5); background:transparent; color:#7effc0;
+    flex-shrink:0;
+  }
+  .cam-slot-sendfile-btn:hover { background:rgba(126,255,192,0.15); }
   .cam-slot-status { font-size:10px; color:#a879e0; flex-shrink:0; max-width:60px; text-align:right; line-height:1.3; }
   .cam-slot-row.connected .cam-slot-status { color:#7effc0; }
   .cam-slot-row.signal-lost .cam-slot-status { color:#ffb020; }
@@ -2070,6 +2076,20 @@
                            slot.roomCode   ? 'Đang kết nối...' : ('ĐT ' + (i+1));
 
       row.appendChild(dot);
+      // Nut "Chon tep & gui" - CHI hien khi: (1) da ket noi that su, (2) co
+      // DataChannel (kenh du lieu) de gui, VA (3) KHONG co video track (tuc
+      // KHONG phai che do "QR cam" - dien thoai loai chi truyen tep, khong
+      // gui video, se khong bao gio goi pc.ontrack nen slot.stream se luon
+      // null suot phien ket noi). Dat o BEN TRAI cua dai o ma/nut ngat
+      // (codeWrap) nhu yeu cau.
+      if (slot.connected && slot.dataChannel && !slot.stream) {
+        const sendFileBtn = document.createElement('button');
+        sendFileBtn.className = 'cam-slot-sendfile-btn';
+        sendFileBtn.textContent = '📤';
+        sendFileBtn.title = 'Chọn tệp từ máy tính và gửi sang điện thoại này';
+        sendFileBtn.onclick = () => pickAndSendFileToPhone(i);
+        row.appendChild(sendFileBtn);
+      }
       row.appendChild(codeWrap);
       row.appendChild(status);
       list.appendChild(row);
@@ -2154,6 +2174,10 @@
     pc.ondatachannel = (event) => {
       if (slot.pc !== pc) return;
       _setupIncomingDataChannel(i, event.channel);
+      // Ve lai danh sach slot NGAY khi co DataChannel - de nut "Chon tep &
+      // gui" (xem renderCamSlotList()) hien ra dung luc, khong phai doi
+      // toi lan render tiep theo do 1 su kien khac kich hoat.
+      renderCamSlotList();
     };
 
     // Nhan video track tu dien thoai
@@ -2700,6 +2724,77 @@
     slot.incomingTransfer = null;
     t.chunks = null; // chi can bo trong RAM - chua tung ghi gi xuong dia (khac co che cu)
     if (!silent) showCamSignalToast('❌ Đã hủy nhận tệp từ ĐT ' + (i + 1) + ' (mất kết nối giữa chừng)');
+  }
+
+  // ====== Gui tep tu MAY TINH sang dien thoai (chieu NGUOC LAI voi phan
+  // nhan tep o tren) - danh cho slot dang ket noi kieu "truyen tep" (khong
+  // co video, xem dieu kien hien nut o renderCamSlotList()). Dung LAI dung
+  // 1 giao thuc data-channel da co san o chieu nhan (file-start JSON -> cac
+  // doan nhi phan -> file-end JSON) de ben dien thoai chi can them 1 bo lang
+  // nghe doi chieu la nhan duoc, khong phai doi giao thuc.
+  //
+  // Doc noi dung tep can gui TRUC TIEP trong renderer bang Web File API
+  // (<input type="file">) - khong can qua IPC/main process vi day chi la
+  // doc 1 tep nguoi dung tu chon tren may cua chinh ho de gui di, khong lien
+  // quan gi den noi dung trang web dang duyet trong webview.
+  const OUTGOING_FILE_CHUNK_SIZE = 64 * 1024; // khop kich thuoc doan da dung o chieu nhan
+
+  function pickAndSendFileToPhone(i) {
+    const slot = camSlots[i];
+    if (!slot.connected || !slot.dataChannel || slot.dataChannel.readyState !== 'open') {
+      showCamSignalToast('Chưa kết nối với điện thoại này');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (file) _sendFileToPhone(i, file);
+    };
+    input.click();
+  }
+
+  async function _sendFileToPhone(i, file) {
+    const slot = camSlots[i];
+    const channel = slot.dataChannel;
+    if (!channel || channel.readyState !== 'open') {
+      showCamSignalToast('Mất kết nối, không gửi được tệp');
+      return;
+    }
+    const transferId = 'out_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    const totalChunks = Math.max(1, Math.ceil(file.size / OUTGOING_FILE_CHUNK_SIZE));
+    showCamSignalToast('📤 Đang gửi "' + file.name + '" sang ĐT ' + (i + 1) + '...');
+    try {
+      channel.send(JSON.stringify({
+        type: 'file-start',
+        transferId,
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        totalChunks
+      }));
+      const buf = await file.arrayBuffer();
+      for (let offset = 0; offset < buf.byteLength; offset += OUTGOING_FILE_CHUNK_SIZE) {
+        // Kenh dut/dong giua chung (vd mat ket noi) - dung ngay, khong gui tiep du lieu vo ich.
+        if (slot.dataChannel !== channel || channel.readyState !== 'open') {
+          showCamSignalToast('❌ Mất kết nối giữa chừng khi đang gửi "' + file.name + '"');
+          return;
+        }
+        // Kiem soat toc do gui (backpressure): hang doi gui cua trinh duyet
+        // day qua thi doi no vo bot roi moi gui tiep - tranh don qua nhieu du
+        // lieu vao bo nho cung luc lam treo/rot ket noi voi tep lon.
+        while (channel.bufferedAmount > 8 * OUTGOING_FILE_CHUNK_SIZE) {
+          await new Promise(r => setTimeout(r, 30));
+          if (slot.dataChannel !== channel || channel.readyState !== 'open') return;
+        }
+        channel.send(buf.slice(offset, offset + OUTGOING_FILE_CHUNK_SIZE));
+      }
+      channel.send(JSON.stringify({ type: 'file-end', transferId }));
+      showCamSignalToast('✓ Đã gửi "' + file.name + '" sang ĐT ' + (i + 1));
+    } catch (err) {
+      showCamSignalToast('❌ Gửi tệp thất bại: ' + ((err && err.message) || err));
+      try { channel.send(JSON.stringify({ type: 'file-cancel', transferId })); } catch (e2) {}
+    }
   }
 
   // ====== Xem/sua anh nhan tu dien thoai (Giai doan 5) ======
