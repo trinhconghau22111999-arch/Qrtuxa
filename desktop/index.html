@@ -2105,7 +2105,19 @@
     disconnectSlot(i, true, true); // don slot cu neu co - GIU nguyen ma da luu, se ghi lai ngay ben duoi
     const slot = camSlots[i];
     slot.roomCode = code;
-    slot.viewerId = 'pc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+    // viewerId ON DINH theo tung o (luu xuong dia), khong sinh moi moi lan ket noi.
+    // Truoc day moi lan mo lai app / nhap lai ma deu tao 1 viewerId MOI; neu app bi tat
+    // dot ngot thi node viewer cu van con tren Firebase (chi mat field "present") nen
+    // dien thoai giu no nhu "viewer ma" va het 4 cho thi tu choi moi may moi. Dung lai
+    // dung id cu thi ghi de len cung 1 node, khong tao rac.
+    {
+      const ids = camViewerIdsStore.load().slice();
+      if (!ids[i]) {
+        ids[i] = 'pc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+        camViewerIdsStore.save(ids);
+      }
+      slot.viewerId = ids[i];
+    }
     slot.permissionError = false;
     renderCamSlotList();
     // Luu lai ma nay - se con nguyen trong o nhap ke ca sau khi tat app roi mo
@@ -2255,6 +2267,14 @@
     slot.fbHostGenListener = fbRoot.child('hostGeneration').on('value', snap => {
       const gen = snap.val();
       if (!gen || gen === slot.generation) return;
+      // Dien thoai vua mo 1 phien dam phan MOI (offer moi, ICE ufrag/DTLS fingerprint moi)
+      // trong khi pc nay da nhan 1 offer cu (vd ket noi lai truoc khi dt kip tao offer moi).
+      // Khong the setRemoteDescription offer moi len pc cu -> huy pc, tao lai tu dau
+      // (_doConnect tu dang ky lai listener, generation=-1 nen se doc dung gen hien tai).
+      if (slot.generation !== -1 && slot.pc && slot.pc.remoteDescription) {
+        _doConnect(i);
+        return;
+      }
       slot.generation = gen;
       _resubscribeGen(i, gen);
     }, err => {
@@ -3283,6 +3303,8 @@
   // mat sau khi ket noi. Chi mat khi nguoi dung chu dong bam nut ngat (✕) o
   // chinh o do, hoac nhap ma khac de thay the.
   const camRoomCodesStore = makeJsonStore('cam-room-codes', ['', '', '', '']);
+  // viewerId ON DINH theo tung o (khong sinh moi moi lan ket noi) - xem connectSlot().
+  const camViewerIdsStore = makeJsonStore('cam-viewer-ids', ['', '', '', '']);
   const MAX_HISTORY_ITEMS = 500;
 
   // Xao tron nhe cho mat khau luu cuc bo (KHONG phai ma hoa manh - chi de
