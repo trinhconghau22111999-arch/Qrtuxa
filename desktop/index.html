@@ -2653,6 +2653,9 @@
           // Heartbeat tu dien thoai - dung lam moc "du lieu THUC SU con chay qua" cho
           // watchdog _startSignalLostCheck() o tren, khong lien quan gi den truyen tep.
           slot.lastPingAt = Date.now();
+        } else if (msg.type === 'text-edit') {
+          // Nhap chu truc tiep tu dien thoai -> chen vao vi tri con tro trong web
+          _enqueueTextEdit(i, msg);
         } else if (msg.type === 'file-start') {
           await _startIncomingTransfer(i, msg);
         } else if (msg.type === 'file-end') {
@@ -2668,6 +2671,101 @@
       t.chunks.push(e.data);
       t.receivedChunks++;
     };
+  }
+
+  // ====== Nhap chu tu dien thoai (text-edit) ======
+  // Dien thoai gui {type:'text-edit', del, ins}: XOA `del` ky tu ngay truoc con tro roi CHEN
+  // `ins` tai do - tren o nhap dang co con tro trong webview. Tin den theo dung thu tu (kenh
+  // DataChannel dam bao) va duoc xu ly TUAN TU qua hang doi Promise de khong bao gio dao thu
+  // tu/chen chong. Moi thao tac xoa+chen chay trong 1 lan executeJavaScript duy nhat (khong
+  // tach thanh nhieu IPC) nen khong the bi dao thu tu giua "xoa" va "chen".
+  function _typingWebview() {
+    const ae = document.activeElement;
+    if (ae && ae.tagName === 'WEBVIEW') return ae; // webview dang giu con tro (ke ca pane chia doi)
+    return getActiveWebview();
+  }
+
+  function _enqueueTextEdit(i, msg) {
+    const slot = camSlots[i];
+    slot._textQueue = (slot._textQueue || Promise.resolve())
+      .then(() => _applyTextEdit(msg))
+      .catch(() => {});
+  }
+
+  function _buildTextEditScript(del, ins) {
+    const fn = function (del, ins) {
+      var el = document.activeElement;
+      try {
+        while (el && el.tagName === 'IFRAME' && el.contentDocument && el.contentDocument.activeElement) {
+          el = el.contentDocument.activeElement;
+        }
+      } catch (e) {}
+      if (!el) return false;
+      var doc = el.ownerDocument;
+      function stepBack(str, idx, n) { // lui n ky tu (code point) tu vi tri idx
+        while (n > 0 && idx > 0) {
+          idx--;
+          var c = str.charCodeAt(idx);
+          if (c >= 0xDC00 && c <= 0xDFFF && idx > 0) {
+            var h = str.charCodeAt(idx - 1);
+            if (h >= 0xD800 && h <= 0xDBFF) idx--;
+          }
+          n--;
+        }
+        return idx;
+      }
+      function fire(target) {
+        try {
+          target.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: ins ? 'insertText' : 'deleteContentBackward', data: ins || null }));
+        } catch (e) {
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        var v = el.value;
+        var s = null, e2 = null;
+        try { s = el.selectionStart; e2 = el.selectionEnd; } catch (err) {}
+        if (s === null || e2 === null) { s = e2 = v.length; } // vd type=email/number khong co selection
+        var start = (e2 === s) ? stepBack(v, s, del) : s;
+        try {
+          el.setRangeText(ins, start, e2, 'end');
+        } catch (err) {
+          // Kieu o khong ho tro setRangeText: ghi gia tri bang setter goc (tuong thich React)
+          var proto = el.tagName === 'INPUT' ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
+          var setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+          setter.call(el, v.slice(0, start) + ins + v.slice(e2));
+        }
+        fire(el);
+        return true;
+      }
+      if (el.isContentEditable) {
+        for (var k = 0; k < del; k++) doc.execCommand('delete');
+        if (ins) doc.execCommand('insertText', false, ins);
+        return true;
+      }
+      return false;
+    };
+    return '(' + fn.toString() + ')(' + (del | 0) + ',' + JSON.stringify(ins) + ');';
+  }
+
+  async function _applyTextEdit(msg) {
+    const wv = _typingWebview();
+    if (!wv) return;
+    const del = Math.max(0, Math.min(msg.del | 0, 1000000));
+    const ins = typeof msg.ins === 'string' ? msg.ins : '';
+    if (!del && !ins) return;
+    try {
+      if (ins === '\n' && !del) {
+        // Phim Enter go tay -> gui phim Enter THAT (gui form / xuong dong dung nhu ban phim)
+        wv.focus();
+        wv.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+        wv.sendInputEvent({ type: 'char', keyCode: 'Enter' });
+        wv.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+        await new Promise(r => setTimeout(r, 40)); // de phim Enter xu ly xong truoc chu ke tiep
+        return;
+      }
+      await wv.executeJavaScript(_buildTextEditScript(del, ins));
+    } catch (e) {}
   }
 
   async function _startIncomingTransfer(i, msg) {
