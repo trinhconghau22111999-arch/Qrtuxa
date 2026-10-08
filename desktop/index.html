@@ -960,7 +960,7 @@
         <video autoplay muted playsinline controls></video>
         <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 1</div>
         <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
+        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
         <div class="cam-tile-record-controls">
@@ -982,7 +982,7 @@
         <video autoplay muted playsinline controls></video>
         <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 2</div>
         <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
+        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
         <div class="cam-tile-record-controls">
@@ -1004,7 +1004,7 @@
         <video autoplay muted playsinline controls></video>
         <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 3</div>
         <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
+        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
         <div class="cam-tile-record-controls">
@@ -1026,7 +1026,7 @@
         <video autoplay muted playsinline controls></video>
         <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 4</div>
         <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⚠ Mất tín hiệu</div>
+        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
         <div class="cam-tile-meta"></div>
         <div class="cam-tile-empty">Chưa kết nối</div>
         <div class="cam-tile-record-controls">
@@ -1995,6 +1995,7 @@
       stream: null,          // MediaStream nhan duoc tu dien thoai
       connected: false,
       signalLost: false,
+      reconnecting: false,
       lastConnectedAt: 0,
       signalLostTimer: null,
       reconnectTimer: null,
@@ -2028,8 +2029,8 @@
       const row = document.createElement('div');
       row.className = 'cam-slot-row' +
         (slot.connected ? ' connected' : '') +
-        (slot.connected && !slot.signalLost ? ' streaming' : '') +
-        (slot.signalLost ? ' signal-lost' : '');
+        (slot.connected && !slot.signalLost && !slot.reconnecting ? ' streaming' : '') +
+        (slot.signalLost || slot.reconnecting ? ' signal-lost' : '');
 
       const dot = document.createElement('span');
       dot.className = 'cam-slot-dot';
@@ -2071,7 +2072,7 @@
       const status = document.createElement('span');
       status.className = 'cam-slot-status';
       status.textContent = slot.permissionError ? 'Lỗi quyền Firebase' :
-                           slot.signalLost ? 'Mất tín hiệu' :
+                           (slot.signalLost || slot.reconnecting) ? '⏳ Đang chờ kết nối lại...' :
                            slot.connected  ? 'Đang xem' :
                            slot.roomCode   ? 'Đang kết nối...' : ('ĐT ' + (i+1));
 
@@ -2161,6 +2162,9 @@
     // hien dung "Dang ket noi..." thay vi tiep tuc treo "Mat tin hieu" trong
     // luc dang thu lai (dung ke ca khi ket noi cuoi cung that bai/phai thu lai
     // vong tiep theo - _onSlotLostSignal() se tu bat lai signalLost=true).
+    // Neu day la lan NOI LAI (truoc do dang mat tin hieu/cho phuc hoi) thi tiep tuc hien
+    // "Dang cho ket noi lai..." trong suot luc thu (toi da 20s), khong quay ve "Dang ket noi...".
+    slot.reconnecting = !!(slot.signalLost || slot.reconnecting);
     slot.signalLost = false;
     renderCamSlotList();
 
@@ -2218,6 +2222,7 @@
       const s = pc.connectionState;
       if (s === 'connected') {
         clearTimeout(slot.disconnectGraceTimer);
+        slot.reconnecting = false;
         slot.connected = true;
         slot.signalLost = false;
         slot.lastConnectedAt = Date.now();
@@ -2249,6 +2254,10 @@
         // dien thoai chup anh) va thuong tu hoi phuc -> cho them truoc khi coi la mat
         // that, tranh ngat + noi lai lien tuc.
         clearTimeout(slot.disconnectGraceTimer);
+        // Bao NGAY cho nguoi dung: dang cho ket noi lai (khong doi het 8s moi bao)
+        slot.reconnecting = true;
+        renderCamSlotList();
+        updateLiveTileState(i);
         slot.disconnectGraceTimer = setTimeout(() => {
           if (slot.pc !== pc) return;
           if (pc.connectionState !== 'connected') _onSlotLostSignal(i);
@@ -2418,6 +2427,7 @@
     const slot = camSlots[i];
     clearTimeout(slot.reconnectTimer);
     clearTimeout(slot.disconnectGraceTimer);
+    slot.reconnecting = false;
     clearTimeout(slot.signalLostTimer);
     clearTimeout(slot.startTimer);
     clearTimeout(slot.stopTimer);
@@ -2509,8 +2519,8 @@
   function updateLiveTileState(i) {
     const slot = camSlots[i];
     const tile = camLiveTiles[i];
-    tile.classList.toggle('has-signal', slot.connected && !slot.signalLost);
-    tile.classList.toggle('signal-lost', slot.signalLost);
+    tile.classList.toggle('has-signal', slot.connected && !slot.signalLost && !slot.reconnecting);
+    tile.classList.toggle('signal-lost', !!(slot.signalLost || slot.reconnecting));
     // Gan lai stream neu dang xem truc tiep
     if (camLiveOpen && slot.stream) {
       const video = tile.querySelector('video');
