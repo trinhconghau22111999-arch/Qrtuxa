@@ -2266,6 +2266,15 @@
     slot.fbHostGenListener = fbRoot.child('hostGeneration').on('value', snap => {
       const gen = snap.val();
       if (!gen || gen === slot.generation) return;
+      // SUA LOI "bao ket noi roi lai rot, lan 2 moi duoc": khi noi lai, listener nay co the
+      // ban ra gia tri hostGeneration CU (con luu tren Firebase) TRUOC khi dien thoai kip
+      // ghi so moi -> pc nay nhan offer CU (da chet) roi lai nhan offer MOI tren cung 1
+      // pc (da co remoteDescription) -> dam phan hong, ket noi vua len lai rot. Neu pc nay
+      // da dung 1 offer cua the he truoc thi DUNG LAI pc moi hoan toan cho the he moi.
+      if (slot.generation !== -1 && slot.pc && slot.pc.remoteDescription) {
+        _doConnect(i);
+        return;
+      }
       slot.generation = gen;
       _resubscribeGen(i, gen);
     }, err => {
@@ -2356,9 +2365,12 @@
     slot.reconnectTimer = setTimeout(() => {
       if (!slot.roomCode) return;
       _doConnect(i);
+      // Cho du lau (20s) de dam phan + ICE (co the qua TURN) kip xong - truoc day 8s la
+      // qua ngan: dang noi dang do bi huy va dung lai tu dau -> thanh "noi 2 lan".
       setTimeout(() => {
-        if (slot.roomCode && !slot.connected) _onSlotLostSignal(i);
-      }, 8000);
+        if (slot.roomCode && !slot.connected &&
+            !(slot.pc && slot.pc.connectionState === 'connecting')) _onSlotLostSignal(i);
+      }, 20000);
     }, 4000);
   }
 
