@@ -2217,6 +2217,7 @@
       if (slot.pc !== pc) return; // pc cu, khong con hieu luc - bo qua
       const s = pc.connectionState;
       if (s === 'connected') {
+        clearTimeout(slot.disconnectGraceTimer);
         slot.connected = true;
         slot.signalLost = false;
         slot.lastConnectedAt = Date.now();
@@ -2240,8 +2241,18 @@
           slot._resumeRecordingOnReconnect = false;
           startRecording(i, true);
         }
-      } else if (s === 'disconnected' || s === 'failed') {
+      } else if (s === 'failed') {
+        clearTimeout(slot.disconnectGraceTimer);
         _onSlotLostSignal(i);
+      } else if (s === 'disconnected') {
+        // 'disconnected' la trang thai TAM THOI cua WebRTC (chap chon vai giay, vd luc
+        // dien thoai chup anh) va thuong tu hoi phuc -> cho them truoc khi coi la mat
+        // that, tranh ngat + noi lai lien tuc.
+        clearTimeout(slot.disconnectGraceTimer);
+        slot.disconnectGraceTimer = setTimeout(() => {
+          if (slot.pc !== pc) return;
+          if (pc.connectionState !== 'connected') _onSlotLostSignal(i);
+        }, 8000);
       }
     };
 
@@ -2394,6 +2405,7 @@
   function disconnectSlot(i, silent, keepSavedCode) {
     const slot = camSlots[i];
     clearTimeout(slot.reconnectTimer);
+    clearTimeout(slot.disconnectGraceTimer);
     clearTimeout(slot.signalLostTimer);
     clearTimeout(slot.startTimer);
     clearTimeout(slot.stopTimer);
