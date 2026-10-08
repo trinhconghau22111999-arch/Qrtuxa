@@ -95,8 +95,12 @@ if (!session) {
   // -> lan quet dau tien cung nhanh nhu cac lan sau, khong bi tre do bat tay ket noi
   if (db) db.ref('.info/connected').on('value', () => {});
 
-  let lastText = null; // chi nho ma QR gan nhat da gui, khong nho toan bo lich su
-  let repeatCount = 0; // so lan da gui LIEN TIEP cho lastText (toi da 2, tu lan thu 3 bi chan)
+  // DA BO gioi han "cung 1 ma chi gui toi da 2 lan lien tiep". Thay bang: sau MOI lan quet
+  // thanh cong (da gui ve may tinh) phai DUNG 0,2 giay roi moi nhan lan quet ke tiep - khi dua
+  // vao quet 1 ma thi khong bi quet lien tuc "veo veo", nhung van quet lai duoc cung ma bao
+  // nhieu lan tuy y (moi lan cach nhau it nhat 0,2s).
+  const SCAN_COOLDOWN_MS = 200;
+  let lastScanAt = 0; // thoi diem (ms) cua lan quet thanh cong gan nhat
 
   // ====== Hieu ung nhay tim neon + rung khi quet thanh cong ======
   const scanFlash = document.getElementById('scanFlash');
@@ -122,16 +126,10 @@ if (!session) {
     if (!dataRef) return;
     if (!isAllowedText(decodedText)) return; // ma chua ky tu khong hop le -> bo qua hoan toan, coi nhu chua quet
 
-    if (decodedText === lastText) {
-      // Cung 1 du lieu, LIEN TIEP (chua co ma nao khac chen giua):
-      // cho phep toi da 2 lan gui, tu lan thu 3 tro di thi chan.
-      if (repeatCount >= 2) return;
-      repeatCount++;
-    } else {
-      // Ma moi (khac lan truoc) -> coi nhu "cach nhau", reset lai bo dem.
-      lastText = decodedText;
-      repeatCount = 1;
-    }
+    // Dang trong 0,2s nghi sau lan quet thanh cong truoc -> bo qua (khong tinh la da quet)
+    const now = Date.now();
+    if (now - lastScanAt < SCAN_COOLDOWN_MS) return;
+    lastScanAt = now;
 
     flashEffect(); // kich hoat ngay, khong cho phan hoi Firebase
 
