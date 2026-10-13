@@ -136,3 +136,14 @@ npm run build      # đóng gói .exe (NSIS) bằng electron-builder
 - Cửa sổ dùng khung tự vẽ (`frame:false`) — mọi thay đổi liên quan tới
   thu nhỏ/phóng to/đóng/kéo-giãn cửa sổ đều phải test kỹ vì không dùng cơ chế
   mặc định của hệ điều hành.
+
+## Chế độ chỉ cùng mạng (LAN only)
+
+Mặc định bản này **chỉ kết nối khi điện thoại và máy tính cùng Wi-Fi hoặc cùng hotspot**.
+
+- Không dùng STUN/TURN, bỏ mọi đường đi qua Internet; video và tệp đi thẳng giữa 2 máy.
+- Vẫn dùng Firebase để 2 máy tìm thấy nhau, nên mạng vẫn cần có Internet (4G của máy phát hotspot cũng được).
+- Khác mạng sẽ không lên hình (đúng chủ ý).
+- Muốn trở lại như cũ (cả khi khác mạng): đổi `LAN_ONLY = false` (file JS/HTML) hoặc `LanOnly.ENABLED = false` (`webrtc/LanOnly.kt`).
+- Lần đầu mở trên Windows, hãy bấm **Cho phép (Allow)** ở hộp thoại Tường lửa cho mạng riêng.
+- Nếu Wi-Fi công cộng bật "cách ly thiết bị", hãy dùng hotspot riêng.

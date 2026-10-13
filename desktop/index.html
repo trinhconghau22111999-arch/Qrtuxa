@@ -1971,7 +1971,29 @@
   const CAM_SIGNAL_LOST_MS = 8000; // 8s khong nhan ICE connected -> canh bao mat tin hieu
 
   // ICE servers giong APK (STUN public + TURN du phong cho CGNAT)
-  const CAM_ICE_SERVERS = [
+  // ===== CHẾ ĐỘ CHỈ CÙNG MẠNG (LAN) =====
+  // true  : chỉ kết nối khi 2 máy cùng Wi-Fi / cùng hotspot. Không dùng STUN/TURN,
+  //         bỏ mọi đường đi qua Internet (vẫn dùng Firebase để 2 máy tìm thấy nhau).
+  // false : như bản cũ (STUN + TURN, kết nối được cả khi khác mạng).
+  const LAN_ONLY = true;
+  function isLanCandidate(cand) {
+    if (!LAN_ONLY) return true;
+    const m = /^(?:a=)?candidate:\S+\s+\d+\s+\S+\s+\d+\s+(\S+)\s+\d+\s+typ\s+(\w+)/i.exec(String(cand || '').trim());
+    if (!m) return false;
+    if (m[2].toLowerCase() !== 'host') return false;      // bỏ srflx / relay / prflx
+    const a = m[1].toLowerCase();
+    if (a.endsWith('.local')) return true;                  // địa chỉ mDNS của mạng nội bộ
+    if (a.indexOf(':') >= 0) {                              // IPv6: chỉ link-local (fe80::/10) và ULA (fc00::/7)
+      const s = a.split('%')[0];
+      return /^fe[89ab]/.test(s) || /^f[cd]/.test(s);
+    }
+    const p = a.split('.').map(Number);
+    if (p.length !== 4 || p.some(n => !(n >= 0 && n <= 255))) return false;
+    return p[0] === 10 || (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+           (p[0] === 192 && p[1] === 168) || (p[0] === 169 && p[1] === 254);
+  }
+
+  const CAM_ICE_SERVERS = LAN_ONLY ? [] : [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'turn:openrelay.metered.ca:80',  username:'openrelayproject', credential:'openrelayproject' },
@@ -2210,6 +2232,7 @@
     pc.onicecandidate = e => {
       if (slot.pc !== pc) return; // pc cu, khong con hieu luc - bo qua
       if (!e.candidate || !slot.fbGenRef) return;
+      if (LAN_ONLY && !isLanCandidate(e.candidate.candidate)) return;
       slot.fbGenRef.child('iceCandidatesCtrl').push({
         sdpMid: e.candidate.sdpMid,
         sdpMLineIndex: e.candidate.sdpMLineIndex,
@@ -2326,6 +2349,7 @@
       snap.forEach(child => {
         const c = child.val();
         if (!c) return;
+        if (LAN_ONLY && !isLanCandidate(c.candidate)) return;
         slot.pc.addIceCandidate({ sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex, candidate: c.candidate }).catch(()=>{});
       });
     }, err => {

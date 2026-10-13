@@ -1,4 +1,7 @@
 const { app, BrowserWindow, Menu, ipcMain, clipboard, session, shell, dialog, safeStorage } = require('electron');
+// Chế độ LAN: để WebRTC lộ địa chỉ IP thật của mạng nội bộ (thay vì tên ẩn xxxx.local)
+// giúp điện thoại Android tìm đúng đường tới máy tính trong cùng Wi-Fi.
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
