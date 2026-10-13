@@ -1,4 +1,4 @@
-# Qrtuxa — trình duyệt desktop + nhập liệu từ xa bằng QR + xem webcam điện thoại
+# Qrtuxa — trình duyệt desktop + nhập liệu từ xa bằng QR + truyền tệp với điện thoại
 
 Ứng dụng desktop (Electron, chạy trên Windows) có 3 phần:
 
@@ -8,16 +8,14 @@
 2. **QR Remote Input** — tính năng gốc của app: quét mã QR/mã vạch bằng camera
    điện thoại, nội dung quét được sẽ **gõ thẳng vào vị trí con trỏ đang chọn
    trên máy tính** — như một máy quét mã vạch không dây dùng điện thoại.
-3. **QR Cam** — xem camera của điện thoại đang chạy app
-   QrtuxaCam ngay
-   trên máy tính qua WebRTC, tối đa 4 điện thoại cùng lúc, có thể quay lại màn
-   hình đang xem theo lịch hẹn giờ.
+3. **Truyền tệp** — gửi/nhận tệp giữa máy tính và điện thoại (1 điện thoại, nhập
+   mã 6 số) qua WebRTC DataChannel. Không còn xem/quay video.
 
 `package.json` hiện đặt tên nội bộ là `qr-remote-input-browser` (tên gốc lúc
 mới chỉ có tính năng #2) — tên hiển thị trong cửa sổ app là **"QR Remote
 Browser"**; "Qrtuxa" là tên repo/thương hiệu dùng khi nhắc tới app này từ phía
-điện thoại (VD dòng chữ "Nhập mã này vào QR Cam trên máy tính (Qrtuxa)" trong
-app QrtuxaCam).
+điện thoại (VD dòng chữ "Nhập mã này vào Truyền tệp trên máy tính (Qrtuxa)" trong
+app trên điện thoại).
 
 ## 1. Trình duyệt
 
@@ -54,36 +52,29 @@ Luồng hoạt động:
 Hữu ích khi cần nhập nhanh nội dung từ mã vạch/QR vào máy tính (VD mã sản
 phẩm, link, số serial...) mà không cần máy quét mã vạch chuyên dụng.
 
-## 3. QR Cam — xem webcam điện thoại
+## 3. Truyền tệp
 
-Cần điện thoại cài app
-QrtuxaCam (xem
-README repo đó để biết cách lấy mã 6 số).
+Cần app trên điện thoại hiển thị mã 6 số.
 
-- Bấm nút **"📷 QR Cam"** để mở panel nhập mã, tối đa **4 ô** (4 điện thoại
-  cùng lúc), mỗi ô nhập 1 mã 6 số riêng.
-- **Panel chỉ hoạt động lúc đang mở**: mở panel sẽ tự kết nối lại bằng mã đã
-  lưu (nếu có); đóng panel sẽ tạm ngắt hết kết nối (không xoá mã đã lưu) —
-  **trừ** ô nào đang quay video theo lịch hẹn giờ (xem bên dưới), ô đó vẫn giữ
-  kết nối ngầm dù đóng panel.
-- Mã 6 số nhập vào **lưu vĩnh viễn** trong ô, không tự mất — chỉ mất khi bấm
-  ✕ hoặc nhập mã khác đè lên.
-- Bấm "Xem trực tiếp" để xem lưới tối đa 4 camera cùng lúc; nút Đóng nằm ở
-  góc trên-phải overlay.
-- **Quay video theo lịch**: mỗi ô có nút ⏺ (quay/dừng tay) và nút ⚙ (đặt lịch
-  — giờ bắt đầu + giờ kết thúc, lặp lại mỗi ngày). Lần đầu dùng cho 1 ô cần
-  bấm ⏺ ít nhất 1 lần để chọn thư mục lưu (hộp thoại thật của Windows); các
-  lần quay theo lịch sau đó tự dùng lại đúng thư mục đã chọn, không hỏi lại.
-  File lưu dạng `.webm`, đặt tên theo giờ quay
-  (`qrcam_dt{số ô}_{ngày}_{giờ}.webm`). Ô có lịch đang bật sẽ tự kết nối ngay
-  từ lúc mở app, không cần mở panel trước.
+- Bấm nút **"📁 Truyền tệp"** trên thanh công cụ để mở panel, nhập mã 6 số vào ô
+  duy nhất rồi bấm Kết nối. Mã **lưu vĩnh viễn**, tự kết nối lại khi mở app, chỉ
+  mất khi bấm Ngắt hoặc nhập mã khác. Đóng panel chỉ ẩn giao diện, không ngắt kết nối.
+- **Nhận tệp** từ điện thoại: lần đầu app hỏi chọn thư mục lưu (rồi nhớ lại). Tệp
+  được **ghi thẳng xuống đĩa từng đoạn 64KB** ngay khi nhận (không gom vào RAM) nên
+  tệp rất lớn (~1GB trở lên) vẫn nhận được. Tên trùng sẽ thêm " (1)", " (2)"...
+  thay vì ghi đè. Mất kết nối giữa chừng hoặc nhận thiếu dữ liệu thì tệp dở bị xóa.
+  Nhận ảnh thì mở luôn màn hình xem/sửa ảnh (cắt, xoay, vẽ, đánh dấu).
+- **Gửi tệp** sang điện thoại: bấm "Chọn tệp gửi sang điện thoại" khi đã kết nối.
+  Tệp được đọc từng khối 1MB bằng `file.slice()` (không đọc cả tệp vào RAM), có
+  kiểm soát tốc độ gửi.
+- Thanh tiến trình hiện cho cả gửi và nhận. Mỗi lần chỉ gửi 1 tệp.
+- Điện thoại vẫn có thể **nhập chữ từ xa** vào ô đang có con trỏ trong trang web.
 
 ### Ghi chú
 
-- `docs/cam.html` là bản thiết kế **cũ, không còn được dùng** (cách tiếp cận
-  chụp từng khung hình qua canvas, trước khi chuyển hẳn sang WebRTC thật của
-  app QrtuxaCam) — không có chỗ nào trong code hiện tại trỏ tới file này, giữ
-  lại chỉ để tham khảo lịch sử.
+- `docs/cam.html` là bản thiết kế **cũ, không còn được dùng** (từ thời xem camera
+  qua canvas) — không có chỗ nào trong code hiện tại trỏ tới file này, giữ lại chỉ
+  để tham khảo lịch sử.
 
 ## Firebase — 2 tính năng dùng 2 nhánh dữ liệu khác nhau
 
@@ -92,7 +83,7 @@ Project mặc định hiện tại (`desktop/index.html`, `docs/index.html`): `q
 | Tính năng | Nhánh dữ liệu | Ai ghi/đọc |
 |---|---|---|
 | QR Remote Input | `sessions/{id}/data` | Điện thoại ghi, máy tính đọc |
-| QR Cam | `rooms/{mã 6 số}` (+ `viewers/`, `offer`, `iceCandidatesHost`...) | App QrtuxaCam ghi, máy tính đọc/ghi |
+| Truyền tệp | `rooms/{mã 6 số}` (+ `viewers/`, `offer`, `iceCandidatesHost`...) | App điện thoại ghi, máy tính đọc/ghi |
 
 **Rules cần đủ CẢ HAI nhánh** — dán thiếu 1 trong 2 sẽ làm tính năng còn lại
 báo lỗi quyền (permission denied) hoặc kẹt vô hạn ở trạng thái "đang kết nối":
@@ -125,11 +116,11 @@ npm run build      # đóng gói .exe (NSIS) bằng electron-builder
 
 ## Nguyên tắc thiết kế cần giữ nguyên khi chỉnh sửa
 
-- 2 tính năng QR (Remote Input và QR Cam) dùng 2 nhánh Firebase **riêng biệt**
+- 2 tính năng (QR Remote Input và Truyền tệp) dùng 2 nhánh Firebase **riêng biệt**
   (`sessions` và `rooms`) — không gộp chung hay đổi rules của nhánh này khi
   chỉ định sửa nhánh kia.
-- QR Cam: panel đóng phải ngắt kết nối các ô KHÔNG có lịch quay đang bật, để
-  tránh giữ kết nối ngầm không cần thiết khi không ai theo dõi.
+- Truyền tệp: tệp phải được ghi/đọc **từng đoạn**, không gom cả tệp vào RAM
+  (cả chiều nhận lẫn chiều gửi) để tệp lớn vẫn truyền được.
 - Dữ liệu trình duyệt (dấu trang/lịch sử/mật khẩu/cài đặt) lưu file thật qua
   `localStoreBridge`, không dùng `localStorage` (mất khi xoá cache trình
   duyệt vì đây là nội dung `<webview>`, không phải trang top-level).
@@ -141,9 +132,9 @@ npm run build      # đóng gói .exe (NSIS) bằng electron-builder
 
 Mặc định bản này **chỉ kết nối khi điện thoại và máy tính cùng Wi-Fi hoặc cùng hotspot**.
 
-- Không dùng STUN/TURN, bỏ mọi đường đi qua Internet; video và tệp đi thẳng giữa 2 máy.
+- Không dùng STUN/TURN, bỏ mọi đường đi qua Internet; tệp đi thẳng giữa 2 máy.
 - Vẫn dùng Firebase để 2 máy tìm thấy nhau, nên mạng vẫn cần có Internet (4G của máy phát hotspot cũng được).
-- Khác mạng sẽ không lên hình (đúng chủ ý).
+- Khác mạng sẽ không kết nối được (đúng chủ ý).
 - Muốn trở lại như cũ (cả khi khác mạng): đổi `LAN_ONLY = false` (file JS/HTML) hoặc `LanOnly.ENABLED = false` (`webrtc/LanOnly.kt`).
 - Lần đầu mở trên Windows, hãy bấm **Cho phép (Allow)** ở hộp thoại Tường lửa cho mạng riêng.
 - Nếu Wi-Fi công cộng bật "cách ly thiết bị", hãy dùng hotspot riêng.

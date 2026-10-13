@@ -305,7 +305,7 @@
   }
   /* Cham thong bao khi nhan duoc tep/anh moi tu dien thoai (Giai doan 6) -
      an mac dinh, chi hien khi #camQrBtn co class "has-notify". Tu tat khi
-     nguoi dung mo panel QR Cam (coi nhu da xem). */
+     nguoi dung mo panel Truyền tệp (coi nhu da xem). */
   #camQrBtn .cam-notify-badge {
     display:none;
     position:absolute; top:-4px; right:-4px;
@@ -389,9 +389,9 @@
   #refreshQr { position:absolute; top:10px; right:34px; cursor:pointer; color:#c7a8ff; }
   #refreshQr:hover { color:#fff; }
 
-  /* ====== Panel QR Cam moi: nhap ma 6 so, ket noi WebRTC tu APK ====== */
+  /* ====== Panel Truyền tệp: nhập mã 6 số, kết nối WebRTC với điện thoại ====== */
   #camQrPanel {
-    position:absolute; top:14px; right:14px; width:300px;
+    position:absolute; top:14px; right:14px; width:320px;
     background:#000000; border:1px solid var(--neon-1);
     border-radius:14px; padding:16px; display:none; z-index:10;
     box-shadow: 0 0 30px rgba(192,38,255,0.5), 0 8px 24px rgba(0,0,0,.5);
@@ -405,56 +405,59 @@
   #closeCamQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
   #closeCamQr:hover { color:#fff; }
 
-  /* Danh sach cac slot cam (moi slot = 1 dien thoai) */
-  #camSlotList { display:flex; flex-direction:column; gap:8px; }
-  .cam-slot-row {
-    display:flex; align-items:center; gap:6px;
-    padding:8px 10px; border-radius:10px;
-    border:1px solid rgba(192,38,255,0.25); background:rgba(192,38,255,0.04);
+  /* ====== Panel Truyền tệp ====== */
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  .tf-card {
+    display:flex; flex-direction:column; gap:12px;
+    padding:14px; border-radius:14px;
+    border:1px solid var(--neon-a25);
+    background: linear-gradient(160deg, var(--neon-a12), rgba(255,255,255,0.02));
+    transition: border-color .25s ease, background .25s ease;
   }
-  .cam-slot-row.connected { border-color:#7effc0; background:rgba(126,255,192,0.06); }
-  .cam-slot-row.signal-lost { border-color:#ffb020; }
-  .cam-slot-dot { width:8px; height:8px; border-radius:50%; background:#444; flex-shrink:0; }
-  .cam-slot-row.connected .cam-slot-dot { background:#7effc0; box-shadow:0 0 5px #7effc0; }
-  .cam-slot-row.streaming .cam-slot-dot { background:#ff3b3b; box-shadow:0 0 5px #ff3b3b; animation:blink 1.1s infinite; }
-  .cam-slot-row.signal-lost .cam-slot-dot { background:#ffb020; animation:none; }
-  .cam-slot-code-wrap { flex:1; display:flex; gap:4px; }
-  .cam-slot-code-input {
-    flex:1; background:#0a0010; border:1px solid rgba(192,38,255,0.3);
-    border-radius:7px; color:#fff; font-size:18px; font-weight:700;
-    letter-spacing:4px; text-align:center; padding:4px 2px; width:0;
+  .tf-card.connected { border-color:rgba(126,255,192,0.55); background:linear-gradient(160deg, rgba(126,255,192,0.09), rgba(255,255,255,0.02)); }
+  .tf-card.signal-lost { border-color:#ffb020; }
+  .tf-card.error { border-color:#ff5a5a; }
+  .tf-status { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--neon-text-dim); }
+  .tf-dot { width:8px; height:8px; border-radius:50%; background:#555; flex-shrink:0; }
+  .tf-card.connected .tf-dot { background:#7effc0; box-shadow:0 0 8px #7effc0; }
+  .tf-card.connected .tf-status { color:#7effc0; }
+  .tf-card.signal-lost .tf-dot { background:#ffb020; box-shadow:0 0 8px #ffb020; animation:blink 1.1s infinite; }
+  .tf-card.signal-lost .tf-status { color:#ffb020; }
+  .tf-card.error .tf-status { color:#ff8a8a; }
+  .tf-code-row { display:flex; align-items:center; gap:8px; }
+  .tf-code-input {
+    flex:1; min-width:0; background:rgba(0,0,0,0.55); border:1px solid var(--neon-a35);
+    border-radius:10px; color:#fff; font-size:20px; font-weight:700;
+    letter-spacing:6px; text-align:center; padding:9px 4px;
+    transition: border-color .2s ease, box-shadow .2s ease;
   }
-  .cam-slot-code-input:focus { outline:none; border-color:var(--neon-1); }
-  .cam-slot-code-input::placeholder { font-size:11px; letter-spacing:1px; color:#555; font-weight:400; }
-  .cam-slot-connect-btn {
-    padding:5px 10px; border-radius:7px; cursor:pointer; font-size:11px;
-    border:1px solid var(--neon-1); background:rgba(192,38,255,0.15); color:#e0c0ff;
+  .tf-code-input:focus { outline:none; border-color:var(--neon-1); box-shadow:0 0 0 3px var(--neon-a25); }
+  .tf-code-input::placeholder { font-size:12px; letter-spacing:1px; color:#6d5a85; font-weight:400; }
+  .tf-code { flex:1; text-align:center; font-size:22px; font-weight:700; letter-spacing:6px; color:#e0c0ff; }
+  .tf-btn {
+    padding:10px 14px; border-radius:10px; cursor:pointer; font-size:12px; font-weight:600;
+    border:1px solid transparent; transition: background .2s ease, filter .2s ease;
   }
-  .cam-slot-connect-btn:hover { background:rgba(192,38,255,0.35); color:#fff; }
-  .cam-slot-disconnect-btn {
-    padding:5px 8px; border-radius:7px; cursor:pointer; font-size:11px;
-    border:1px solid rgba(255,90,90,0.5); background:transparent; color:#ff9090;
+  .tf-connect { background:linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; }
+  .tf-connect:hover { filter:brightness(1.15); }
+  .tf-disconnect { background:transparent; color:#ff9a9a; border-color:rgba(255,90,90,0.45); }
+  .tf-disconnect:hover { background:rgba(255,90,90,0.14); }
+  .tf-hint { font-size:11px; color:#8c78a8; text-align:center; }
+  .tf-send {
+    width:100%; padding:13px 12px; border-radius:12px; cursor:pointer;
+    font-size:13px; font-weight:600; color:#7effc0;
+    border:1.5px dashed rgba(126,255,192,0.6); background:rgba(126,255,192,0.07);
+    transition: background .2s ease, border-color .2s ease;
   }
-  .cam-slot-disconnect-btn:hover { background:rgba(255,90,90,0.15); }
-  .cam-slot-sendfile-btn {
-    padding:5px 8px; border-radius:7px; cursor:pointer; font-size:12px;
-    border:1px solid rgba(126,255,192,0.5); background:transparent; color:#7effc0;
-    flex-shrink:0;
-  }
-  .cam-slot-sendfile-btn:hover { background:rgba(126,255,192,0.15); }
-  .cam-slot-status { font-size:10px; color:#a879e0; flex-shrink:0; max-width:60px; text-align:right; line-height:1.3; }
-  .cam-slot-row.connected .cam-slot-status { color:#7effc0; }
-  .cam-slot-row.signal-lost .cam-slot-status { color:#ffb020; }
-
-  #camLiveBtnWrap { display:flex; justify-content:center; margin-top:14px; }
-  #camLiveBtn {
-    width:64px; height:64px; border-radius:50%; border:2px solid var(--neon-1);
-    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18), rgba(192,38,255,0.25));
-    color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    box-shadow: 0 0 20px rgba(192,38,255,0.55); transition: transform .15s ease;
-  }
-  #camLiveBtn:hover { transform: scale(1.06); }
-  #camLiveBtn svg { width:22px; height:22px; margin-left:3px; }
+  .tf-send:hover:not(:disabled) { background:rgba(126,255,192,0.16); border-color:#7effc0; }
+  .tf-send:disabled { opacity:.45; cursor:not-allowed; }
+  .tf-progress { display:none; flex-direction:column; gap:6px; }
+  .tf-progress.show { display:flex; }
+  .tf-prog-head { display:flex; justify-content:space-between; gap:10px; font-size:11px; color:#e0c0ff; }
+  .tf-prog-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .tf-prog-pct { flex-shrink:0; color:var(--neon-text-dim); }
+  .tf-prog-track { height:6px; border-radius:6px; background:rgba(255,255,255,0.1); overflow:hidden; }
+  .tf-prog-bar { height:100%; width:0; border-radius:6px; background:linear-gradient(90deg, var(--neon-1), #7effc0); transition: width .12s linear; }
 
   /* ====== Xem/sua anh nhan tu dien thoai (Giai doan 5) ====== */
   #imageReviewOverlay {
@@ -498,107 +501,6 @@
     background:linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; border-color:transparent;
   }
 
-  /* ====== Trang xem truc tiep camera (bam vao nut tam giac), chia 1/2/3/4 o ====== */
-  #camLiveOverlay {
-    position:fixed; inset:0; z-index:55; display:none; background:#000;
-    align-items:center; justify-content:center; flex-direction:column; padding:20px; box-sizing:border-box;
-  }
-  #camLiveOverlay.show { display:flex; }
-  #camLiveControls { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
-  #camLiveControlsLabel { font-size:12px; color:#a879e0; margin-right:4px; }
-  .cam-layout-btn {
-    width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;
-    border:1px solid rgba(192,38,255,0.4); background:rgba(0,0,0,0.4); color:var(--text);
-  }
-  .cam-layout-btn:hover { border-color:var(--neon-1); }
-  .cam-layout-btn.active { background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); border:none; color:#fff; }
-
-  #camLiveGrid { display:grid; gap:10px; width:min(94vw, 1400px); height:78vh; }
-  #camLiveGrid.layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-  #camLiveGrid.layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
-  #camLiveGrid.layout-3 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr; }
-  #camLiveGrid.layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-
-  .cam-live-tile {
-    position:relative; background:#111; border-radius:10px; overflow:hidden;
-    box-shadow:0 0 24px rgba(192,38,255,0.25); display:none;
-  }
-  .cam-live-tile.visible { display:block; }
-  .cam-live-tile video { width:100%; height:100%; object-fit:contain; background:#111; }
-  .cam-tile-badge {
-    position:absolute; top:10px; left:10px; display:flex; align-items:center; gap:6px;
-    background:rgba(0,0,0,0.6); padding:4px 9px; border-radius:20px; font-size:11px;
-  }
-  .cam-tile-dot { width:8px; height:8px; border-radius:50%; background:#555; }
-  .cam-live-tile.has-signal .cam-tile-dot { background:#ff3b3b; box-shadow:0 0 6px #ff3b3b; animation:blink 1.1s infinite; }
-  .cam-live-tile.signal-lost .cam-tile-dot { background:#ffb020; box-shadow:0 0 6px #ffb020; animation:none; }
-  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.25;} }
-  .cam-golive-btn {
-    position:absolute; top:10px; right:10px; z-index:2; display:none; cursor:pointer;
-    padding:5px 10px; border-radius:20px; font-size:11px; border:none;
-    background: linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; font-weight:600;
-  }
-  .cam-golive-btn.show { display:block; }
-  .cam-tile-lost {
-    position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:2; display:none;
-    background:rgba(255,176,32,0.18); border:1px solid #ffb020; color:#ffd58a;
-    padding:4px 10px; border-radius:20px; font-size:11px;
-  }
-  .cam-live-tile.signal-lost .cam-tile-lost { display:block; }
-  .cam-tile-meta { position:absolute; bottom:34px; left:10px; right:10px; font-size:10px; color:#c7a8ff; pointer-events:none; }
-  .cam-tile-empty {
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    color:#6b5a85; font-size:12px; text-align:center; padding:16px;
-  }
-  .cam-live-tile.has-signal .cam-tile-empty { display:none; }
-
-  /* Nut quay video + nut cai dat gio tu dong luu moi ngay, dat goc duoi-phai
-     tung o xem (goc tren-phai da danh cho nut "Ve truc tiep" tuy hien dang
-     an, de tranh dung do sau nay neu bat lai).
-     NANG LEN cao hon vi tri cu (tu bottom:10px len bottom:54px, tuong duong
-     cao them ~2 dong) - the <video> co thuoc tinh "controls" nen trinh duyet
-     tu ve them 1 thanh dieu khien goc rieng o duoi cung, trong do co nut
-     "phong to" (fullscreen) mac dinh cua trinh duyet nam dung o goc duoi-
-     phai - vi tri cu (bottom:10px) de 2 nut nay de len dung cho do. */
-  .cam-tile-record-controls {
-    position:absolute; bottom:54px; right:10px; z-index:4;
-    display:flex; align-items:center; gap:6px;
-  }
-  .cam-record-btn, .cam-record-settings-btn {
-    width:30px; height:30px; border-radius:50%; cursor:pointer; border:none;
-    display:flex; align-items:center; justify-content:center; font-size:14px;
-    background:rgba(0,0,0,0.55); color:#fff;
-  }
-  .cam-record-btn:hover, .cam-record-settings-btn:hover { background:rgba(0,0,0,0.8); }
-  .cam-record-btn.recording { background:#e0304f; color:#fff; animation: recPulse 1.2s infinite; }
-  @keyframes recPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(224,48,79,0.6);} 50%{ box-shadow:0 0 0 6px rgba(224,48,79,0);} }
-  .cam-record-settings-pop {
-    display:none; position:absolute; bottom:38px; right:0; width:220px;
-    background:#1a1226; border:1px solid rgba(192,38,255,0.4); border-radius:10px;
-    padding:10px; font-size:12px; color:var(--text); box-shadow:0 6px 20px rgba(0,0,0,0.5);
-  }
-  .cam-record-settings-pop.show { display:block; }
-  .cam-record-settings-pop label { display:block; margin-bottom:6px; color:#c7a8ff; }
-  .cam-record-start-input, .cam-record-stop-input {
-    width:100%; box-sizing:border-box; padding:6px 8px; border-radius:6px;
-    border:1px solid rgba(192,38,255,0.4); background:#0d0715; color:var(--text); margin-bottom:8px;
-  }
-  .cam-record-settings-actions { display:flex; justify-content:flex-end; gap:6px; }
-  .cam-record-settings-actions button {
-    padding:5px 12px; border-radius:16px; cursor:pointer; font-size:11px; border:none;
-  }
-  .cam-record-time-save { background:linear-gradient(135deg, var(--neon-1), var(--neon-3)); color:#fff; }
-  .cam-record-time-clear { background:rgba(255,255,255,0.1); color:var(--text); }
-
-  /* Truoc day nut Dong nam trong luong flex binh thuong (moc them phia duoi
-     luoi video) nen bi day xuong giua-duoi cung. Gio dinh vi tuyet doi ngay
-     goc tren-phai cua overlay, khong con phu thuoc vao luong noi dung nua. */
-  #closeCamLive {
-    position:absolute; top:14px; right:18px; z-index:5;
-    padding:8px 18px; border-radius:22px; cursor:pointer;
-    border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.12); color:var(--text); font-size:13px;
-  }
-  #closeCamLive:hover { background:rgba(192,38,255,0.3); color:#fff; }
 
 
   /* ====== Nut Cai dat + menu tha xuong ====== */
@@ -845,7 +747,7 @@
     </div>
     <button id="screenshotBtn" title="Chụp ảnh trang web">📷</button>
     <button id="qrBtn">📱 Chia sẻ QR</button>
-    <button id="camQrBtn">📷 Kết nối<span class="cam-notify-badge"></span></button>
+    <button id="camQrBtn">📁 Truyền tệp<span class="cam-notify-badge"></span></button>
   </div>
 
   <div id="bookmarksBar">
@@ -913,14 +815,9 @@
 
     <div id="camQrPanel">
       <span id="closeCamQr">✕</span>
-      <h3>📷 Kết nối điện thoại</h3>
+      <h3>📁 Truyền tệp</h3>
       <div id="camSlotList">
-        <!-- 4 slot, mỗi slot 1 điện thoại, render bằng JS -->
-      </div>
-      <div id="camLiveBtnWrap">
-        <button id="camLiveBtn" title="Xem trực tiếp hình ảnh từ (các) điện thoại">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        </button>
+        <!-- 1 ô kết nối, render bằng JS -->
       </div>
     </div>
   </div>
@@ -947,106 +844,6 @@
     </div>
   </div>
 
-  <div id="camLiveOverlay">
-    <div id="camLiveControls">
-      <span id="camLiveControlsLabel">Chia màn hình:</span>
-      <button class="cam-layout-btn" data-n="1">1</button>
-      <button class="cam-layout-btn" data-n="2">2</button>
-      <button class="cam-layout-btn" data-n="3">3</button>
-      <button class="cam-layout-btn" data-n="4">4</button>
-    </div>
-    <div id="camLiveGrid">
-      <div class="cam-live-tile" data-slot="0">
-        <video autoplay muted playsinline controls></video>
-        <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 1</div>
-        <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
-        <div class="cam-tile-meta"></div>
-        <div class="cam-tile-empty">Chưa kết nối</div>
-        <div class="cam-tile-record-controls">
-          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
-          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
-          <div class="cam-record-settings-pop">
-            <label>Giờ bắt đầu quay:</label>
-            <input type="time" class="cam-record-start-input" />
-            <label>Giờ kết thúc &amp; lưu:</label>
-            <input type="time" class="cam-record-stop-input" />
-            <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt lịch</button>
-              <button class="cam-record-time-save">Lưu</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="cam-live-tile" data-slot="1">
-        <video autoplay muted playsinline controls></video>
-        <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 2</div>
-        <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
-        <div class="cam-tile-meta"></div>
-        <div class="cam-tile-empty">Chưa kết nối</div>
-        <div class="cam-tile-record-controls">
-          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
-          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
-          <div class="cam-record-settings-pop">
-            <label>Giờ bắt đầu quay:</label>
-            <input type="time" class="cam-record-start-input" />
-            <label>Giờ kết thúc &amp; lưu:</label>
-            <input type="time" class="cam-record-stop-input" />
-            <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt lịch</button>
-              <button class="cam-record-time-save">Lưu</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="cam-live-tile" data-slot="2">
-        <video autoplay muted playsinline controls></video>
-        <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 3</div>
-        <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
-        <div class="cam-tile-meta"></div>
-        <div class="cam-tile-empty">Chưa kết nối</div>
-        <div class="cam-tile-record-controls">
-          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
-          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
-          <div class="cam-record-settings-pop">
-            <label>Giờ bắt đầu quay:</label>
-            <input type="time" class="cam-record-start-input" />
-            <label>Giờ kết thúc &amp; lưu:</label>
-            <input type="time" class="cam-record-stop-input" />
-            <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt lịch</button>
-              <button class="cam-record-time-save">Lưu</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="cam-live-tile" data-slot="3">
-        <video autoplay muted playsinline controls></video>
-        <div class="cam-tile-badge"><span class="cam-tile-dot"></span>ĐT 4</div>
-        <button class="cam-golive-btn">⏺ Về trực tiếp</button>
-        <div class="cam-tile-lost">⏳ Đang chờ kết nối lại...</div>
-        <div class="cam-tile-meta"></div>
-        <div class="cam-tile-empty">Chưa kết nối</div>
-        <div class="cam-tile-record-controls">
-          <button class="cam-record-btn" title="Quay video ô này">⏺</button>
-          <button class="cam-record-settings-btn" title="Cài giờ tự động lưu mỗi ngày">⚙</button>
-          <div class="cam-record-settings-pop">
-            <label>Giờ bắt đầu quay:</label>
-            <input type="time" class="cam-record-start-input" />
-            <label>Giờ kết thúc &amp; lưu:</label>
-            <input type="time" class="cam-record-stop-input" />
-            <div class="cam-record-settings-actions">
-              <button class="cam-record-time-clear">Tắt lịch</button>
-              <button class="cam-record-time-save">Lưu</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <button id="closeCamLive">Đóng</button>
-  </div>
 
   <script src="vendor/firebase-compat.js"></script>
   <script src="vendor/qrcode.min.js"></script>
@@ -1962,12 +1759,12 @@
     qrPanel.classList.remove('show');
   }
 
-  // ====== QR Cam: WebRTC viewer — nhan video truc tiep tu APK tren dien thoai ======
-  // Moi slot = 1 dien thoai (toi da 4). Dien thoai chay APK "QR Cam", hien ma 6 so.
-  // Nguoi dung nhap ma do vao o tuong ung o day -> may tinh ket noi qua Firebase
-  // signaling + WebRTC (giong he thong cua Xem.Wedcam) va nhan stream video truc tiep.
-  // HOAN TOAN KHONG LIEN QUAN gi den phan "Chia se QR" o tren (dung nhanh Firebase rieng).
-  const MAX_CAM_SLOTS = 4;
+  // ====== Truyền tệp: gửi/nhận tệp với điện thoại qua WebRTC DataChannel ======
+  // Chỉ 1 điện thoại, 1 ô nhập mã 6 số. Không còn xem video/quay video.
+  // Firebase chỉ dùng để 2 máy tìm thấy nhau (nhánh rooms/{mã 6 số}), nội dung tệp
+  // đi thẳng giữa 2 máy qua DataChannel. HOÀN TOÀN KHÔNG LIÊN QUAN phần "Chia sẻ QR"
+  // ở trên (dùng nhánh Firebase riêng).
+  const MAX_CAM_SLOTS = 1;
   const CAM_SIGNAL_LOST_MS = 8000; // 8s khong nhan ICE connected -> canh bao mat tin hieu
 
   // ICE servers giong APK (STUN public + TURN du phong cho CGNAT)
@@ -2002,121 +1799,149 @@
   ];
 
   // Trang thai moi slot
+  // Trạng thái của ô kết nối duy nhất
   function makeCamSlot(i) {
     return {
       index: i,
-      roomCode: null,        // ma 6 so nguoi dung nhap
-      viewerId: null,        // ID may xem (may tinh nay), sinh 1 lan khi ket noi
+      roomCode: null,        // mã 6 số người dùng nhập
+      viewerId: null,        // ID máy tính này, sinh 1 lần khi kết nối
       pc: null,              // RTCPeerConnection
-      fbViewerRef: null,     // Firebase ref cua viewer nay: rooms/{code}/viewers/{viewerId}
-      fbGenRef: null,        // ref den gen/{generation} hien tai
+      fbViewerRef: null,     // Firebase ref: rooms/{code}/viewers/{viewerId}
+      fbGenRef: null,        // ref tới gen/{generation} hiện tại
       fbHostGenListener: null,
       fbIceListener: null,
       fbOfferListener: null,
       generation: -1,
-      stream: null,          // MediaStream nhan duoc tu dien thoai
       connected: false,
       signalLost: false,
       reconnecting: false,
       lastConnectedAt: 0,
       signalLostTimer: null,
       reconnectTimer: null,
-      permissionError: false, // true khi Firebase tu choi doc/ghi (Rules chan) - khac voi "dang cho dien thoai"
-      recording: false,
-      mediaRecorder: null,
-      startTimer: null,
-      stopTimer: null,
-      _restartAfterFlush: false,
-      _resumeRecordingOnReconnect: false,
-      dataChannel: null,      // DataChannel nhan tep/anh tu dien thoai (Giai doan 3)
-      incomingTransfer: null, // { transferId, recordingId, name, mimeType, size, totalChunks, receivedChunks }
-      lastPingAt: 0,          // Lan gan nhat nhan duoc "ping" heartbeat tu dien thoai qua DataChannel
+      permissionError: false, // true khi Firebase từ chối đọc/ghi (Rules chặn)
+      dataChannel: null,      // DataChannel gửi/nhận tệp với điện thoại
+      incomingTransfer: null, // tệp đang nhận (ghi thẳng xuống đĩa từng đoạn)
+      sending: false,         // đang gửi tệp sang điện thoại
+      transferUI: null,       // { id, dir:'send'|'recv', name, done, total } cho thanh tiến trình
+      lastPingAt: 0,          // lần gần nhất nhận "ping" heartbeat qua DataChannel
     };
   }
 
   const camSlots = Array.from({ length: MAX_CAM_SLOTS }, (_, i) => makeCamSlot(i));
-  let camLiveOpen = false;
-  let camLiveLayout = 1;
+  const camQrPanel = document.getElementById('camQrPanel');
 
-  const camQrPanel    = document.getElementById('camQrPanel');
-  const camLiveOverlay = document.getElementById('camLiveOverlay');
-  const camLiveGrid   = document.getElementById('camLiveGrid');
-  const camLiveTiles  = [...document.querySelectorAll('.cam-live-tile')];
+  function _fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+    return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  }
 
-  // ====== Render danh sach slot trong panel ======
+  // Cập nhật thanh tiến trình (giới hạn tần suất để không vẽ lại liên tục)
+  let _tfUiLast = 0;
+  function _updateTransferUI(i, force) {
+    const slot = camSlots[i];
+    const box = document.querySelector('#camSlotList .tf-progress');
+    if (!box) return;
+    const t = slot.transferUI;
+    if (!t) { box.classList.remove('show'); return; }
+    const now = Date.now();
+    if (!force && now - _tfUiLast < 80) return;
+    _tfUiLast = now;
+    const pct = t.total > 0 ? Math.min(100, Math.floor(t.done * 100 / t.total)) : 0;
+    box.classList.add('show');
+    box.querySelector('.tf-prog-name').textContent = (t.dir === 'send' ? '📤 ' : '📥 ') + t.name;
+    box.querySelector('.tf-prog-pct').textContent = pct + '% · ' + _fmtBytes(t.done) + ' / ' + _fmtBytes(t.total);
+    box.querySelector('.tf-prog-bar').style.width = pct + '%';
+  }
+
+  // ====== Vẽ ô kết nối trong panel Truyền tệp ======
   function renderCamSlotList() {
     const list = document.getElementById('camSlotList');
     list.innerHTML = '';
-    camSlots.forEach((slot, i) => {
-      const row = document.createElement('div');
-      row.className = 'cam-slot-row' +
-        (slot.connected ? ' connected' : '') +
-        (slot.connected && !slot.signalLost && !slot.reconnecting ? ' streaming' : '') +
-        (slot.signalLost || slot.reconnecting ? ' signal-lost' : '');
+    const i = 0;
+    const slot = camSlots[i];
+    const lost = slot.signalLost || slot.reconnecting;
+    const card = document.createElement('div');
+    card.className = 'tf-card' +
+      (slot.connected && !lost ? ' connected' : '') +
+      (lost ? ' signal-lost' : '') +
+      (slot.permissionError ? ' error' : '');
 
-      const dot = document.createElement('span');
-      dot.className = 'cam-slot-dot';
+    // Dòng trạng thái
+    const statusRow = document.createElement('div');
+    statusRow.className = 'tf-status';
+    const dot = document.createElement('span');
+    dot.className = 'tf-dot';
+    const statusText = document.createElement('span');
+    statusText.className = 'tf-status-text';
+    statusText.textContent = slot.permissionError ? 'Lỗi quyền Firebase' :
+                             lost ? 'Đang chờ kết nối lại...' :
+                             slot.connected ? 'Đã kết nối' :
+                             slot.roomCode ? 'Đang kết nối...' : 'Chưa kết nối';
+    statusRow.appendChild(dot);
+    statusRow.appendChild(statusText);
+    card.appendChild(statusRow);
 
-      const codeWrap = document.createElement('div');
-      codeWrap.className = 'cam-slot-code-wrap';
+    // Ô nhập mã (chưa kết nối) hoặc mã đang dùng + nút ngắt
+    const codeRow = document.createElement('div');
+    codeRow.className = 'tf-code-row';
+    if (!slot.roomCode) {
+      const input = document.createElement('input');
+      input.className = 'tf-code-input';
+      input.placeholder = 'Mã 6 số';
+      input.maxLength = 6;
+      input.inputMode = 'numeric';
+      input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') connectSlot(i, input.value.trim()); });
+      codeRow.appendChild(input);
 
-      if (!slot.roomCode) {
-        // Chua ket noi: hien o nhap ma
-        const input = document.createElement('input');
-        input.className = 'cam-slot-code-input';
-        input.placeholder = 'Mã 6 số';
-        input.maxLength = 6;
-        input.inputMode = 'numeric';
-        input.dataset.slot = i;
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') connectSlot(i, input.value.trim()); });
-        codeWrap.appendChild(input);
+      const btn = document.createElement('button');
+      btn.className = 'tf-btn tf-connect';
+      btn.textContent = 'Kết nối';
+      btn.onclick = () => connectSlot(i, input.value.trim());
+      codeRow.appendChild(btn);
+      card.appendChild(codeRow);
 
-        const btn = document.createElement('button');
-        btn.className = 'cam-slot-connect-btn';
-        btn.textContent = 'Kết nối';
-        btn.onclick = () => connectSlot(i, input.value.trim());
-        codeWrap.appendChild(btn);
-      } else {
-        // Dang ket noi: hien ma va nut ngat
-        const codeLabel = document.createElement('span');
-        codeLabel.style.cssText = 'font-size:18px;font-weight:700;letter-spacing:4px;color:#e0c0ff;flex:1;text-align:center;';
-        codeLabel.textContent = slot.roomCode;
-        codeWrap.appendChild(codeLabel);
+      const hint = document.createElement('div');
+      hint.className = 'tf-hint';
+      hint.textContent = 'Nhập mã 6 số hiển thị trên điện thoại';
+      card.appendChild(hint);
+    } else {
+      const codeLabel = document.createElement('span');
+      codeLabel.className = 'tf-code';
+      codeLabel.textContent = slot.roomCode;
+      codeRow.appendChild(codeLabel);
 
-        const discBtn = document.createElement('button');
-        discBtn.className = 'cam-slot-disconnect-btn';
-        discBtn.textContent = '✕';
-        discBtn.title = 'Ngắt kết nối';
-        discBtn.onclick = () => disconnectSlot(i);
-        codeWrap.appendChild(discBtn);
-      }
+      const discBtn = document.createElement('button');
+      discBtn.className = 'tf-btn tf-disconnect';
+      discBtn.textContent = 'Ngắt';
+      discBtn.title = 'Ngắt kết nối';
+      discBtn.onclick = () => disconnectSlot(i);
+      codeRow.appendChild(discBtn);
+      card.appendChild(codeRow);
+    }
 
-      const status = document.createElement('span');
-      status.className = 'cam-slot-status';
-      status.textContent = slot.permissionError ? 'Lỗi quyền Firebase' :
-                           (slot.signalLost || slot.reconnecting) ? '⏳ Đang chờ kết nối lại...' :
-                           slot.connected  ? 'Đang xem' :
-                           slot.roomCode   ? 'Đang kết nối...' : ('ĐT ' + (i+1));
+    // Nút chọn tệp gửi: chỉ hiện khi đã kết nối thật sự và có DataChannel
+    if (slot.connected && slot.dataChannel) {
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'tf-send';
+      sendBtn.textContent = '📤  Chọn tệp gửi sang điện thoại';
+      sendBtn.disabled = !!slot.sending;
+      sendBtn.onclick = () => pickAndSendFileToPhone(i);
+      card.appendChild(sendBtn);
+    }
 
-      row.appendChild(dot);
-      // Nut "Chon tep & gui" - CHI hien khi: (1) da ket noi that su, (2) co
-      // DataChannel (kenh du lieu) de gui, VA (3) KHONG co video track (tuc
-      // KHONG phai che do "QR cam" - dien thoai loai chi truyen tep, khong
-      // gui video, se khong bao gio goi pc.ontrack nen slot.stream se luon
-      // null suot phien ket noi). Dat o BEN TRAI cua dai o ma/nut ngat
-      // (codeWrap) nhu yeu cau.
-      if (slot.connected && slot.dataChannel && !slot.stream) {
-        const sendFileBtn = document.createElement('button');
-        sendFileBtn.className = 'cam-slot-sendfile-btn';
-        sendFileBtn.textContent = '📤';
-        sendFileBtn.title = 'Chọn tệp từ máy tính và gửi sang điện thoại này';
-        sendFileBtn.onclick = () => pickAndSendFileToPhone(i);
-        row.appendChild(sendFileBtn);
-      }
-      row.appendChild(codeWrap);
-      row.appendChild(status);
-      list.appendChild(row);
-    });
+    // Thanh tiến trình gửi/nhận tệp (ẩn khi không có tệp nào đang chạy)
+    const prog = document.createElement('div');
+    prog.className = 'tf-progress';
+    prog.innerHTML = '<div class="tf-prog-head"><span class="tf-prog-name"></span><span class="tf-prog-pct"></span></div>' +
+                     '<div class="tf-prog-track"><div class="tf-prog-bar"></div></div>';
+    card.appendChild(prog);
+
+    list.appendChild(card);
+    _updateTransferUI(i, true);
   }
 
   renderCamSlotList();
@@ -2153,7 +1978,6 @@
     if (slot.pc) {
       slot.pc.onconnectionstatechange = null;
       slot.pc.onicecandidate = null;
-      slot.pc.ontrack = null;
       try { slot.pc.close(); } catch(e) {}
       slot.pc = null;
     }
@@ -2206,27 +2030,6 @@
       renderCamSlotList();
     };
 
-    // Nhan video track tu dien thoai
-    pc.ontrack = e => {
-      // Chi nhan neu day van la pc HIEN TAI cua slot - phong truong hop su
-      // kien nay la cua 1 pc CU da bi thay the (dut duyet dut, khong nen con
-      // xay ra sau fix o tren, nhung kiem tra them cho chac).
-      if (slot.pc !== pc) return;
-      if (e.streams && e.streams[0]) {
-        slot.stream = e.streams[0];
-      } else {
-        const ms = new MediaStream(); ms.addTrack(e.track); slot.stream = ms;
-      }
-      // Gan vao tile neu dang xem truc tiep
-      const video = camLiveTiles[i].querySelector('video');
-      if (video.srcObject !== slot.stream) {
-        video.srcObject = slot.stream;
-        video.play().catch(()=>{});
-      }
-    };
-
-    // Them transceiver chi nhan (Máy xem)
-    pc.addTransceiver('video', { direction: 'recvonly' });
 
     // ICE: gui len Firebase
     pc.onicecandidate = e => {
@@ -2252,23 +2055,8 @@
         slot.lastPingAt = Date.now(); // moc thoi gian ban dau, tranh watchdog bao mat tin hieu ngay khi vua ket noi truoc khi ping dau tien toi
         clearTimeout(slot.signalLostTimer);
         renderCamSlotList();
-        updateLiveTileState(i);
-        // Bat dau theo doi mat tin hieu
+        // Bắt đầu theo dõi mất tín hiệu
         _startSignalLostCheck(i);
-        // Vua co ket noi (co stream) - neu o nay dang co lich Bat dau/Ket thuc
-        // dang bat, len lich cho lan chay tiep theo VA kiem tra xem hien tai
-        // co dang nam trong khung gio da dat khong (de tu quay ngay, khong
-        // phai doi den lan kich hoat ke tiep cua ngay mai).
-        _scheduleRecordingWindow(i);
-        _startRecordingIfWithinScheduledWindow(i);
-        // Neu truoc do dang quay (tay hoac theo lich) ma bi mat tin hieu giua
-        // chung, gio ket noi lai duoc thi tu bat dau QUAY FILE MOI ngay -
-        // khong can nguoi dung tu bam ⏺ lai. (startRecording() tu bo qua neu
-        // truong hop tren da lo bat roi, khong bi trung.)
-        if (slot._resumeRecordingOnReconnect) {
-          slot._resumeRecordingOnReconnect = false;
-          startRecording(i, true);
-        }
       } else if (s === 'failed') {
         clearTimeout(slot.disconnectGraceTimer);
         _onSlotLostSignal(i);
@@ -2280,7 +2068,6 @@
         // Bao NGAY cho nguoi dung: dang cho ket noi lai (khong doi het 8s moi bao)
         slot.reconnecting = true;
         renderCamSlotList();
-        updateLiveTileState(i);
         slot.disconnectGraceTimer = setTimeout(() => {
           if (slot.pc !== pc) return;
           if (pc.connectionState !== 'connected') _onSlotLostSignal(i);
@@ -2319,7 +2106,6 @@
       showCamSignalToast('⚠️ Firebase từ chối quyền đọc/ghi (kiểm tra lại Database Rules trên Firebase Console)');
     });
   }
-
   function _resubscribeGen(i, gen) {
     const slot = camSlots[i];
     // Huy listener cu
@@ -2362,16 +2148,6 @@
   function _onSlotLostSignal(i) {
     const slot = camSlots[i];
     if (!slot.roomCode) return;
-    // Neu dang quay (tay hoac theo lich) dung luc mat tin hieu: dung + luu
-    // NGAY - khong doi them, khong co ly do gi de tiep tuc "quay" 1 luong
-    // hinh da chet. Giao dien se hien "Mat tin hieu" thay vi "Dang quay" (vi
-    // slot.recording chuyen ve false ngay o day). Nho lai de tu bat dau 1
-    // FILE MOI khi ket noi lai duoc - khong the noi tiep chung 1 file cu vi
-    // gioi han ky thuat cua MediaRecorder (khong the doi nguon giua chung).
-    if (slot.recording) {
-      slot._resumeRecordingOnReconnect = true;
-      stopRecording(i, false);
-    }
     // Dang nhan tep/anh tu dien thoai (Giai doan 3) ma mat tin hieu giua
     // chung - HUY NGAY, xoa phan da nhan (dung yeu cau "loi ket noi la huy",
     // khong co gang giu/noi tiep phan dang do).
@@ -2381,9 +2157,8 @@
     slot.connected = false;
     slot.signalLost = true;
     renderCamSlotList();
-    updateLiveTileState(i);
     // AN toast "Mat tin hieu... dang thu ket noi lai" theo yeu cau - trang
-    // thai van hien du trong panel QR Cam (renderCamSlotList) va co che tu
+    // thai van hien du trong panel Truyền tệp (renderCamSlotList) va co che tu
     // ket noi lai ben duoi VAN chay binh thuong, chi la khong con lam phien
     // bang thong bao nhap nhay moi lan tin hieu chap chon nua.
     // SUA LOI "chi thu lai DUNG 1 LAN roi bo cuoc": truoc day sau 4 giay chi
@@ -2429,12 +2204,8 @@
       if (!slot.connected) return; // da dung vi ly do khac (vd nguoi dung tu ngat) - khong can lap lai nua
 
       let lost = false;
-      if (slot.stream) {
-        // Co video track (may camera kieu cu / QrtuxaCam) -> kiem tra track con "song" khong
-        const tracks = slot.stream.getVideoTracks();
-        lost = !tracks.length || tracks[0].readyState === 'ended';
-      } else if (slot.dataChannel) {
-        // Chi co DataChannel (truyentep, gui tep - khong video) -> dua vao heartbeat
+      if (slot.dataChannel) {
+        // Dựa vào heartbeat của DataChannel
         if (slot.dataChannel.readyState === 'closed' || slot.dataChannel.readyState === 'closing') {
           lost = true;
         } else if (slot.lastPingAt && Date.now() - slot.lastPingAt > CAM_HEARTBEAT_TIMEOUT_MS) {
@@ -2446,18 +2217,12 @@
       _startSignalLostCheck(i); // van oke -> luon lap lai kiem tra, du co stream hay khong
     }, CAM_SIGNAL_LOST_MS);
   }
-
   function disconnectSlot(i, silent, keepSavedCode) {
     const slot = camSlots[i];
     clearTimeout(slot.reconnectTimer);
     clearTimeout(slot.disconnectGraceTimer);
     slot.reconnecting = false;
     clearTimeout(slot.signalLostTimer);
-    clearTimeout(slot.startTimer);
-    clearTimeout(slot.stopTimer);
-    // Dung sach neu dang quay video o - tranh MediaRecorder con treo lai chay
-    // ngam sau khi stream/pc da bi dong, khong bao gio duoc luu xuong file.
-    if (slot.recording) stopRecording(i, false);
     // Huy phien nhan tep/anh dang do (neu co) - cung ly do voi mat tin hieu.
     if (slot.incomingTransfer) {
       _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/true);
@@ -2470,14 +2235,10 @@
     if (slot.fbViewerRef) { slot.fbViewerRef.child('present').onDisconnect().cancel(); slot.fbViewerRef.remove().catch(()=>{}); }
     // Don WebRTC
     if (slot.pc) { try { slot.pc.close(); } catch(e){} }
-    // Don tile
-    const video = camLiveTiles[i].querySelector('video');
-    video.srcObject = null;
-    video.src = '';
     // Reset slot
     Object.assign(slot, makeCamSlot(i));
     // CHỈ xoá mã đã lưu khi đây là hành động ngắt THẬT SỰ do người dùng chủ
-    // động bấm (✕) - không xoá khi chỉ là tạm ngắt vì đóng trang QR Cam (panel
+    // động bấm (✕) - không xoá khi chỉ là tạm ngắt vì đóng panel Truyền tệp (panel
     // đóng) hoặc đang chuẩn bị kết nối lại bằng mã mới (connectSlot gọi hàm
     // này trước rồi tự ghi lại mã mới ngay sau đó).
     if (!keepSavedCode) {
@@ -2486,8 +2247,7 @@
       camRoomCodesStore.save(codes);
     }
     renderCamSlotList();
-    updateLiveTileState(i);
-    if (!silent) showCamSignalToast('ĐT ' + (i+1) + ' đã ngắt kết nối');
+    if (!silent) showCamSignalToast('Đã ngắt kết nối điện thoại');
   }
 
   // Thong bao mat tin hieu
@@ -2500,7 +2260,7 @@
     camSignalToastTimer = setTimeout(() => el.classList.remove('show'), 6000);
   }
 
-  // Dong/mo panel QR Cam.
+  // Dong/mo panel Truyền tệp.
   //
   // SUA LOI "phai bam vao nut 📷 Kết nối thi may tinh moi chiu ket noi lai,
   // khong bam la khong ket noi luon": TRUOC DAY dong panel (bam ✕ hoac bam
@@ -2539,149 +2299,52 @@
   };
   document.getElementById('closeCamQr').onclick = closeCamQrPanelAndPause;
 
-  // ====== Live view: gan stream vao tile video ======
-  function updateLiveTileState(i) {
-    const slot = camSlots[i];
-    const tile = camLiveTiles[i];
-    tile.classList.toggle('has-signal', slot.connected && !slot.signalLost && !slot.reconnecting);
-    tile.classList.toggle('signal-lost', !!(slot.signalLost || slot.reconnecting));
-    // Gan lai stream neu dang xem truc tiep
-    if (camLiveOpen && slot.stream) {
-      const video = tile.querySelector('video');
-      if (video.srcObject !== slot.stream) { video.srcObject = slot.stream; video.play().catch(()=>{}); }
-    }
-  }
+  // ====== Thư mục lưu tệp nhận được (chọn 1 lần rồi nhớ) ======
+  // Giữ nguyên khóa lưu 'cam-record-settings' để thư mục đã chọn trước đây vẫn dùng được.
+  const camRecordSettingsStore = makeJsonStore('cam-record-settings', [{ folder: null }]);
 
-  function applyLiveLayout(n) {
-    camLiveLayout = n;
-    camLiveGrid.className = 'layout-' + n;
-    document.querySelectorAll('.cam-layout-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.n) === n));
-    camLiveTiles.forEach((tile, i) => tile.classList.toggle('visible', i < n));
-    void camLiveGrid.offsetHeight;
-    const prev = camLiveGrid.style.display;
-    camLiveGrid.style.display = 'none';
-    requestAnimationFrame(() => { camLiveGrid.style.display = prev || ''; });
-  }
-
-  document.querySelectorAll('.cam-layout-btn').forEach(btn => {
-    btn.onclick = () => applyLiveLayout(Number(btn.dataset.n));
-  });
-
-  document.getElementById('camLiveBtn').onclick = () => {
-    camLiveOpen = true;
-    camLiveOverlay.classList.add('show');
-    const connected = camSlots.filter(s => s.connected).length;
-    applyLiveLayout(Math.max(1, Math.min(MAX_CAM_SLOTS, connected || 1)));
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      camSlots.forEach((slot, i) => {
-        if (!slot.stream) return;
-        const video = camLiveTiles[i].querySelector('video');
-        video.srcObject = slot.stream;
-        video.play().catch(()=>{});
-        updateLiveTileState(i);
-      });
-    }));
-  };
-
-  // ====== Quay video tung o xem: chon thu muc luu truoc, quay bang MediaRecorder
-  // tren chinh MediaStream dang hien thi trong o. Ho tro DAT LICH: gio BAT DAU
-  // quay + gio KET THUC va luu, lap lai moi ngay - khong can tu bam ⏺. ======
-  const camRecordSettingsStore = makeJsonStore('cam-record-settings', [
-    { folder: null, startTime: null, stopTime: null },
-    { folder: null, startTime: null, stopTime: null },
-    { folder: null, startTime: null, stopTime: null },
-    { folder: null, startTime: null, stopTime: null }
-  ]);
-
-  function getRecordSettings(i) {
+  function getTransferFolder() {
     const all = camRecordSettingsStore.load();
-    return (all && all[i]) || { folder: null, startTime: null, stopTime: null };
+    return (all && all[0] && all[0].folder) || null;
   }
-  function saveRecordSettings(i, patch) {
+  function saveTransferFolder(folder) {
     const all = (camRecordSettingsStore.load() || []).slice();
-    while (all.length < MAX_CAM_SLOTS) all.push({ folder: null, startTime: null, stopTime: null });
-    all[i] = Object.assign({}, all[i], patch);
+    all[0] = Object.assign({}, all[0], { folder });
     camRecordSettingsStore.save(all);
   }
-  function _pad2(n) { return String(n).padStart(2, '0'); }
-  function _weekdayAbbr(d) {
-    // Chu Nhat/Thu Hai/.../Thu Bay - dung ky hieu quen thuoc (giong lich
-    // Google) de ten file khong dau, khong khoang trang, an toan tren moi he
-    // dieu hanh.
-    const names = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    return names[d.getDay()];
-  }
-  function _recordingFilename(i) {
-    const d = new Date();
-    const weekday = _weekdayAbbr(d);
-    const dateStr = _pad2(d.getDate()) + '-' + _pad2(d.getMonth() + 1) + '-' + d.getFullYear();
-    const timeStr = _pad2(d.getHours()) + 'h' + _pad2(d.getMinutes());
-    return 'qrcam_dt' + (i + 1) + '_' + weekday + '_' + dateStr + '_' + timeStr + '.webm';
-  }
-  function _arrayBufferToBase64(buf) {
-    let binary = '';
-    const bytes = new Uint8Array(buf);
-    const chunkSize = 0x8000;
-    for (let idx = 0; idx < bytes.length; idx += chunkSize) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(idx, idx + chunkSize));
-    }
-    return btoa(binary);
-  }
 
-  // ====== Nhan tep/anh tu dien thoai qua DataChannel (Giai doan 3) ======
-  // THEM VAO SONG SONG voi tinh nang xem truc tiep/quay video hien co - dung
-  // chung ha tang ket noi (RTCPeerConnection) nhung la 1 kenh du lieu HOAN
-  // TOAN RIENG (DataChannel), khong dung/anh huong gi den video track.
+  // ====== Nhận tệp/ảnh từ điện thoại qua DataChannel ======
+  // Giao thức (khớp với phía điện thoại):
+  //   1. JSON dạng chuỗi: {type:"file-start", transferId, name, mimeType, size, totalChunks}
+  //   2. Lần lượt các tin nhắn NHỊ PHÂN (ArrayBuffer), mỗi tin là 1 đoạn dữ liệu.
+  //   3. JSON kết thúc: {type:"file-end", transferId}
+  //      HOẶC {type:"file-cancel", transferId} bất cứ lúc nào -> hủy, xóa phần đã ghi.
   //
-  // Giao thuc (khop voi PeerConnectionManager.sendFile() ben Android):
-  //   1. 1 tin nhan JSON dang CHUOI: {type:"file-start", transferId, name,
-  //      mimeType, size, totalChunks}
-  //   2. Lan luot totalChunks tin nhan NHI PHAN (ArrayBuffer) - moi tin la 1
-  //      doan du lieu, GOM VAO RAM (khong ghi dia tung doan nhu truoc nua -
-  //      xem ghi chu o duoi vi sao doi cach nay).
-  //   3. 1 tin nhan JSON ket thuc: {type:"file-end", transferId} - hoan tat,
-  //      GHI XUONG DIA DUNG 1 LAN toan bo du lieu da gom.
-  //   HOAC {type:"file-cancel", transferId} bat cu luc nao - dien thoai bao
-  //   huy (vd nguoi dung thoat man hinh gui giua chung) -> huy, khong ghi gi.
+  // GHI TỪNG ĐOẠN XUỐNG ĐĨA: trước đây gom cả tệp vào RAM rồi mới ghi 1 lần nên tệp
+  // ~1GB không qua được. Giờ mở tệp ngay khi có file-start rồi ghi mỗi đoạn xuống đĩa
+  // ngay khi nhận (qua IPC nhị phân, không base64), RAM chỉ giữ vài đoạn nhỏ.
+  // Các lần ghi xếp hàng trong t.writeChain để luôn đúng thứ tự; đoạn nào tới lúc
+  // đang chờ chọn thư mục lưu cũng được xếp hàng chờ trong chuỗi này.
   //
-  // SUA TOC DO: truoc day moi doan 64KB nhan duoc phai ma hoa base64 + round-
-  // trip qua IPC (`recordingBridge.appendChunk`) + `fs.writeSync` DONG BO ben
-  // main process (chan ca tien trinh Electron trong luc ghi) - 1 anh vai MB
-  // ~ vai chuc lan "dung lai cho ghi dia" tuan tu nhu vay, cham hon nhieu so
-  // voi toc do mang thuc te co the dat duoc. Doi thanh: gom thang cac doan
-  // ArrayBuffer nhan duoc vao mang trong bo nho (KHONG IPC, KHONG base64 cho
-  // tung doan), roi chi ghi xuong dia DUNG 1 LAN khi nhan du (file-end) qua
-  // `recordingBridge.saveWholeFile()` - giong cach du lieu video duoc gom
-  // trong bo nho truoc khi hien thi, khong co buoc I/O dia chan giua chung.
-  // (Rieng tinh nang QUAY VIDEO LIEN TUC/rat dai o duoi van dung appendChunk
-  // ghi tung doan nhu cu - phu hop hon vi khong the gom ca video dai trong
-  // RAM. Chi doi cach cho duong nhan tep/anh nay, vi day la du lieu 1 lan,
-  // kich thuoc gioi han (may B da doc het vao RAM truoc khi gui).)
-  //
-  // "Chi cho phep truyen khi ca 2 dang ket noi thanh cong...loi ket noi la
-  // huy": neu RTCPeerConnection rot GIUA CHUNG luc dang nhan (pc.onconnection
-  // statechange chuyen disconnected/failed - da co san o _onSlotLostSignal),
-  // goi _cancelIncomingTransfer() de huy phan dang do (chi xoa trong RAM, vi
-  // chua ghi gi xuong dia).
+  // Mất kết nối giữa chừng (xem _onSlotLostSignal) -> hủy và xóa tệp dở trên đĩa.
   function _setupIncomingDataChannel(i, channel) {
     const slot = camSlots[i];
     channel.binaryType = 'arraybuffer';
     slot.dataChannel = channel;
 
     channel.onmessage = async (e) => {
-      if (slot.dataChannel !== channel) return; // kenh cu, khong con hieu luc
+      if (slot.dataChannel !== channel) return; // kênh cũ, không còn hiệu lực
       if (typeof e.data === 'string') {
         let msg;
         try { msg = JSON.parse(e.data); } catch (err) { return; }
         if (msg.type === 'ping') {
-          // Heartbeat tu dien thoai - dung lam moc "du lieu THUC SU con chay qua" cho
-          // watchdog _startSignalLostCheck() o tren, khong lien quan gi den truyen tep.
+          // Heartbeat từ điện thoại - mốc "dữ liệu thật sự còn chạy" cho watchdog
           slot.lastPingAt = Date.now();
         } else if (msg.type === 'text-edit') {
-          // Nhap chu truc tiep tu dien thoai -> chen vao vi tri con tro trong web
+          // Nhập chữ trực tiếp từ điện thoại -> chèn vào vị trí con trỏ trong web
           _enqueueTextEdit(i, msg);
         } else if (msg.type === 'file-start') {
-          await _startIncomingTransfer(i, msg);
+          _startIncomingTransfer(i, msg);
         } else if (msg.type === 'file-end') {
           await _finishIncomingTransfer(i, msg.transferId);
         } else if (msg.type === 'file-cancel') {
@@ -2689,11 +2352,15 @@
         }
         return;
       }
-      // Du lieu nhi phan = 1 doan cua tep dang nhan - gom vao RAM, KHONG ghi dia o day.
+      // Dữ liệu nhị phân = 1 đoạn của tệp đang nhận -> ghi thẳng xuống đĩa
       const t = slot.incomingTransfer;
-      if (!t || !t.awaitingChunks) return; // chua co file-start hop le hoac chua co thu muc luu
-      t.chunks.push(e.data);
+      if (!t || t.failed) return;
+      const chunk = new Uint8Array(e.data);
       t.receivedChunks++;
+      t.receivedBytes += chunk.byteLength;
+      t.writeChain = t.writeChain.then(() => _writeIncomingChunk(t, chunk));
+      slot.transferUI = { id: t.transferId, dir: 'recv', name: t.name, done: t.receivedBytes, total: t.size };
+      _updateTransferUI(i);
     };
   }
 
@@ -2792,34 +2459,61 @@
     } catch (e) {}
   }
 
-  async function _startIncomingTransfer(i, msg) {
-    const slot = camSlots[i];
-    // Neu dang co 1 phien nhan dang do (chua ket thuc) ma lai nhan file-start
-    // moi - coi nhu phien cu bi bo do, huy no truoc (giai phong RAM da gom).
-    if (slot.incomingTransfer) {
-      await _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/true);
+  // Mở tệp đích trên đĩa (hỏi thư mục lưu nếu chưa có). Chạy đầu chuỗi writeChain.
+  async function _openIncomingFile(t) {
+    try {
+      if (!window.recordingBridge) { t.failed = 'thiếu recordingBridge'; return; }
+      let folder = getTransferFolder();
+      if (!folder) {
+        showCamSignalToast('📥 Điện thoại gửi "' + t.name + '" — vui lòng chọn nơi lưu');
+        folder = await window.recordingBridge.chooseFolder();
+        if (!folder) { t.failed = 'chưa chọn thư mục lưu'; t.userCanceled = true; return; }
+        saveTransferFolder(folder);
+      }
+      const r = await window.recordingBridge.startFile(folder, t.name);
+      if (!r || !r.ok) { t.failed = 'không tạo được tệp trên đĩa'; return; }
+      t.recordingId = r.recordingId;
+    } catch (err) {
+      t.failed = 'lỗi mở tệp';
     }
+  }
 
-    // SUA LOI "chua chon thu muc luu thi HUY LUON, bat nguoi dung phai tu bam
-    // ⏺ truoc de chon roi moi gui lai tu dau": truoc day o day kiem tra
-    // settings.folder NGAY LUC BAT DAU nhan (file-start) - chua co du lieu gi
-    // ca nen khong the hien hop thoai luc do (dien thoai da bat dau gui cac
-    // doan nhi phan ngay sau file-start, khong doi PC dong y truoc). Gio:
-    // LUON nhan het toan bo du lieu vao RAM truoc (dung nhu kien truc san co -
-    // xem ghi chu khoi "Nhan tep/anh..." o tren), CHI hoi/chon thu muc luu tai
-    // _finishIncomingTransfer() luc THAT SU ghi xuong dia - luc do file da
-    // nam tron ven trong RAM nen hien hop thoai bao lau cung khong mat du lieu.
+  async function _writeIncomingChunk(t, chunk) {
+    if (t.failed || !t.recordingId) return;
+    try {
+      const r = await window.recordingBridge.appendBinary(t.recordingId, chunk);
+      if (!r || !r.ok) t.failed = 'lỗi ghi đĩa (hết dung lượng?)';
+    } catch (err) {
+      t.failed = 'lỗi ghi đĩa';
+    }
+  }
+
+  // PHẢI đặt slot.incomingTransfer ĐỒNG BỘ (không await trước đó) vì các đoạn nhị
+  // phân đầu tiên có thể tới ngay sau file-start.
+  function _startIncomingTransfer(i, msg) {
+    const slot = camSlots[i];
+    // Đang có phiên nhận dở mà lại nhận file-start mới -> coi phiên cũ bị bỏ, hủy nó.
+    if (slot.incomingTransfer) {
+      _cancelIncomingTransfer(i, slot.incomingTransfer.transferId, /*silent=*/true);
+    }
     const safeName = String(msg.name || ('tep_' + Date.now())).replace(/[\\/:*?"<>|]/g, '_');
-    slot.incomingTransfer = {
+    const t = {
       transferId: msg.transferId,
-      awaitingChunks: true,
-      chunks: [], // mang cac ArrayBuffer nhan duoc, gom trong RAM cho toi khi file-end
       name: safeName,
       mimeType: msg.mimeType || 'application/octet-stream',
       size: msg.size || 0,
       totalChunks: msg.totalChunks || 0,
-      receivedChunks: 0
+      receivedChunks: 0,
+      receivedBytes: 0,
+      recordingId: null,
+      failed: null,
+      userCanceled: false,
+      writeChain: null
     };
+    t.writeChain = _openIncomingFile(t);
+    slot.incomingTransfer = t;
+    slot.transferUI = { id: t.transferId, dir: 'recv', name: t.name, done: 0, total: t.size };
+    _updateTransferUI(i, true);
   }
 
   async function _finishIncomingTransfer(i, transferId) {
@@ -2827,49 +2521,38 @@
     const t = slot.incomingTransfer;
     if (!t || t.transferId !== transferId) return;
     slot.incomingTransfer = null;
-    if (!t.awaitingChunks) return; // chua tung gom du lieu that (thieu thu muc luu...)
-
-    // Ghep toan bo cac doan da gom thanh 1 Uint8Array lien tuc, ghi xuong dia
-    // DUNG 1 LAN (xem ghi chu o dau khoi "Nhan tep/anh tu dien thoai" phia tren).
-    const totalBytes = t.chunks.reduce((sum, c) => sum + c.byteLength, 0);
-    const merged = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of t.chunks) {
-      merged.set(new Uint8Array(chunk), offset);
-      offset += chunk.byteLength;
-    }
-    t.chunks = null; // giai phong som, khong giu 2 ban sao trong RAM lau hon can thiet
-
-    // Chi luc nay (da nhan XONG toan bo, dang giu tron ven trong RAM o bien
-    // `merged`) moi kiem tra/xin thu muc luu - xem ghi chu o _startIncomingTransfer()
-    // vi sao doi tu kiem tra luc bat dau sang kiem tra luc ket thuc nay.
-    let settings = getRecordSettings(i);
-    if (!settings.folder) {
-      if (!window.recordingBridge) {
-        showCamSignalToast('⚠️ Không thể lưu tệp từ ĐT ' + (i + 1) + ' (thiếu recordingBridge)');
-        return;
-      }
-      showCamSignalToast('📥 ĐT ' + (i + 1) + ' gửi "' + t.name + '" — vui lòng chọn nơi lưu');
-      const folder = await window.recordingBridge.chooseFolder();
-      if (!folder) {
-        showCamSignalToast('❌ Đã hủy lưu "' + t.name + '" (chưa chọn thư mục lưu)');
-        return;
-      }
-      saveRecordSettings(i, { folder });
-      settings = getRecordSettings(i);
+    await t.writeChain; // đợi ghi xong mọi đoạn đang xếp hàng
+    if (slot.transferUI && slot.transferUI.id === t.transferId) {
+      slot.transferUI = null;
+      _updateTransferUI(i, true);
     }
 
-    const result = await window.recordingBridge.saveWholeFile(settings.folder, t.name, merged);
+    // Lỗi trong lúc nhận/ghi -> xóa tệp dở, báo lỗi
+    if (t.failed) {
+      if (t.recordingId) { try { await window.recordingBridge.cancelFile(t.recordingId); } catch (e) {} }
+      showCamSignalToast(t.userCanceled
+        ? ('❌ Đã hủy lưu "' + t.name + '" (chưa chọn thư mục lưu)')
+        : ('⚠️ Nhận tệp "' + t.name + '" thất bại: ' + t.failed));
+      return;
+    }
+    // Nhận thiếu/thừa dữ liệu so với kích thước điện thoại báo -> không giữ tệp hỏng
+    if (t.size && t.receivedBytes !== t.size) {
+      if (t.recordingId) { try { await window.recordingBridge.cancelFile(t.recordingId); } catch (e) {} }
+      showCamSignalToast('⚠️ Tệp "' + t.name + '" nhận không đủ dữ liệu, đã xóa');
+      return;
+    }
+
+    const result = await window.recordingBridge.finishFile(t.recordingId);
     if (result && result.ok) {
-      showCamSignalToast('📥 ĐT ' + (i + 1) + ' đã gửi: ' + t.name);
-      // Cham thong bao canh nut QR Cam - tat khi nguoi dung mo panel QR Cam.
+      showCamSignalToast('📥 Đã nhận: ' + t.name);
+      // Chấm thông báo cạnh nút Truyền tệp - tắt khi người dùng mở panel.
       document.getElementById('camQrBtn').classList.add('has-notify');
-      // Neu la anh, hien luon overlay xem + sua anh phia tren tab dang mo.
+      // Nếu là ảnh, hiện luôn overlay xem + sửa ảnh phía trên tab đang mở.
       if ((t.mimeType || '').startsWith('image/')) {
         _showImageReviewOverlay(result.path, t.name);
       }
     } else {
-      showCamSignalToast('⚠️ Nhận tệp từ ĐT ' + (i + 1) + ' thất bại');
+      showCamSignalToast('⚠️ Nhận tệp "' + t.name + '" thất bại');
     }
   }
 
@@ -2877,28 +2560,35 @@
     const slot = camSlots[i];
     const t = slot.incomingTransfer;
     if (!t || t.transferId !== transferId) return;
-    slot.incomingTransfer = null;
-    t.chunks = null; // chi can bo trong RAM - chua tung ghi gi xuong dia (khac co che cu)
-    if (!silent) showCamSignalToast('❌ Đã hủy nhận tệp từ ĐT ' + (i + 1) + ' (mất kết nối giữa chừng)');
+    slot.incomingTransfer = null; // đặt đồng bộ, trước mọi await
+    t.failed = t.failed || 'đã hủy';
+    if (slot.transferUI && slot.transferUI.id === t.transferId) {
+      slot.transferUI = null;
+      _updateTransferUI(i, true);
+    }
+    await t.writeChain;
+    // Đóng và XÓA phần đã ghi dở trên đĩa
+    if (t.recordingId) { try { await window.recordingBridge.cancelFile(t.recordingId); } catch (e) {} }
+    if (!silent) showCamSignalToast('❌ Đã hủy nhận tệp "' + t.name + '"');
   }
 
-  // ====== Gui tep tu MAY TINH sang dien thoai (chieu NGUOC LAI voi phan
-  // nhan tep o tren) - danh cho slot dang ket noi kieu "truyen tep" (khong
-  // co video, xem dieu kien hien nut o renderCamSlotList()). Dung LAI dung
-  // 1 giao thuc data-channel da co san o chieu nhan (file-start JSON -> cac
-  // doan nhi phan -> file-end JSON) de ben dien thoai chi can them 1 bo lang
-  // nghe doi chieu la nhan duoc, khong phai doi giao thuc.
-  //
-  // Doc noi dung tep can gui TRUC TIEP trong renderer bang Web File API
-  // (<input type="file">) - khong can qua IPC/main process vi day chi la
-  // doc 1 tep nguoi dung tu chon tren may cua chinh ho de gui di, khong lien
-  // quan gi den noi dung trang web dang duyet trong webview.
-  const OUTGOING_FILE_CHUNK_SIZE = 64 * 1024; // khop kich thuoc doan da dung o chieu nhan
+  // ====== Gửi tệp từ MÁY TÍNH sang điện thoại ======
+  // Dùng lại đúng giao thức data-channel ở chiều nhận (file-start -> các đoạn nhị
+  // phân -> file-end). ĐỌC TỆP TỪNG KHỐI 1MB bằng file.slice() rồi cắt thành đoạn
+  // 64KB để gửi - KHÔNG đọc cả tệp vào RAM, nên tệp ~1GB trở lên vẫn gửi được.
+  const OUTGOING_FILE_CHUNK_SIZE = 64 * 1024;   // khớp kích thước đoạn phía điện thoại
+  const OUTGOING_READ_SIZE = 1024 * 1024;       // mỗi lần đọc 1MB từ đĩa
+  const OUTGOING_HIGH_WATER = 4 * 1024 * 1024;  // hàng đợi gửi quá mức này thì dừng chờ
+  const OUTGOING_LOW_WATER = 1024 * 1024;       // chờ tới khi hàng đợi xuống dưới mức này
 
   function pickAndSendFileToPhone(i) {
     const slot = camSlots[i];
     if (!slot.connected || !slot.dataChannel || slot.dataChannel.readyState !== 'open') {
-      showCamSignalToast('Chưa kết nối với điện thoại này');
+      showCamSignalToast('Chưa kết nối với điện thoại');
+      return;
+    }
+    if (slot.sending) {
+      showCamSignalToast('Đang gửi tệp khác, vui lòng đợi');
       return;
     }
     const input = document.createElement('input');
@@ -2910,6 +2600,28 @@
     input.click();
   }
 
+  // Kiểm soát tốc độ gửi (backpressure): chờ hàng đợi của DataChannel vơi bớt
+  // (sự kiện bufferedamountlow) rồi mới gửi tiếp, tránh dồn quá nhiều vào bộ nhớ.
+  function _waitChannelDrain(channel) {
+    return new Promise(resolve => {
+      if (channel.readyState !== 'open' || channel.bufferedAmount <= OUTGOING_LOW_WATER) { resolve(); return; }
+      channel.bufferedAmountLowThreshold = OUTGOING_LOW_WATER;
+      let timer = null;
+      const done = () => {
+        channel.removeEventListener('bufferedamountlow', done);
+        channel.removeEventListener('close', done);
+        clearInterval(timer);
+        resolve();
+      };
+      channel.addEventListener('bufferedamountlow', done);
+      channel.addEventListener('close', done);
+      // Dự phòng phòng khi sự kiện không bắn
+      timer = setInterval(() => {
+        if (channel.readyState !== 'open' || channel.bufferedAmount <= OUTGOING_LOW_WATER) done();
+      }, 250);
+    });
+  }
+
   async function _sendFileToPhone(i, file) {
     const slot = camSlots[i];
     const channel = slot.dataChannel;
@@ -2919,7 +2631,11 @@
     }
     const transferId = 'out_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
     const totalChunks = Math.max(1, Math.ceil(file.size / OUTGOING_FILE_CHUNK_SIZE));
-    showCamSignalToast('📤 Đang gửi "' + file.name + '" sang ĐT ' + (i + 1) + '...');
+    const stillOpen = () => slot.dataChannel === channel && channel.readyState === 'open';
+    slot.sending = true;
+    slot.transferUI = { id: transferId, dir: 'send', name: file.name, done: 0, total: file.size };
+    renderCamSlotList(); // khóa nút gửi + hiện thanh tiến trình
+    let sent = 0;
     try {
       channel.send(JSON.stringify({
         type: 'file-start',
@@ -2929,27 +2645,36 @@
         size: file.size,
         totalChunks
       }));
-      const buf = await file.arrayBuffer();
-      for (let offset = 0; offset < buf.byteLength; offset += OUTGOING_FILE_CHUNK_SIZE) {
-        // Kenh dut/dong giua chung (vd mat ket noi) - dung ngay, khong gui tiep du lieu vo ich.
-        if (slot.dataChannel !== channel || channel.readyState !== 'open') {
-          showCamSignalToast('❌ Mất kết nối giữa chừng khi đang gửi "' + file.name + '"');
-          return;
+      for (let readOffset = 0; readOffset < file.size; readOffset += OUTGOING_READ_SIZE) {
+        const block = await file.slice(readOffset, readOffset + OUTGOING_READ_SIZE).arrayBuffer();
+        for (let off = 0; off < block.byteLength; off += OUTGOING_FILE_CHUNK_SIZE) {
+          if (!stillOpen()) {
+            showCamSignalToast('❌ Mất kết nối giữa chừng khi đang gửi "' + file.name + '"');
+            return;
+          }
+          if (channel.bufferedAmount > OUTGOING_HIGH_WATER) {
+            await _waitChannelDrain(channel);
+            if (!stillOpen()) {
+              showCamSignalToast('❌ Mất kết nối giữa chừng khi đang gửi "' + file.name + '"');
+              return;
+            }
+          }
+          const len = Math.min(OUTGOING_FILE_CHUNK_SIZE, block.byteLength - off);
+          channel.send(new Uint8Array(block, off, len));
+          sent += len;
+          if (slot.transferUI && slot.transferUI.id === transferId) slot.transferUI.done = sent;
+          _updateTransferUI(i);
         }
-        // Kiem soat toc do gui (backpressure): hang doi gui cua trinh duyet
-        // day qua thi doi no vo bot roi moi gui tiep - tranh don qua nhieu du
-        // lieu vao bo nho cung luc lam treo/rot ket noi voi tep lon.
-        while (channel.bufferedAmount > 8 * OUTGOING_FILE_CHUNK_SIZE) {
-          await new Promise(r => setTimeout(r, 30));
-          if (slot.dataChannel !== channel || channel.readyState !== 'open') return;
-        }
-        channel.send(buf.slice(offset, offset + OUTGOING_FILE_CHUNK_SIZE));
       }
       channel.send(JSON.stringify({ type: 'file-end', transferId }));
-      showCamSignalToast('✓ Đã gửi "' + file.name + '" sang ĐT ' + (i + 1));
+      showCamSignalToast('✓ Đã gửi "' + file.name + '" sang điện thoại');
     } catch (err) {
       showCamSignalToast('❌ Gửi tệp thất bại: ' + ((err && err.message) || err));
       try { channel.send(JSON.stringify({ type: 'file-cancel', transferId })); } catch (e2) {}
+    } finally {
+      slot.sending = false;
+      if (slot.transferUI && slot.transferUI.id === transferId) slot.transferUI = null;
+      renderCamSlotList();
     }
   }
 
@@ -3155,243 +2880,6 @@
     }
   });
 
-  function _updateRecordBtnUI(i) {
-    const btn = camLiveTiles[i].querySelector('.cam-record-btn');
-    if (!btn) return;
-    btn.classList.toggle('recording', !!camSlots[i].recording);
-    btn.title = camSlots[i].recording ? 'Dừng quay (sẽ lưu file ngay)' : 'Quay video ô này';
-  }
-
-  // Bam nut quay tay, HOAC he thong lich tu goi: NEU o nay chua tung chon thu
-  // muc luu, hoi truoc (hop thoai that cua he dieu hanh) - CHI hoi khi la bam
-  // tay (fromSchedule=false); neu la lich tu dong goi ma chua co thu muc thi
-  // bo qua (khong the tu hien hop thoai luc nua dem khong ai ngoi may).
-  async function startRecording(i, fromSchedule) {
-    const slot = camSlots[i];
-    if (slot.recording) return;
-    if (!slot.stream) {
-      if (!fromSchedule) showCamSignalToast('ĐT ' + (i+1) + ' chưa có hình để quay');
-      return;
-    }
-    let settings = getRecordSettings(i);
-    if (!settings.folder) {
-      if (fromSchedule) return; // lich tu dong: khong the hoi chon thu muc luc nay
-      if (!window.recordingBridge) { showCamSignalToast('Không thể chọn thư mục lưu'); return; }
-      const folder = await window.recordingBridge.chooseFolder();
-      if (!folder) return; // nguoi dung bam Huy trong hop thoai chon thu muc
-      saveRecordSettings(i, { folder });
-      settings = getRecordSettings(i);
-    }
-
-    // Mo san file that tren dia TRUOC khi bat dau quay - moi doan video sau
-    // do se duoc noi thang xuong day ngay khi co, khong gom trong RAM.
-    const filename = _recordingFilename(i);
-    const startResult = await window.recordingBridge.startFile(settings.folder, filename);
-    if (!startResult || !startResult.ok) {
-      if (!fromSchedule) showCamSignalToast('⚠️ Không thể tạo file lưu video ĐT ' + (i+1));
-      return;
-    }
-    const recordingId = startResult.recordingId;
-
-    try {
-      const mr = new MediaRecorder(slot.stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-      // SUA LOI "quay cang lau RAM/bo nho tam cang tang khong gioi han":
-      // TRUOC DAY moi doan (moi 1s) duoc gom vao 1 mang trong RAM, chi ghi
-      // xuong dia MOT LAN DUY NHAT luc bam dung - quay hang gio (dung cho
-      // lich quay) se lam RAM tang dan mai khong dung, va luc dung phai gop
-      // + doi base64 ca khoi khong lo cung luc co the lam may khung. Gio ghi
-      // TUNG DOAN thang xuong dia ngay khi co - RAM chi giu dung 1 doan nho
-      // (~1 giay) tai 1 thoi diem, khong con tang theo thoi gian quay nua.
-      // writeChain la 1 bien closure RIENG (khong luu vao slot) de tranh
-      // dinh vao dung luc disconnectSlot() reset slot giua chung - dam bao
-      // cac doan duoc ghi DUNG THU TU xuong dia (goi IPC bat dong bo co the
-      // hoan tat khong theo thu tu neu khong xep hang can than).
-      let writeChain = Promise.resolve();
-      mr.ondataavailable = (e) => {
-        if (!e.data || !e.data.size) return;
-        writeChain = writeChain.then(async () => {
-          try {
-            const buf = await e.data.arrayBuffer();
-            const base64 = _arrayBufferToBase64(buf);
-            await window.recordingBridge.appendChunk(recordingId, base64);
-          } catch (err) { console.error('Lỗi ghi đoạn video ĐT ' + (i+1), err); }
-        });
-      };
-      mr.onstop = async () => {
-        // Doi het cac doan dang xep hang ghi xong roi moi dong file, dam
-        // bao khong mat doan cuoi cung vua ghi do.
-        await writeChain;
-        const result = await window.recordingBridge.finishFile(recordingId);
-        showCamSignalToast(result && result.ok
-          ? ('💾 Đã lưu video ĐT ' + (i+1) + ': ' + filename)
-          : ('⚠️ Lưu video ĐT ' + (i+1) + ' thất bại'));
-        if (slot._restartAfterFlush) {
-          slot._restartAfterFlush = false;
-          startRecording(i, true);
-        }
-      };
-      mr.start(1000); // xuat 1 doan moi 1 giay
-      slot.mediaRecorder = mr;
-      slot.recording = true;
-      _updateRecordBtnUI(i);
-      showCamSignalToast('⏺ Đang quay video ĐT ' + (i+1));
-    } catch (e) {
-      console.error('Khong the bat dau quay video', e);
-      if (!fromSchedule) showCamSignalToast('⚠️ Không thể bắt đầu quay video ĐT ' + (i+1));
-      // Da lo mo file rong o main.js roi nhung khong tao duoc MediaRecorder -
-      // dong lai ngay, tranh ro ri file descriptor.
-      window.recordingBridge.finishFile(recordingId).catch(() => {});
-    }
-  }
-
-  // restart=true dung khi muon tiep tuc quay ngay sau khi luu (khong dung cho
-  // lich Bat dau/Ket thuc - khi lich goi stopRecording thi KHONG restart, vi
-  // lan bat dau tiep theo se do lich Bat dau cua ngay hom sau lo).
-  function stopRecording(i, restart) {
-    const slot = camSlots[i];
-    if (!slot.recording || !slot.mediaRecorder) return;
-    slot.recording = false;
-    slot._restartAfterFlush = !!restart;
-    try { slot.mediaRecorder.stop(); } catch(e) {}
-    slot.mediaRecorder = null;
-    _updateRecordBtnUI(i);
-  }
-
-  // Tinh thoi diem TIEP THEO (hom nay neu con o phia truoc "now", mai neu da
-  // qua) ung voi 1 gio "HH:MM" cho truoc.
-  function _nextOccurrence(hhmm, now) {
-    const parts = hhmm.split(':').map(Number);
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], 0, 0);
-    if (next <= now) next.setDate(next.getDate() + 1);
-    return next;
-  }
-
-  // Len lich BAT DAU va KET THUC hoan toan DOC LAP voi nhau, moi ben tu lap
-  // lich lai cho lan tiep theo cua CHINH NO sau khi ban than no vua chay
-  // xong - KHONG con dung chung 1 ham tinh ca 2 cung luc nhu truoc.
-  //
-  // LOI DA SUA ("dat lich xong no quay hoai khong dung/luu theo lich"):
-  // ban cu dung 1 ham _scheduleRecordingWindow() tinh CA HAI thoi diem cung
-  // luc, va sau khi gio Bat dau vua kich hoat thi TU GOI LAI chinh ham do de
-  // "len lich cho ngay mai". Nhung dung ngay thoi diem do, _nextOccurrence()
-  // cho gio Bat dau se tinh ra la NGAY MAI (vi gio do vua troi qua), khien
-  // dieu kien "phat hien khung gio vat qua nua dem" (nextStop <= nextStart)
-  // bi kich hoat NHAM - day luon ca gio Ket thuc (hoan toan chua toi, van
-  // con nguyen trong ngay hom nay) sang tan ngay mai, nen no khong bao gio
-  // tu dung/luu dung ngay nhu da dat. Tach rieng 2 lich, khong con so sanh
-  // cheo giua Bat dau va Ket thuc nua thi loi nay tu bien mat - truong hop
-  // khung gio vat qua nua dem (VD 23:00 -> 05:00) van tinh dung tu nhien vi
-  // _nextOccurrence() da tu dong lui/day sang ngay ke tiep dung theo GIO DO,
-  // khong can so sanh voi thoi diem con lai nua.
-  function _scheduleNextStart(i) {
-    const slot = camSlots[i];
-    clearTimeout(slot.startTimer);
-    const settings = getRecordSettings(i);
-    if (!settings.startTime || !settings.stopTime) return;
-    const now = new Date();
-    const next = _nextOccurrence(settings.startTime, now);
-    slot.startTimer = setTimeout(() => {
-      startRecording(i, true);
-      _scheduleNextStart(i); // tu len lich cho lan Bat dau TIEP THEO (ngay mai)
-    }, next.getTime() - now.getTime());
-  }
-
-  function _scheduleNextStop(i) {
-    const slot = camSlots[i];
-    clearTimeout(slot.stopTimer);
-    const settings = getRecordSettings(i);
-    if (!settings.startTime || !settings.stopTime) return;
-    const now = new Date();
-    const next = _nextOccurrence(settings.stopTime, now);
-    slot.stopTimer = setTimeout(() => {
-      if (slot.recording) stopRecording(i, /*restart=*/false);
-      _scheduleNextStop(i); // tu len lich cho lan Ket thuc TIEP THEO (ngay mai)
-    }, next.getTime() - now.getTime());
-  }
-
-  function _scheduleRecordingWindow(i) {
-    _scheduleNextStart(i);
-    _scheduleNextStop(i);
-  }
-
-  // Neu HIEN TAI dang o giua 1 khung gio da dat (vd may vua mo app luc 8h30,
-  // lich la 8h-17h) thi bat dau quay NGAY, khong doi den ngay mai moi kich
-  // hoat. Goi ham nay moi khi 1 slot vua co stream san sang (ket noi thanh
-  // cong) VA co lich dang bat.
-  function _startRecordingIfWithinScheduledWindow(i) {
-    const settings = getRecordSettings(i);
-    if (!settings.startTime || !settings.stopTime) return;
-    const now = new Date();
-    const todayStart = _nextOccurrence(settings.startTime, new Date(now.getTime() - 24*60*60*1000));
-    let todayStop = _nextOccurrence(settings.stopTime, todayStart);
-    if (todayStop <= todayStart) todayStop = new Date(todayStop.getTime() + 24*60*60*1000);
-    if (now >= todayStart && now < todayStop) startRecording(i, true);
-  }
-
-  // Noi nut quay / nut cai dat gio / popover cho tung o
-  camLiveTiles.forEach((tile, i) => {
-    const recordBtn = tile.querySelector('.cam-record-btn');
-    const settingsBtn = tile.querySelector('.cam-record-settings-btn');
-    const pop = tile.querySelector('.cam-record-settings-pop');
-    const startInput = tile.querySelector('.cam-record-start-input');
-    const stopInput = tile.querySelector('.cam-record-stop-input');
-    const saveBtn = tile.querySelector('.cam-record-time-save');
-    const clearBtn = tile.querySelector('.cam-record-time-clear');
-    if (!recordBtn) return;
-
-    recordBtn.onclick = () => {
-      if (camSlots[i].recording) stopRecording(i, false);
-      else startRecording(i, false);
-    };
-
-    settingsBtn.onclick = () => {
-      const settings = getRecordSettings(i);
-      startInput.value = settings.startTime || '';
-      stopInput.value = settings.stopTime || '';
-      pop.classList.toggle('show');
-    };
-
-    saveBtn.onclick = () => {
-      const startVal = startInput.value || null;
-      const stopVal = stopInput.value || null;
-      if ((startVal && !stopVal) || (!startVal && stopVal)) {
-        showCamSignalToast('Cần đặt đủ cả giờ bắt đầu và giờ kết thúc');
-        return;
-      }
-      saveRecordSettings(i, { startTime: startVal, stopTime: stopVal });
-      pop.classList.remove('show');
-      _scheduleRecordingWindow(i);
-      if (startVal && stopVal) {
-        _startRecordingIfWithinScheduledWindow(i);
-        showCamSignalToast('Đã đặt lịch quay ĐT ' + (i+1) + ': ' + startVal + ' → ' + stopVal + ' mỗi ngày');
-      } else {
-        showCamSignalToast('Đã tắt lịch quay ĐT ' + (i+1));
-      }
-    };
-
-    clearBtn.onclick = () => {
-      startInput.value = '';
-      stopInput.value = '';
-      saveRecordSettings(i, { startTime: null, stopTime: null });
-      clearTimeout(camSlots[i].startTimer);
-      clearTimeout(camSlots[i].stopTimer);
-      pop.classList.remove('show');
-      showCamSignalToast('Đã tắt lịch quay ĐT ' + (i+1));
-    };
-  });
-
-  // Nut "Ve truc tiep" tren tung tile (cho WebRTC stream khong co buffered)
-  camLiveTiles.forEach((tile) => {
-    const goLiveBtn = tile.querySelector('.cam-golive-btn');
-    if (goLiveBtn) goLiveBtn.style.display = 'none'; // WebRTC luon truc tiep, khong can nut nay
-  });
-
-  document.getElementById('closeCamLive').onclick = () => {
-    camLiveOpen = false;
-    camLiveOverlay.classList.remove('show');
-    camLiveTiles.forEach(tile => { tile.querySelector('video').pause(); });
-  };
-
   // ====== Thanh dau trang cho may tinh ======
   // Uu tien luu xuong 1 file JSON that tren o dia cua may (qua Node fs cua Electron),
   // de chac chan moi may tinh co danh sach dau trang RIENG, khong lien quan gi den
@@ -3438,7 +2926,7 @@
   // Ma 6 so cua tung o (4 o) - LUU LAI vinh vien qua cac lan mo app, KHONG tu
   // mat sau khi ket noi. Chi mat khi nguoi dung chu dong bam nut ngat (✕) o
   // chinh o do, hoac nhap ma khac de thay the.
-  const camRoomCodesStore = makeJsonStore('cam-room-codes', ['', '', '', '']);
+  const camRoomCodesStore = makeJsonStore('cam-room-codes', ['']);
   const MAX_HISTORY_ITEMS = 500;
 
   // Xao tron nhe cho mat khau luu cuc bo (KHONG phai ma hoa manh - chi de
@@ -4255,7 +3743,7 @@
     applyTopBg(themeStore.load().topBg || 'black');
     syncPhishingListToMain();
     // Bat ky o nao co MA DA LUU deu tu ket noi lai ngay tu luc khoi dong app -
-    // KHONG can nguoi dung phai tu mo panel QR Cam len truoc (truoc day chi
+    // KHONG can nguoi dung phai tu mo panel Truyền tệp len truoc (truoc day chi
     // lam vay cho o co Lich quay dang bat, cac o con lai phai doi mo panel
     // moi tu noi lai - gay cam giac "phai nhap lai ma" moi lan mo app, dung
     // nhu nguoi dung phan anh). O nao dang co Lich quay van duoc uu tien nhu

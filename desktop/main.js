@@ -473,7 +473,7 @@ ipcMain.handle('screenshot:save', async (e, dataUrl) => {
 // cung vao 1 bien `win` co dinh - hoat dong dung cho MOI cua so, du la cua
 // so chinh hay cua so tach tu tab.
 //
-// Rieng du lieu quay video/nhan tep (activeRecordingFiles) chuyen tu bien
+// Riêng dữ liệu nhận tệp (activeRecordingFiles) chuyen tu bien
 // cuc bo trong tung cua so thanh 1 Map DUNG CHUNG toan app - an toan vi
 // recordingId da bao gom timestamp + so dem tang dan nen luon duy nhat, du
 // phat sinh tu cua so nao.
@@ -555,41 +555,42 @@ function attachWindowControlsIpcOnce() {
     });
   });
 
-  // ====== Quay video tung o xem QR Cam: chon thu muc luu + ghi file that ======
-  // (renderer chi ghi hinh bang MediaRecorder trong bo nho - khong the tu
-  // ghi file xuong dia vi contextIsolation dang bat, giong moi thu khac)
-  //
-  // SUA LOI "quay cang lau ton RAM cang nhieu": TRUOC DAY renderer gom HET
-  // cac doan video trong 1 mang o RAM suot ca luc quay, chi ghi xuong dia
-  // MOT LAN DUY NHAT luc bam dung - quay hang gio (dung cho tinh nang lich
-  // quay) se lam RAM tang dan khong gioi han, va luc dung phai gop + doi
-  // base64 + ghi 1 khoi khong lo cung luc co the lam may khung mot chut.
-  // Gio doi sang ghi TUNG DOAN (moi 1 giay) THANG XUONG DIA ngay khi co,
-  // noi tiep vao file dang mo (giu 1 file descriptor mo suot phien quay) -
-  // giong het ky thuat "noi truc tiep chunk MediaRecorder vao file" da dung
-  // truoc do cho he thong camrec cu: chi doan DAU TIEN cua ca phien co tieu
-  // de container (EBML header cua WebM), cac doan sau chi la du lieu noi
-  // tiep tho - noi truc tiep theo dung thu tu tao thanh 1 file .webm hop le,
-  // khong can gop toan bo truoc. RAM chi giu 1 doan nho (~1 giay) tai 1 thoi
-  // diem, khong con tang theo thoi gian quay nua.
+  // ====== Truyền tệp: chọn thư mục lưu + ghi tệp nhận được xuống đĩa TỪNG ĐOẠN ======
+  // Renderer không có quyền dùng fs (contextIsolation đang bật) nên mọi thao tác
+  // đĩa đều đi qua đây. Tệp được mở ngay khi bắt đầu nhận (giữ 1 file descriptor),
+  // mỗi đoạn dữ liệu ghi nối tiếp vào đó ngay khi tới - RAM chỉ giữ vài đoạn nhỏ,
+  // nên tệp ~1GB trở lên vẫn nhận được. Ghi KHÔNG ĐỒNG BỘ (fs.write) để không chặn
+  // tiến trình chính của Electron trong lúc ghi.
   ipcMain.handle('recording:choose-folder', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
     const result = await dialog.showOpenDialog(win, {
-      title: 'Chọn nơi lưu video ghi hình',
+      title: 'Chọn nơi lưu tệp nhận được',
       properties: ['openDirectory', 'createDirectory']
     });
     if (result.canceled || !result.filePaths.length) return null;
     return result.filePaths[0];
   });
 
+  // Nếu tên tệp đã tồn tại thì thêm " (1)", " (2)"... để KHÔNG ghi đè tệp cũ.
+  function uniqueFilePath(folder, filename) {
+    const parsed = path.parse(filename);
+    let candidate = path.join(folder, filename);
+    let n = 1;
+    while (fs.existsSync(candidate)) {
+      candidate = path.join(folder, parsed.name + ' (' + n + ')' + parsed.ext);
+      n++;
+    }
+    return candidate;
+  }
+
   ipcMain.handle('recording:start-file', (e, { folder, filename }) => {
     if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     try {
       if (!folder || !filename) return { ok: false, error: 'missing folder/filename' };
       fs.mkdirSync(folder, { recursive: true });
-      const filePath = path.join(folder, filename);
-      const fd = fs.openSync(filePath, 'w');
+      const filePath = uniqueFilePath(folder, path.basename(String(filename)));
+      const fd = fs.openSync(filePath, 'wx');
       const recordingId = 'rec_' + (++recordingIdCounter) + '_' + Date.now();
       activeRecordingFiles.set(recordingId, { fd, filePath });
       return { ok: true, recordingId, path: filePath };
@@ -598,12 +599,21 @@ function attachWindowControlsIpcOnce() {
     }
   });
 
-  ipcMain.handle('recording:append-chunk', (e, { recordingId, base64Data }) => {
+  // Ghi 1 đoạn nhị phân (Uint8Array) nối tiếp vào tệp đang mở - không cần base64.
+  // Renderer xếp hàng các lần gọi nên thứ tự ghi luôn đúng.
+  ipcMain.handle('recording:append-binary', async (e, { recordingId, data }) => {
     if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     const entry = activeRecordingFiles.get(recordingId);
     if (!entry) return { ok: false, error: 'recording not found (da finish hoac chua start)' };
     try {
-      fs.writeSync(entry.fd, Buffer.from(base64Data, 'base64'));
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data.buffer || data, data.byteOffset || 0, data.byteLength ?? data.length);
+      let written = 0;
+      while (written < buf.length) {
+        const { bytesWritten } = await new Promise((resolve, reject) => {
+          fs.write(entry.fd, buf, written, buf.length - written, null, (err, n) => err ? reject(err) : resolve({ bytesWritten: n }));
+        });
+        written += bytesWritten;
+      }
       return { ok: true };
     } catch (err) {
       return { ok: false, error: String(err) };
@@ -619,34 +629,9 @@ function attachWindowControlsIpcOnce() {
     return { ok: true, path: entry.filePath };
   });
 
-  // Ghi 1 file NGUYEN VEN trong 1 lan (khong mo fd roi ghi tung doan qua
-  // nhieu vong IPC + fs.writeSync dong bo nhu recording:append-chunk o tren -
-  // cach do phu hop cho quay video LIEN TUC/rat dai, khong the gom het trong
-  // RAM, nhung lai la nut that co chai KHONG CAN THIET cho tep/anh nhan tu
-  // dien thoai qua DataChannel: 1 anh vai tram KB - vai MB chia lam vai chuc
-  // doan 64KB, moi doan truoc day phai round-trip IPC + writeSync RIENG,
-  // cong don lai lam cham han. Voi truong hop nay renderer da gom san toan
-  // bo du lieu trong RAM (mang cac ArrayBuffer chunk) roi moi goi xuong day
-  // DUNG 1 LAN - `data` la Uint8Array/Buffer truyen thang qua IPC (khong can
-  // ma hoa base64, tranh phinh ~33% kich thuoc + chi phi encode/decode).
-  ipcMain.handle('recording:save-whole-file', (e, { folder, filename, data }) => {
-    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
-    try {
-      if (!folder || !filename || !data) return { ok: false, error: 'missing folder/filename/data' };
-      fs.mkdirSync(folder, { recursive: true });
-      const filePath = path.join(folder, filename);
-      fs.writeFileSync(filePath, Buffer.from(data.buffer || data, data.byteOffset || 0, data.byteLength ?? data.length));
-      return { ok: true, path: filePath };
-    } catch (err) {
-      return { ok: false, error: String(err) };
-    }
-  });
-
-  // Huy 1 phien nhan tep dang do (VD dien thoai bao file-cancel, hoac ket
-  // noi rot giua chung) - dong file NHUNG XOA LUON phan da nhan, khong giu
-  // lai file loi/thieu tren dia. Dung cho ca tinh nang nhan tep/anh moi
-  // (Giai doan 3) - KHONG dung cho tinh nang quay video hien co (van dung
-  // finish-file nhu cu, khong doi gi).
+  // Hủy 1 phiên nhận tệp đang dở (điện thoại báo file-cancel, mất kết nối giữa
+  // chừng, hoặc ghi đĩa lỗi) - đóng tệp VÀ XÓA luôn phần đã nhận, không để lại
+  // tệp lỗi/thiếu trên đĩa.
   ipcMain.handle('recording:cancel-file', (e, recordingId) => {
     if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
     const entry = activeRecordingFiles.get(recordingId);
@@ -671,11 +656,8 @@ function attachWindowControlsIpcOnce() {
     }
   });
 
-  // Phong khi app bi tat dot ngot (hoac nguoi dung thoat) trong luc van con
-  // file dang ghi do (VD do disconnectSlot() reset slot truoc khi kip goi
-  // finish-file ve day) - dong het cac file descriptor con mo lai, tranh ro
-  // ri tai nguyen. Du liệu đã ghi bằng fs.writeSync là đồng bộ nên đã nằm
-  // trên đĩa từ trước, chỉ thiếu bước đóng fd cho gọn.
+  // Phòng khi app bị tắt đột ngột trong lúc còn tệp đang ghi dở - đóng hết các
+  // file descriptor còn mở, tránh rò rỉ tài nguyên.
   app.on('before-quit', () => {
     for (const entry of activeRecordingFiles.values()) {
       try { fs.closeSync(entry.fd); } catch (err) {}

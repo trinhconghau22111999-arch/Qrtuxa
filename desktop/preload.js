@@ -84,22 +84,15 @@ contextBridge.exposeInMainWorld('debugLogBridge', {
   clear: () => ipcRenderer.invoke('debuglog:clear')
 });
 
-// Quay video tung o xem QR Cam: chon thu muc luu (hop thoai that cua he
-// dieu hanh) + ghi file .webm that xuong dia - deu phai qua main.js vi
-// renderer khong co quyen dung fs truc tiep (contextIsolation dang bat).
-// Ghi TUNG DOAN thang xuong dia ngay khi co (khong gom het trong RAM roi
-// moi ghi 1 lan) - xem giai thich chi tiet trong main.js.
+// Truyền tệp: chọn thư mục lưu (hộp thoại thật của hệ điều hành) + ghi tệp nhận
+// được xuống đĩa TỪNG ĐOẠN - đều phải qua main.js vì renderer không có quyền dùng
+// fs trực tiếp (contextIsolation đang bật). Xem giải thích chi tiết trong main.js.
 contextBridge.exposeInMainWorld('recordingBridge', {
   chooseFolder: () => ipcRenderer.invoke('recording:choose-folder'),
   startFile: (folder, filename) => ipcRenderer.invoke('recording:start-file', { folder, filename }),
-  appendChunk: (recordingId, base64Data) => ipcRenderer.invoke('recording:append-chunk', { recordingId, base64Data }),
+  appendBinary: (recordingId, data) => ipcRenderer.invoke('recording:append-binary', { recordingId, data }),
   finishFile: (recordingId) => ipcRenderer.invoke('recording:finish-file', recordingId),
-  cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId),
-  // Ghi 1 file NGUYEN VEN trong 1 lan (khong mo fd + ghi tung doan qua nhieu
-  // vong IPC nhu appendChunk o tren) - dung cho tep/anh nhan tu dien thoai qua
-  // DataChannel (Giai doan 3): cac doan duoc gom san trong RAM o renderer, chi
-  // ghi xuong dia DUNG 1 LAN khi da nhan du - xem giai thich trong main.js.
-  saveWholeFile: (folder, filename, data) => ipcRenderer.invoke('recording:save-whole-file', { folder, filename, data })
+  cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId)
 });
 
 // Sua anh nhan tu dien thoai (Giai doan 5: cat/xoay/ve/nhap lieu) - ghi DE
