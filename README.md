@@ -9,7 +9,7 @@
    điện thoại, nội dung quét được sẽ **gõ thẳng vào vị trí con trỏ đang chọn
    trên máy tính** — như một máy quét mã vạch không dây dùng điện thoại.
 3. **QR Cam** — xem camera của điện thoại đang chạy app
-   [QrtuxaCam](https://github.com/trinhconghau22111999-arch/QrtuxaCam) ngay
+   QrtuxaCam ngay
    trên máy tính qua WebRTC, tối đa 4 điện thoại cùng lúc, có thể quay lại màn
    hình đang xem theo lịch hẹn giờ.
 
@@ -57,7 +57,7 @@ phẩm, link, số serial...) mà không cần máy quét mã vạch chuyên d�
 ## 3. QR Cam — xem webcam điện thoại
 
 Cần điện thoại cài app
-[QrtuxaCam](https://github.com/trinhconghau22111999-arch/QrtuxaCam) (xem
+QrtuxaCam (xem
 README repo đó để biết cách lấy mã 6 số).
 
 - Bấm nút **"📷 QR Cam"** để mở panel nhập mã, tối đa **4 ô** (4 điện thoại
