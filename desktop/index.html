@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>QR Remote Browser</title>
+<title>Trình Duyệt</title>
 <style>
   :root {
     --bg-deep: #000000;
@@ -495,6 +495,13 @@
   #sidePanel.sp-light .sp-progress { background:#dddddd; }
   #sidePanel.sp-light .sp-progress-fill { background:#000000; }
   #sidePanel.sp-light .sp-item .sp-del { color:#b71c1c !important; border-color:#b71c1c !important; }
+  /* Trang Tat ca dau trang: vien xanh la da quang, duong dan xanh la, dau X den */
+  #sidePanel.sp-green { border-left:2px solid #39ff14; box-shadow:-10px 0 30px rgba(57,255,20,0.45); }
+  #sidePanel.sp-green #sidePanelHeader { border-bottom:1px solid #39ff14; }
+  #sidePanel.sp-green .sp-item { border:1px solid #39ff14; }
+  #sidePanel.sp-green .sp-item:hover { border-color:#00d100; background:#f2fff0; }
+  #sidePanel.sp-green .sp-item .sp-sub { color:#00c400; }
+  #sidePanel.sp-green .sp-item .sp-del { color:#000000 !important; border-color:#000000 !important; }
   .sp-progress { height:4px; background:rgba(192,38,255,0.2); border-radius:2px; margin-top:4px; overflow:hidden; }
   .sp-progress-fill { height:100%; background:var(--neon-1); }
   /* Nhieu link tai xuong (server khong tra Content-Length, hoac dang chunked)
@@ -583,9 +590,9 @@
   /* Ngôi sao dấu trang trong ô địa chỉ: bỏ nền/viền ngoài, chính ngôi sao là nút,
      to ngang icon chụp ảnh, đặc một màu tím đậm (viền và nền đồng nhất). */
   body #addBookmarkBtn { background:transparent !important; border:none !important; box-shadow:none !important;
-    color:#5b21b6 !important; width:34px; height:34px; right:3px; padding:0; border-radius:50%; }
+    color:#ffc400 !important; width:34px; height:34px; right:3px; padding:0; border-radius:50%; }
   body #addBookmarkBtn .mi { width:28px; height:28px; }
-  body #addBookmarkBtn:hover { background:transparent !important; color:#3f1585 !important; }
+  body #addBookmarkBtn:hover { background:transparent !important; color:#7c3aed !important; }
   body #urlbarWrap #urlbar { padding-right:44px; }
   body #bookmarksBar { background:#fff !important; border-bottom:1px solid #e3dcf2 !important; }
   body #bookmarksEmpty { color:var(--mo-hint) !important; }
@@ -618,6 +625,9 @@
   #sideToggle { -webkit-app-region:no-drag; flex-shrink:0; width:26px; height:26px; border:none; border-radius:50%; background:transparent;
     color:var(--mo-bar); font-size:20px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0 0 3px 0; }
   #sideToggle:hover { background:rgba(43,27,74,.12); }
+  /* Nut mo thanh ung dung: nam o thanh cong cu, ben trai nut ba cham */
+  body #toolbar #sideToggle { width:34px; height:34px; font-size:24px; padding:0 0 3px 0; color:#fff; flex-shrink:0; }
+  body #toolbar #sideToggle:hover { background:rgba(255,255,255,.16); }
   #sideAppsCatcher { display:none; position:fixed; left:0; right:0; bottom:0; top:0; z-index:34; background:transparent; }
   #sideAppsCatcher.show { display:block; }
   #sideApps { display:none; position:fixed; left:0; top:0; bottom:0; width:46px; z-index:35; flex-direction:column; align-items:center;
@@ -633,8 +643,7 @@
 </head>
 <body>
   <div id="titleBar">
-    <button id="sideToggle" title="Hiện thanh ứng dụng (Telegram, Zalo, Facebook, YouTube, Google)" aria-label="Hiện thanh ứng dụng">›</button>
-    <span id="appName">QR Remote Browser</span>
+    <span id="appName">Trình Duyệt</span>
     <div id="tabsBar">
       <button id="newTabBtn" title="Mở tab mới"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
     </div>
@@ -646,12 +655,12 @@
   </div>
 
   <div id="toolbar">
+    <button id="sideToggle" title="Hiện thanh ứng dụng (Telegram, Zalo, Facebook, YouTube, Google)" aria-label="Hiện thanh ứng dụng">›</button>
     <div id="settingsWrap">
       <button id="settingsBtn" class="mi-btn" title="Menu"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,10c-1.1,0 -2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2 -0.9,-2 -2,-2zM12,16c-1.1,0 -2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2 -0.9,-2 -2,-2z"/></svg></button>
       <div id="settingsMenu">
         <div class="settings-item" data-panel="history">Lịch sử</div>
         <div class="settings-item" data-action="qrRemote">QR Input</div>
-        <div class="settings-item" data-panel="oneclickopen">Mở link bằng 1 chạm</div>
         <div class="settings-sep"></div>
         <div class="settings-item" data-action="clearCache" title="Xoá cache duyệt web - KHÔNG đăng xuất các tài khoản đã đăng nhập trên máy">Xoá cache</div>
       </div>
@@ -2083,7 +2092,6 @@
     history: '🕘 Lịch sử duyệt web',
     downloads: '⬇ Tải xuống',
     passwords: '👤 Tên đăng nhập đã lưu',
-    oneclickopen: '👆 Mở link bằng 1 chạm',
     phishing: '🚫 Chặn web đen/lừa đảo'
   };
 
@@ -2114,7 +2122,8 @@
 
   function renderSidePanel() {
     sidePanelBody.innerHTML = '';
-    document.getElementById('sidePanel').classList.toggle('sp-light', currentSidePanel === 'downloads');
+    document.getElementById('sidePanel').classList.toggle('sp-light', currentSidePanel === 'downloads' || currentSidePanel === 'bookmarks');
+    document.getElementById('sidePanel').classList.toggle('sp-green', currentSidePanel === 'bookmarks');
 
     if (currentSidePanel === 'bookmarks') {
       const list = loadBookmarks();
@@ -2219,10 +2228,6 @@
       });
     }
 
-    if (currentSidePanel === 'oneclickopen') {
-      sidePanelClear.style.display = 'none';
-      renderOneClickOpenPanel();
-    }
 
     if (currentSidePanel === 'phishing') {
       sidePanelClear.style.display = phishingStore.load().length ? '' : 'none';
@@ -2292,32 +2297,6 @@
     for (const t of tabs.values()) {
       if (t.webview) t.webview.send('qr-browser:set-one-click-open', !!enabled);
     }
-  }
-  function renderOneClickOpenPanel() {
-    sidePanelBody.innerHTML = '';
-    const row = document.createElement('div');
-    row.className = 'toggle-row';
-    row.innerHTML = `
-      <div>
-        <div class="tr-label">Mở link bằng 1 chạm (tự động mở)</div>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="oneClickOpenToggle">
-        <span class="slider-track"></span>
-      </label>`;
-    sidePanelBody.appendChild(row);
-    const note = document.createElement('div');
-    note.className = 'sp-note';
-    note.textContent = 'Khi TẮT: chạm/click trái vào link sẽ KHÔNG mở nữa - dùng lúc xem phim ở các trang có gài quảng cáo ẩn/lớp phủ, tránh lỡ chạm là bị mở tràn lan trang quảng cáo. Muốn mở 1 link cụ thể thì bấm CHUỘT PHẢI vào link đó rồi chọn "Mở liên kết trong tab mới" - cách này vẫn hoạt động bình thường dù bật hay tắt cài đặt này.';
-    sidePanelBody.appendChild(note);
-
-    const checkbox = document.getElementById('oneClickOpenToggle');
-    checkbox.checked = oneClickOpenStore.load().enabled !== false;
-    checkbox.onchange = (e) => {
-      const enabled = e.target.checked;
-      oneClickOpenStore.save({ enabled });
-      broadcastOneClickOpen(enabled);
-    };
   }
 
 

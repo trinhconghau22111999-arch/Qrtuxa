@@ -13,7 +13,7 @@
   },
   "build": {
     "appId": "com.h.qrremoteinput.v2",
-    "productName": "QR Remote Input Browser 2",
+    "productName": "Trình Duyệt",
     "files": [
       "**/*",
       "!dist/**"
