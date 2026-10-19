@@ -176,7 +176,9 @@ let downloadCounter = 0;
 let downloadListenerAttached = false;
 
 function broadcastDownloads() {
-  const list = [...downloads.values()].sort((a, b) => b.id - a.id);
+  // Bỏ trường _item (đối tượng DownloadItem gốc) trước khi gửi qua IPC.
+  const list = [...downloads.values()].sort((a, b) => b.id - a.id)
+    .map(({ _item, ...rest }) => rest);
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('downloads:update', list));
 }
 
@@ -614,6 +616,12 @@ ipcMain.on('downloads:show-in-folder', (e, filePath) => {
 ipcMain.on('downloads:open-file', (e, filePath) => {
   if (filePath) shell.openPath(filePath);
 });
+// Dung luong RAM con trong - renderer dung de quyet dinh ngu tab som hon.
+ipcMain.handle('sys:memory', () => {
+  const free = os.freemem(), total = os.totalmem();
+  return { free, total, freeRatio: total ? free / total : 1 };
+});
+
 ipcMain.on('downloads:cancel', (e, id) => {
   const entry = downloads.get(id);
   if (entry && entry._item && entry.state === 'progressing') entry._item.cancel();

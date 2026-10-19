@@ -39,6 +39,10 @@ contextBridge.exposeInMainWorld('tabBridge', {
 
 // Cau noi cho tinh nang Tai xuong (main.js theo doi session tai file va bao
 // trang thai/tien trinh ve day theo thoi gian thuc).
+contextBridge.exposeInMainWorld('systemBridge', {
+  getMemory: () => ipcRenderer.invoke('sys:memory')
+});
+
 contextBridge.exposeInMainWorld('downloadsBridge', {
   onUpdate: (callback) => {
     ipcRenderer.on('downloads:update', (event, list) => callback(list));

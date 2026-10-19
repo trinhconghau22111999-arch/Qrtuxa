@@ -32,10 +32,11 @@ document.addEventListener('submit', (e) => {
     const pwInput = form.querySelector('input[type="password"]');
     if (!pwInput || !pwInput.value) return;
     const userInput = findUsernameField(form, pwInput);
+    if (!userInput || !userInput.value) return;
     ipcRenderer.sendToHost('qr-browser:password-capture', {
       origin: location.origin,
-      username: userInput ? userInput.value : '',
-      password: pwInput.value
+      // Chỉ gửi TÊN ĐĂNG NHẬP - app không lưu mật khẩu nữa.
+      username: userInput ? userInput.value : ''
     });
   } catch (err) { /* im lang, khong lam vo trang khach */ }
 }, true);
