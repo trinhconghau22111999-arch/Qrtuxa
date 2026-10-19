@@ -560,6 +560,13 @@
   body #urlbarWrap #urlbar { padding-right:40px; }
   body #addBookmarkBtn { background:transparent !important; border:none !important; color:#7a4fae !important; width:28px; height:28px; right:4px; }
   body #addBookmarkBtn:hover { background:rgba(122,79,174,.15) !important; color:#5a2fa0 !important; }
+  /* Ngôi sao dấu trang trong ô địa chỉ: bỏ nền/viền ngoài, chính ngôi sao là nút,
+     to ngang icon chụp ảnh, đặc một màu tím đậm (viền và nền đồng nhất). */
+  body #addBookmarkBtn { background:transparent !important; border:none !important; box-shadow:none !important;
+    color:#5b21b6 !important; width:34px; height:34px; right:3px; padding:0; border-radius:50%; }
+  body #addBookmarkBtn .mi { width:28px; height:28px; }
+  body #addBookmarkBtn:hover { background:transparent !important; color:#3f1585 !important; }
+  body #urlbarWrap #urlbar { padding-right:44px; }
   body #bookmarksBar { background:#fff !important; border-bottom:1px solid #e3dcf2 !important; }
   body #bookmarksEmpty { color:var(--mo-hint) !important; }
   body .bm-item { background:var(--mo-url) !important; border:none !important; color:var(--mo-urltext) !important; box-shadow:none !important; }
@@ -637,11 +644,10 @@
     <button id="reloadBtn" class="mi-btn" title="Tải lại"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0 -7.99,3.58 -7.99,8s3.57,8 7.99,8c3.73,0 6.84,-2.55 7.73,-6h-2.08c-0.82,2.33 -3.04,4 -5.65,4 -3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6c1.66,0 3.14,0.69 4.22,1.78L13,11h7V4l-2.35,2.35z"/></svg></button>
     <div id="urlbarWrap">
       <input id="urlbar" value="https://www.google.com" />
-      <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22,9.24l-7.19,-0.62L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21 12,17.27 18.18,21l-1.63,-7.03L22,9.24zM12,15.4l-3.76,2.27 1,-4.28 -3.32,-2.88 4.38,-0.38L12,6.1l1.71,4.04 4.38,0.38 -3.32,2.88 1,4.28L12,15.4z"/></svg></button>
+      <button id="addBookmarkBtn" title="Lưu trang hiện tại vào dấu trang"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12,17.27L18.18,21l-1.64,-7.03L22,9.24l-7.19,-0.61L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21z"/></svg></button>
     </div>
     <button id="screenshotBtn" class="mi-btn" title="Chụp ảnh trang web"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9,2L7.17,4H4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2H9zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z"/></svg></button>
     <button id="downloadsBtn" class="mi-btn" title="Tải xuống - xem tiến trình"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z"/></svg></button>
-    <button id="starBtn" class="mi-btn" title="Đánh dấu trang này"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22,9.24l-7.19,-0.62L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21 12,17.27 18.18,21l-1.63,-7.03L22,9.24zM12,15.4l-3.76,2.27 1,-4.28 -3.32,-2.88 4.38,-0.38L12,6.1l1.71,4.04 4.38,0.38 -3.32,2.88 1,4.28L12,15.4z"/></svg></button>
     <button id="qrBtn">📱 Chia sẻ QR</button>
   </div>
 
@@ -1942,7 +1948,6 @@
   }
 
   addBookmarkBtn.onclick = openBookmarkModal;
-  document.getElementById('starBtn').onclick = openBookmarkModal;
   saveBookmarkBtn.onclick = confirmSaveBookmark;
   cancelBookmarkBtn.onclick = closeBookmarkModal;
   bookmarkModalOverlay.onclick = (e) => { if (e.target === bookmarkModalOverlay) closeBookmarkModal(); };
