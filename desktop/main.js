@@ -547,6 +547,25 @@ ipcMain.handle('screenshot:snip', async () => {
   });
 });
 
+// ====== Nhap van ban bang giong noi ======
+// Electron khong dung duoc Web Speech API (can khoa Google rieng nen luon loi
+// "network"), nen dung chinh tinh nang go bang giong noi CO SAN cua Windows:
+// to hop phim Windows + H (bat/tat). Windows tu nghe mic va go chu vao o dang
+// chon (ke ca o nhap trong trang web). Gui to hop phim bang PowerShell giong
+// cach nut chup anh gui Windows + Shift + S.
+ipcMain.handle('voice:toggle', async () => {
+  if (process.platform !== 'win32') return { ok: false, unsupported: true };
+  const { execFile } = require('child_process');
+  const ps = "Add-Type -Namespace W -Name K2 -MemberDefinition '[DllImport(\"user32.dll\")] public static extern void keybd_event(byte b, byte s, int f, int e);';" +
+    "[W.K2]::keybd_event(0x5B,0,0,0);[W.K2]::keybd_event(0x48,0,0,0);" +
+    "[W.K2]::keybd_event(0x48,0,2,0);[W.K2]::keybd_event(0x5B,0,2,0);";
+  return await new Promise((resolve) => {
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true }, (err) => {
+      resolve(err ? { ok: false, error: String(err.message || err) } : { ok: true });
+    });
+  });
+});
+
 ipcMain.handle('screenshot:save', async (e, dataUrl) => {
   try {
     const win = BrowserWindow.fromWebContents(e.sender);

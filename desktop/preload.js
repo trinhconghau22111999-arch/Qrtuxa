@@ -102,3 +102,8 @@ contextBridge.exposeInMainWorld('scanHistoryBridge', {
   add: (text) => ipcRenderer.send('scanhistory:add', text),
   exportXlsx: () => ipcRenderer.invoke('scanhistory:export')
 });
+
+// Nhap van ban bang giong noi (Windows + H cua Windows).
+contextBridge.exposeInMainWorld('voiceBridge', {
+  toggle: () => ipcRenderer.invoke('voice:toggle')
+});
