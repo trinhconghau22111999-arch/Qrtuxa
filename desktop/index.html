@@ -167,6 +167,11 @@
     transition: all .15s ease;
   }
   #newTabBtn:hover { background:var(--neon-a35); color:#fff; }
+  /* Vien khung quanh thanh tab khi keo link len: khong ve nua (hay bi ket lai). */
+  body #titleBar.drag-over-new-tab { box-shadow:none !important; outline:none !important; background:var(--mo-tabbg) !important; }
+  /* Vung tha CO DINH ben phai dau +: luon no-drag nen HDH khong nuot su kien tha (khong con dau 🚫).
+     Phan trong con lai cua thanh tab van keo di chuyen cua so duoc. */
+  #tabDropZone { -webkit-app-region: no-drag; flex:0 0 220px; height:100%; }
   #bookmarksBar {
     flex: 0 0 auto;
     display:flex; align-items:center; gap:5px; padding:3px 8px;
@@ -495,13 +500,14 @@
   #sidePanel.sp-light .sp-progress { background:#dddddd; }
   #sidePanel.sp-light .sp-progress-fill { background:#000000; }
   #sidePanel.sp-light .sp-item .sp-del { color:#b71c1c !important; border-color:#b71c1c !important; }
-  /* Trang Tat ca dau trang: vien xanh la da quang, duong dan xanh la, dau X den */
-  #sidePanel.sp-green { border-left:2px solid #39ff14; box-shadow:-10px 0 30px rgba(57,255,20,0.45); }
-  #sidePanel.sp-green #sidePanelHeader { border-bottom:1px solid #39ff14; }
-  #sidePanel.sp-green .sp-item { border:1px solid #39ff14; }
-  #sidePanel.sp-green .sp-item:hover { border-color:#00d100; background:#f2fff0; }
-  #sidePanel.sp-green .sp-item .sp-sub { color:#00c400; }
-  #sidePanel.sp-green .sp-item .sp-del { color:#000000 !important; border-color:#000000 !important; }
+  /* Trang Tai xuong / Lich su / Tat ca dau trang: vien + duong dan mau tim (dong nhat voi mau trang web) */
+  #sidePanel.sp-purple { border-left:2px solid #7a3cf0; box-shadow:-10px 0 30px rgba(122,60,240,0.45); }
+  #sidePanel.sp-purple #sidePanelHeader { border-bottom:1px solid #7a3cf0; }
+  #sidePanel.sp-purple .sp-item { border:1px solid #7a3cf0; }
+  #sidePanel.sp-purple .sp-item:hover { border-color:#5a2bd0; background:#f4efff; }
+  #sidePanel.sp-purple .sp-item .sp-sub { color:#6a35d8; }
+  #sidePanel.sp-purple .sp-progress-fill { background:#7a3cf0; }
+  #sidePanel.sp-purple .sp-item .sp-del { color:#000000 !important; border-color:#000000 !important; }
   .sp-progress { height:4px; background:rgba(192,38,255,0.2); border-radius:2px; margin-top:4px; overflow:hidden; }
   .sp-progress-fill { height:100%; background:var(--neon-1); }
   /* Nhieu link tai xuong (server khong tra Content-Length, hoac dang chunked)
@@ -649,7 +655,7 @@
   <div id="titleBar">
     <span id="appName">Trình Duyệt</span>
     <div id="tabsBar">
-      <button id="newTabBtn" title="Mở tab mới"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
+      <button id="newTabBtn" title="Mở tab mới"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button><div id="tabDropZone"></div>
     </div>
     <div id="winControls">
       <button class="win-btn" id="winMinBtn" title="Thu nhỏ">─</button>
@@ -1460,11 +1466,11 @@
   // 3) Keo 1 lien ket tu trang dang xem THA len thanh tieu de/thanh tab phia tren
   //    de mo no thanh 1 tab moi - giong thao tac keo link/tab len thanh tab cua Chrome.
   const titleBar = document.getElementById('titleBar');
+  titleBar.addEventListener('dragenter', (e) => { if (e.dataTransfer) e.preventDefault(); });
   titleBar.addEventListener('dragover', (e) => {
     if (!e.dataTransfer) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = draggingTabId ? 'move' : 'copy';
-    titleBar.classList.add('drag-over-new-tab');
   });
   titleBar.addEventListener('dragleave', (e) => {
     if (!e.relatedTarget || !titleBar.contains(e.relatedTarget)) titleBar.classList.remove('drag-over-new-tab');
@@ -2135,7 +2141,7 @@
   function renderSidePanel() {
     sidePanelBody.innerHTML = '';
     document.getElementById('sidePanel').classList.toggle('sp-light', currentSidePanel === 'downloads' || currentSidePanel === 'bookmarks' || currentSidePanel === 'history');
-    document.getElementById('sidePanel').classList.toggle('sp-green', currentSidePanel === 'bookmarks' || currentSidePanel === 'history');
+    document.getElementById('sidePanel').classList.toggle('sp-purple', currentSidePanel === 'downloads' || currentSidePanel === 'bookmarks' || currentSidePanel === 'history');
 
     if (currentSidePanel === 'bookmarks') {
       const list = loadBookmarks();
