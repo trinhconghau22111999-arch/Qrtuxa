@@ -717,27 +717,27 @@
   body .bm-item:hover { background:#e4dcf6 !important; }
   body .bm-item .bm-del { color:var(--mo-tabtext) !important; }
   body .bm-item .bm-del:hover { color:#fff !important; }
+
+  /* ====== Nhãn tên app (thay nút Cài đặt cũ) + nút 3 chấm mở menu ====== */
+  #appName { flex-shrink:0; font-size:12px; font-weight:600; color:var(--mo-bar); white-space:nowrap; cursor:default; user-select:none; padding:0 4px; }
+  body #titleBar #appName { color:var(--mo-bar) !important; }
+  #settingsWrap { position:relative; flex-shrink:0; }
+  #settingsMenu { top:40px !important; left:0 !important; background:#fff !important; border:none !important; border-radius:12px !important; padding:6px !important; min-width:230px !important; box-shadow:0 8px 28px rgba(43,27,74,.35) !important; }
+  body .settings-item { color:var(--mo-urltext) !important; font-size:13px !important; padding:9px 12px !important; border-radius:8px !important; display:flex; align-items:center; gap:8px; }
+  body .settings-item:hover { background:var(--mo-url) !important; }
+  body .settings-sep { background:#e3dcf2 !important; }
+  .settings-item .chk { width:14px; color:transparent; font-weight:700; }
+  .settings-item.on .chk { color:var(--mo-bar); }
+  .menu-dot { display:none; width:8px; height:8px; border-radius:50%; background:#ff4d6d; }
+  #settingsBtn { position:relative; }
+  #settingsBtn .menu-dot { position:absolute; top:5px; right:5px; }
+  #settingsBtn.has-notify .menu-dot, #camQrItem.has-notify .menu-dot { display:inline-block; }
+  body #toolbar #qrBtn, body #toolbar #camQrBtn { display:none !important; }
 </style>
 </head>
 <body>
   <div id="titleBar">
-    <div id="settingsWrap" style="position:relative;">
-      <button id="settingsBtn" class="title-text-btn" title="Cài đặt">⚙ QR Remote Browser</button>
-      <div id="settingsMenu">
-        <div class="settings-item" data-panel="bookmarks">★ Tất cả dấu trang</div>
-        <div class="settings-item" data-panel="history">🕘 Lịch sử duyệt web</div>
-        <div class="settings-item" data-panel="downloads">⬇ Tải xuống</div>
-        <div class="settings-item" data-panel="passwords">🔑 Mật khẩu đã lưu</div>
-        <div class="settings-sep"></div>
-        <div class="settings-item" data-panel="theme">🎨 Màu giao diện</div>
-        <div class="settings-item" data-panel="adblock">🛡 Chặn quảng cáo</div>
-        <div class="settings-item" data-panel="oneclickopen">👆 Mở link bằng 1 chạm</div>
-        <div class="settings-item" data-panel="phishing">🚫 Chặn web đen/lừa đảo</div>
-        <div class="settings-sep"></div>
-        <div class="settings-item" data-action="clearCache" title="Xoá cache duyệt web - KHÔNG đăng xuất các tài khoản đã đăng nhập trên máy">🧹 Xoá cache</div>
-        <div class="settings-item" data-action="restoreMessengerBtns">↩ Hiện lại nút Telegram/Zalo/Facebook/YouTube đã ẩn</div>
-      </div>
-    </div>
+    <span id="appName">QR Remote Browser</span>
     <div id="tabsBar">
       <button id="newTabBtn" title="Mở tab mới"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
     </div>
@@ -749,6 +749,21 @@
   </div>
 
   <div id="toolbar">
+    <div id="settingsWrap">
+      <button id="settingsBtn" class="mi-btn" title="Menu"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,10c-1.1,0 -2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2 -0.9,-2 -2,-2zM12,16c-1.1,0 -2,0.9 -2,2s0.9,2 2,2 2,-0.9 2,-2 -0.9,-2 -2,-2z"/></svg><span class="menu-dot"></span></button>
+      <div id="settingsMenu">
+        <div class="settings-item" data-action="desktopMode" id="desktopModeItem"><span class="chk">✓</span>Chế độ máy tính</div>
+        <div class="settings-item" data-panel="history">Lịch sử</div>
+        <div class="settings-item" data-action="qrRemote">QR Remote Input</div>
+        <div class="settings-item" data-action="camQr" id="camQrItem">Truyền tệp<span class="menu-dot"></span></div>
+        <div class="settings-item" data-panel="phishing">Chặn web đen / lừa đảo</div>
+        <div class="settings-item" data-panel="adblock">Chặn quảng cáo</div>
+        <div class="settings-item" data-panel="oneclickopen">Mở link bằng 1 chạm</div>
+        <div class="settings-sep"></div>
+        <div class="settings-item" data-panel="theme">Màu giao diện</div>
+        <div class="settings-item" data-action="clearCache" title="Xoá cache duyệt web - KHÔNG đăng xuất các tài khoản đã đăng nhập trên máy">Xoá cache</div>
+      </div>
+    </div>
     <span id="brand">GHN</span>
     <button id="backBtn" class="mi-btn" title="Quay lại"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z"/></svg></button>
     <button id="fwdBtn" class="mi-btn" title="Tiến tới"><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12,4l-1.41,1.41L16.17,11H4v2h12.17l-5.58,5.59L12,20l8,-8z"/></svg></button>
@@ -3244,9 +3259,55 @@
         clearBrowserCache();
         return;
       }
+      if (el.dataset.action === 'qrRemote') {
+        document.getElementById('qrBtn').click();
+        return;
+      }
+      if (el.dataset.action === 'camQr') {
+        document.getElementById('camQrBtn').click();
+        return;
+      }
+      if (el.dataset.action === 'desktopMode') {
+        toggleDesktopMode();
+        return;
+      }
       openSidePanel(el.dataset.panel);
     };
   });
+
+
+  // ====== Chế độ máy tính (mặc định BẬT; tắt = giả lập điện thoại cho tab đang xem) ======
+  const MOBILE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+  const desktopModeItem = document.getElementById('desktopModeItem');
+  function refreshDesktopModeItem() {
+    const t = tabs.get(activeTabId);
+    desktopModeItem.classList.toggle('on', !t || t.desktop !== false);
+  }
+  function toggleDesktopMode() {
+    const t = tabs.get(activeTabId);
+    if (!t || !t.webview) return;
+    const wv = t.webview;
+    if (t.defaultUA === undefined) { try { t.defaultUA = wv.getUserAgent(); } catch (e) { t.defaultUA = ''; } }
+    t.desktop = (t.desktop === false);
+    try {
+      wv.setUserAgent(t.desktop ? t.defaultUA : MOBILE_UA);
+      wv.reload();
+    } catch (e) {}
+    refreshDesktopModeItem();
+  }
+  settingsBtn.addEventListener('click', refreshDesktopModeItem);
+
+  // Chấm đỏ báo có yêu cầu Truyền tệp (nút Truyền tệp trên thanh đã ẩn, nên báo ở nút 3 chấm + mục menu)
+  (function () {
+    const cam = document.getElementById('camQrBtn');
+    const sync = () => {
+      const on = cam.classList.contains('has-notify');
+      settingsBtn.classList.toggle('has-notify', on);
+      document.getElementById('camQrItem').classList.toggle('has-notify', on);
+    };
+    new MutationObserver(sync).observe(cam, { attributes: true, attributeFilter: ['class'] });
+    sync();
+  })();
 
   // ====== Panel dung chung: Tat ca dau trang / Lich su / Tai xuong / Mat khau ======
   const sidePanelOverlay = document.getElementById('sidePanelOverlay');
