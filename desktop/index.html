@@ -345,6 +345,11 @@
     margin:6px 0 14px 0; font-size:18px; font-weight:600; color:#fff;
     background:none; -webkit-background-clip:initial; background-clip:initial;
   }
+  #qrPanel .qr-close-top {
+    margin:-6px 0 14px 0; padding:8px 16px; border-radius:20px; border:none; cursor:pointer;
+    background:#3b2b66; color:#fff; font-size:14px; font-weight:600; transition:filter .15s ease;
+  }
+  #qrPanel .qr-close-top:hover { filter:brightness(1.15); }
   #qrBox { background:#fff; padding:10px; border-radius:12px; }
   #qrPanel canvas { display:block; width:250px; height:250px; max-width:100%; background:#fff; border-radius:0; box-shadow:none; }
   #qrLinkRow { display:block; margin-top:12px; width:100%; }
@@ -778,6 +783,7 @@
 
     <div id="qrPanel">
       <h3>QR Input</h3>
+      <button id="closeQr" class="qr-close-top">Đóng khung này</button>
       <div id="qrBox"><canvas id="qrCanvas"></canvas></div>
       <div id="qrLinkRow">
         <a id="qrLink" href="#" target="_blank"></a>
@@ -786,7 +792,7 @@
       <div id="qrActions">
         <button id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">Phiên mới</button>
         <button id="copyLinkBtn" class="secondary" title="Sao chép đường dẫn">Sao chép link</button>
-        <button id="closeQr" class="secondary">Đóng khung này</button>
+        <button id="scanHistoryBtn" class="secondary" title="Tải về file Excel các dữ liệu đã quét và nhập">Lịch sử quét</button>
       </div>
       <div id="qrHint">
         Dùng một điện thoại khác quét mã QR này, rồi ngắm camera vào mã QR/mã vạch cần nhập.<br>
@@ -1644,7 +1650,10 @@
     const wv = getActiveWebview();
     if (!wv) return;
     wv.executeJavaScript(buildInjectionScript(clean))
-      .then(() => sendAutoConfirmKeys())
+      .then(() => {
+        try { if (window.scanHistoryBridge) window.scanHistoryBridge.add(clean); } catch (e) {}
+        sendAutoConfirmKeys();
+      })
       .catch(() => {});
   }
 
@@ -1697,6 +1706,21 @@
   };
   document.getElementById('closeQr').onclick = () => hideQrPanel();
   document.getElementById('refreshQr').onclick = () => startSession();
+  const scanHistoryBtn = document.getElementById('scanHistoryBtn');
+  scanHistoryBtn.onclick = async () => {
+    if (!window.scanHistoryBridge) return;
+    const old = scanHistoryBtn.textContent;
+    scanHistoryBtn.textContent = 'Đang tạo file...';
+    try {
+      const r = await window.scanHistoryBridge.exportXlsx();
+      if (r && r.empty) qrStatus.textContent = 'Chưa có dữ liệu quét nào trong lịch sử.';
+      else if (r && r.ok) qrStatus.textContent = 'Đã tải file Excel (' + r.count + ' dòng) vào thư mục Tải xuống.';
+      else qrStatus.textContent = 'Không tạo/mở được file Excel' + (r && r.error ? ': ' + r.error : '.');
+    } catch (e) {
+      qrStatus.textContent = 'Lỗi xuất Excel: ' + e.message;
+    }
+    scanHistoryBtn.textContent = old;
+  };
 
   function hideQrPanel() {
     qrPanel.classList.remove('show'); // chi an giao dien, KHONG xoa session tren Firebase

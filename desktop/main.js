@@ -119,6 +119,107 @@ ipcMain.on('localstore:set', (e, { key, value }) => {
     writeLocalStoreValue(key, value);
   } catch (err) { /* 1 lan ghi loi khong lam sap app, bo qua */ }
 });
+// ====== Lich su quet: luu moi gia tri dien thoai quet va da go vao o nhap, roi
+// xuat ra file Excel (.xlsx) - 1 cot doc, moi dong 1 gia tri - va mo luon.
+// Tu viet bo ghi xlsx toi thieu (zip + XML) bang zlib co san, khong can them thu vien. ======
+const SCAN_HISTORY_KEY = 'scan-history';
+const SCAN_HISTORY_MAX = 5000;
+ipcMain.on('scanhistory:add', (e, text) => {
+  try {
+    const t = String(text == null ? '' : text).trim();
+    if (!t) return;
+    ensureDirSafe(APP_DATA_DIR);
+    let list = readLocalStoreValue(SCAN_HISTORY_KEY);
+    if (!Array.isArray(list)) list = [];
+    list.push(t);
+    if (list.length > SCAN_HISTORY_MAX) list = list.slice(-SCAN_HISTORY_MAX);
+    writeLocalStoreValue(SCAN_HISTORY_KEY, list);
+  } catch (err) { /* ghi lich su loi thi bo qua, khong anh huong viec nhap */ }
+});
+ipcMain.handle('scanhistory:count', () => {
+  try { const l = readLocalStoreValue(SCAN_HISTORY_KEY); return Array.isArray(l) ? l.length : 0; } catch (err) { return 0; }
+});
+ipcMain.handle('scanhistory:clear', () => {
+  try { ensureDirSafe(APP_DATA_DIR); writeLocalStoreValue(SCAN_HISTORY_KEY, []); return true; } catch (err) { return false; }
+});
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(buf) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipFiles(files) { // files: [{name, data(Buffer)}]
+  const zlib = require('zlib');
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = Buffer.from(f.name, 'utf8');
+    const comp = zlib.deflateRawSync(f.data);
+    const crc = crc32(f.data);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0x0800, 6);
+    lh.writeUInt16LE(8, 8); lh.writeUInt16LE(0, 10); lh.writeUInt16LE(0x21, 12);
+    lh.writeUInt32LE(crc, 14); lh.writeUInt32LE(comp.length, 18); lh.writeUInt32LE(f.data.length, 22);
+    lh.writeUInt16LE(name.length, 26); lh.writeUInt16LE(0, 28);
+    locals.push(lh, name, comp);
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0x0800, 8);
+    ch.writeUInt16LE(8, 10); ch.writeUInt16LE(0, 12); ch.writeUInt16LE(0x21, 14);
+    ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(comp.length, 20); ch.writeUInt32LE(f.data.length, 24);
+    ch.writeUInt16LE(name.length, 28); ch.writeUInt32LE(offset, 42);
+    centrals.push(ch, name);
+    offset += lh.length + name.length + comp.length;
+  }
+  const cd = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, cd, end]);
+}
+function xmlEsc(v) {
+  return String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function buildXlsx(rows) {
+  const sheetRows = rows.map((v, i) =>
+    `<row r="${i + 1}"><c r="A${i + 1}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c></row>`).join('');
+  const files = [
+    { name: '[Content_Types].xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>') },
+    { name: '_rels/.rels', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+    { name: 'xl/workbook.xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Lich su quet" sheetId="1" r:id="rId1"/></sheets></workbook>') },
+    { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>') },
+    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="32" customWidth="1"/></cols><sheetData>' + sheetRows + '</sheetData></worksheet>', 'utf8') }
+  ];
+  return zipFiles(files);
+}
+ipcMain.handle('scanhistory:export', async () => {
+  try {
+    ensureDirSafe(APP_DATA_DIR);
+    const list = readLocalStoreValue(SCAN_HISTORY_KEY);
+    if (!Array.isArray(list) || !list.length) return { ok: false, empty: true };
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    const dir = app.getPath('downloads');
+    ensureDirSafe(dir);
+    const file = path.join(dir, `Lich-su-quet-${stamp}.xlsx`);
+    fs.writeFileSync(file, buildXlsx(list));
+    const err = await shell.openPath(file);
+    return { ok: !err, filePath: file, count: list.length, error: err || undefined };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
 function ensureDirSafe(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }

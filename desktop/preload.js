@@ -96,3 +96,9 @@ contextBridge.exposeInMainWorld('screenshotBridge', {
   save: (dataUrl) => ipcRenderer.invoke('screenshot:save', dataUrl),
   snip: () => ipcRenderer.invoke('screenshot:snip')
 });
+
+// Lich su quet (cac gia tri dien thoai quet va da go vao o nhap) -> xuat Excel.
+contextBridge.exposeInMainWorld('scanHistoryBridge', {
+  add: (text) => ipcRenderer.send('scanhistory:add', text),
+  exportXlsx: () => ipcRenderer.invoke('scanhistory:export')
+});
