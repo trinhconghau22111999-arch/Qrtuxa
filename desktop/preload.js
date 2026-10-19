@@ -93,6 +93,5 @@ contextBridge.exposeInMainWorld('debugLogBridge', {
 // ghi file that xuong dia (renderer khong co quyen ghi file truc tiep vi
 // contextIsolation dang bat, giong moi thu khac trong file nay).
 contextBridge.exposeInMainWorld('screenshotBridge', {
-  save: (dataUrl) => ipcRenderer.invoke('screenshot:save', dataUrl),
-  snip: () => ipcRenderer.invoke('screenshot:snip')
+  save: (dataUrl) => ipcRenderer.invoke('screenshot:save', dataUrl)
 });
