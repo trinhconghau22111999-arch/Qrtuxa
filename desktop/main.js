@@ -547,43 +547,6 @@ ipcMain.handle('screenshot:snip', async () => {
   });
 });
 
-// ====== Nhap van ban bang giong noi ======
-// Electron khong dung duoc Web Speech API (can khoa Google rieng nen luon loi
-// "network"), nen dung chinh tinh nang go bang giong noi CO SAN cua Windows:
-// to hop phim Windows + H (bat/tat). Windows tu nghe mic va go chu vao o dang
-// chon (ke ca o nhap trong trang web). Gui to hop phim bang PowerShell giong
-// cach nut chup anh gui Windows + Shift + S.
-ipcMain.handle('voice:toggle', async (e, start) => {
-  if (process.platform !== 'win32') return { ok: false, unsupported: true };
-  const { execFile } = require('child_process');
-  // Doc ma ngon ngu ban phim (0x042A = Tieng Viet); neu may co ban phim Tieng Viet thi
-  // tu ep doi sang do truoc khi bat Windows + H (Windows nghe theo ngon ngu ban phim).
-  const ps = "Add-Type -Namespace W -Name K2 -MemberDefinition '" +
-    "[DllImport(\"user32.dll\")] public static extern void keybd_event(byte b, byte s, int f, int e);" +
-    "[DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow();" +
-    "[DllImport(\"user32.dll\")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);" +
-    "[DllImport(\"user32.dll\")] public static extern IntPtr GetKeyboardLayout(uint t);" +
-    "[DllImport(\"user32.dll\")] public static extern int GetKeyboardLayoutList(int n, IntPtr[] l);" +
-    "[DllImport(\"user32.dll\")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);';" +
-    "[uint32]$p=0;$h=[W.K2]::GetForegroundWindow();$t=[W.K2]::GetWindowThreadProcessId($h,[ref]$p);" +
-    // Neu may co cai ban phim Tieng Viet (0x042A) ma dang dung ban phim khac -> ep doi sang Tieng Viet
-    "$cur=[int64]([W.K2]::GetKeyboardLayout($t).ToInt64() -band 0xFFFF);" +
-    (start ? "if($cur -ne 0x042A){" : "if($false){") +
-      "$n=[W.K2]::GetKeyboardLayoutList(0,$null);$a=New-Object IntPtr[] $n;[void][W.K2]::GetKeyboardLayoutList($n,$a);" +
-      "foreach($x in $a){ if(([int64]$x.ToInt64() -band 0xFFFF) -eq 0x042A){ [void][W.K2]::PostMessage($h,0x0050,[IntPtr]::Zero,$x);Start-Sleep -Milliseconds 250;break } }" +
-    "};" +
-    "Write-Output ([int64]([W.K2]::GetKeyboardLayout($t).ToInt64() -band 0xFFFF));" +
-    "[W.K2]::keybd_event(0x5B,0,0,0);[W.K2]::keybd_event(0x48,0,0,0);" +
-    "[W.K2]::keybd_event(0x48,0,2,0);[W.K2]::keybd_event(0x5B,0,2,0);";
-  return await new Promise((resolve) => {
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true }, (err, stdout) => {
-      if (err) { resolve({ ok: false, error: String(err.message || err) }); return; }
-      const lang = parseInt(String(stdout || '').trim().split(/\s+/)[0], 10);
-      resolve({ ok: true, lang: isFinite(lang) ? lang : undefined });
-    });
-  });
-});
-
 ipcMain.handle('screenshot:save', async (e, dataUrl) => {
   try {
     const win = BrowserWindow.fromWebContents(e.sender);
