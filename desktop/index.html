@@ -320,39 +320,37 @@
   }
   #splitCloseBtn:hover { background:rgba(0,0,0,0.85); }
   body.split-mode #splitCloseBtn { display:flex; }
+  /* ====== Panel QR Input: giao diện giống trang "QR Remote Input" của Mac-Os
+     (the nền tím tối, khung QR trắng bo góc, link, trạng thái xanh, hàng nút
+     bo tròn, đoạn hướng dẫn). Giữ nguyên id nên JS không đổi. ====== */
   #qrPanel {
-    position:absolute; top:14px; right:14px; width:280px;
-    background: #000000;
-    border:1px solid var(--neon-1);
-    border-radius:14px; padding:16px; display:none; z-index:10;
-    box-shadow: 0 0 30px rgba(192,38,255,0.5), 0 8px 24px rgba(0,0,0,.5);
+    position:absolute; top:14px; right:14px; width:340px; max-width:calc(100% - 28px);
+    max-height:calc(100% - 28px); overflow-y:auto;
+    background:#1a1030; color:#eee;
+    border:none; border-radius:18px; padding:18px 18px 16px 18px;
+    display:none; z-index:10; text-align:center;
+    box-shadow:0 10px 36px rgba(26,16,48,.65), 0 0 0 1px rgba(201,168,255,.18);
   }
-  #qrPanel.show { display:block; }
-  #qrPanel canvas {
-    width:100%; height:auto; background:#fff; border-radius:8px;
-    box-shadow: 0 0 16px rgba(192,38,255,0.4);
-  }
-  #qrLinkRow { display:flex; align-items:center; gap:6px; margin-top:10px; }
-  /* An ca phan chu duong link lan nut sao chep ben duoi ma QR (theo yeu cau).
-     Cac phan tu #qrLink/#copyLinkBtn van ton tai trong DOM va JS lien quan
-     (gan href, xu ly copy...) khong bi dong cham - chi khong hien thi ra man
-     hinh nua. */
-  #qrLink { display:none; }
-  #copyLinkBtn { display:none; }
-  #copyLinkBtn {
-    flex-shrink:0; width:28px; height:28px; border-radius:6px;
-    border:1px solid rgba(192,38,255,0.5); background:rgba(192,38,255,0.15);
-    color: var(--neon-soft); cursor:pointer; font-size:13px; display:flex;
-    align-items:center; justify-content:center; transition: all .15s ease;
-  }
-  #copyLinkBtn:hover { background:rgba(192,38,255,0.35); color:#fff; }
-  #copyLinkBtn.copied { background:#2fbf71; border-color:#2fbf71; color:#fff; }
-  #qrStatus { font-size:12px; color:#7effc0; margin-top:8px; }
+  #qrPanel.show { display:flex; flex-direction:column; align-items:center; }
   #qrPanel h3 {
-    margin:0 0 10px 0; font-size:14px; letter-spacing:.3px;
-    background: linear-gradient(90deg, var(--neon-1), var(--neon-soft));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
+    margin:6px 0 14px 0; font-size:18px; font-weight:600; color:#fff;
+    background:none; -webkit-background-clip:initial; background-clip:initial;
   }
+  #qrBox { background:#fff; padding:10px; border-radius:12px; }
+  #qrPanel canvas { display:block; width:250px; height:250px; max-width:100%; background:#fff; border-radius:0; box-shadow:none; }
+  #qrLinkRow { display:block; margin-top:12px; width:100%; }
+  #qrLink { display:block; font-size:12px; color:#c9a8ff; word-break:break-all; text-align:center; text-decoration:none; }
+  #qrStatus { margin-top:12px; font-size:14px; color:#9ada9a; min-height:20px; text-align:center; }
+  #qrActions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; justify-content:center; }
+  #qrActions button {
+    padding:10px 16px; border-radius:20px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#8b2dff,#c026ff); color:#fff;
+    font-size:14px; font-weight:600; transition:filter .15s ease;
+  }
+  #qrActions button.secondary { background:#3b2b66; }
+  #qrActions button:hover { filter:brightness(1.15); }
+  #copyLinkBtn.copied { background:#2fbf71 !important; }
+  #qrHint { margin-top:18px; font-size:13px; line-height:1.5; color:#bbb; text-align:center; }
   #brand {
     flex-shrink:0;
     font-weight:700; font-size:14px; white-space:nowrap; margin-right:6px;
@@ -364,10 +362,6 @@
        nut Back don sang trai lap vao vi tri cu cua no. */
     display:none;
   }
-  #closeQr { position:absolute; top:10px; right:12px; cursor:pointer; color:#c7a8ff; }
-  #closeQr:hover { color:#fff; }
-  #refreshQr { position:absolute; top:10px; right:34px; cursor:pointer; color:#c7a8ff; }
-  #refreshQr:hover { color:#fff; }
 
   /* ====== Nut Cai dat + menu tha xuong ====== */
   #settingsMenu {
@@ -739,15 +733,22 @@
     <button id="splitCloseBtn" title="Đóng chia màn hình">✕</button>
 
     <div id="qrPanel">
-      <span id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">⟳</span>
-      <span id="closeQr">✕</span>
-      <h3>Quét bằng điện thoại</h3>
-      <canvas id="qrCanvas"></canvas>
+      <h3>QR Remote Input</h3>
+      <div id="qrBox"><canvas id="qrCanvas"></canvas></div>
       <div id="qrLinkRow">
         <a id="qrLink" href="#" target="_blank"></a>
-        <button id="copyLinkBtn" title="Sao chép đường dẫn">⧉</button>
       </div>
       <div id="qrStatus">Đang chờ dữ liệu quét...</div>
+      <div id="qrActions">
+        <button id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">Phiên mới</button>
+        <button id="copyLinkBtn" class="secondary" title="Sao chép đường dẫn">Sao chép link</button>
+        <button id="closeQr" class="secondary">Đóng khung này</button>
+      </div>
+      <div id="qrHint">
+        Dùng một điện thoại khác quét mã QR này, rồi ngắm camera vào mã QR/mã vạch cần nhập.<br>
+        Nội dung quét được sẽ được gõ vào <b>ô đang chọn</b> trong tab trình duyệt hiện tại.
+        Bấm "Đóng khung này" (phiên vẫn chạy ngầm), chạm vào ô cần nhập rồi quét.
+      </div>
     </div>
 
   </div>
@@ -1606,10 +1607,10 @@
       copyLinkBtn.onclick = () => {
         navigator.clipboard.writeText(link).then(() => {
           copyLinkBtn.classList.add('copied');
-          copyLinkBtn.textContent = '✓';
+          copyLinkBtn.textContent = 'Đã sao chép';
           setTimeout(() => {
             copyLinkBtn.classList.remove('copied');
-            copyLinkBtn.textContent = '⧉';
+            copyLinkBtn.textContent = 'Sao chép link';
           }, 1200);
         }).catch(() => {
           qrStatus.textContent = 'Không sao chép được, hãy tự chọn và copy link.';
