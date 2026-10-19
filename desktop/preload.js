@@ -84,23 +84,6 @@ contextBridge.exposeInMainWorld('debugLogBridge', {
   clear: () => ipcRenderer.invoke('debuglog:clear')
 });
 
-// Truyền tệp: chọn thư mục lưu (hộp thoại thật của hệ điều hành) + ghi tệp nhận
-// được xuống đĩa TỪNG ĐOẠN - đều phải qua main.js vì renderer không có quyền dùng
-// fs trực tiếp (contextIsolation đang bật). Xem giải thích chi tiết trong main.js.
-contextBridge.exposeInMainWorld('recordingBridge', {
-  chooseFolder: () => ipcRenderer.invoke('recording:choose-folder'),
-  startFile: (folder, filename) => ipcRenderer.invoke('recording:start-file', { folder, filename }),
-  appendBinary: (recordingId, data) => ipcRenderer.invoke('recording:append-binary', { recordingId, data }),
-  finishFile: (recordingId) => ipcRenderer.invoke('recording:finish-file', recordingId),
-  cancelFile: (recordingId) => ipcRenderer.invoke('recording:cancel-file', recordingId)
-});
-
-// Sua anh nhan tu dien thoai (Giai doan 5: cat/xoay/ve/nhap lieu) - ghi DE
-// thang len file da nhan, khong qua hop thoai "Luu thanh".
-contextBridge.exposeInMainWorld('imageEditBridge', {
-  save: (path, dataUrl) => ipcRenderer.invoke('imageEdit:save', { path, dataUrl })
-});
-
 // Chup anh trang web: renderer tu chup (webview.capturePage()) roi gui du
 // lieu anh (dataURL) qua day cho main.js hien hop thoai "Luu thanh..." va
 // ghi file that xuong dia (renderer khong co quyen ghi file truc tiep vi
