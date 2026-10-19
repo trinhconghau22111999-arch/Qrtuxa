@@ -466,7 +466,7 @@
      (hanh dong pha huy) khi thuc ra dinh bam "✕" de dong panel. */
   /* Nút ✕ đã bỏ (bấm ra ngoài là đóng); "Xóa hết" nằm chính giữa thanh tiêu đề. */
   #sidePanelHeader { position:relative; }
-  #sidePanelClear { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); margin:0; }
+  #sidePanelClear { position:absolute; left:auto; right:16px; top:50%; transform:translateY(-50%); margin:0; }
   #sidePanelClear:hover { color:#fff; }
   #sidePanelBody { flex:1 1 auto; overflow-y:auto; padding:8px 10px; }
   .sp-item {
@@ -2122,8 +2122,8 @@
 
   function renderSidePanel() {
     sidePanelBody.innerHTML = '';
-    document.getElementById('sidePanel').classList.toggle('sp-light', currentSidePanel === 'downloads' || currentSidePanel === 'bookmarks');
-    document.getElementById('sidePanel').classList.toggle('sp-green', currentSidePanel === 'bookmarks');
+    document.getElementById('sidePanel').classList.toggle('sp-light', currentSidePanel === 'downloads' || currentSidePanel === 'bookmarks' || currentSidePanel === 'history');
+    document.getElementById('sidePanel').classList.toggle('sp-green', currentSidePanel === 'bookmarks' || currentSidePanel === 'history');
 
     if (currentSidePanel === 'bookmarks') {
       const list = loadBookmarks();
