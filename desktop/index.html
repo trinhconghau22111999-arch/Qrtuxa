@@ -972,7 +972,15 @@
     if (on) linkDragTimer = setTimeout(() => document.body.classList.remove('link-dragging'), 15000);
   }
   ['drop', 'dragend', 'mouseup'].forEach(ev =>
-    document.addEventListener(ev, () => setLinkDragging(false), true));
+    document.addEventListener(ev, () => {
+      setLinkDragging(false);
+      // Xoa vien do/hieu ung "tha de mo tab moi" neu bi ket lai sau khi tha/huy keo.
+      const tb = document.getElementById('titleBar');
+      if (tb) tb.classList.remove('drag-over-new-tab');
+    }, true));
+  // Keo CHU/LINK tu chinh o dia chi (hoac bat ky cho nao trong giao dien app, khong phai trong trang web)
+  // len thanh tab: cung phai tam tat vung keo cua so, neu khong HDH nuot su kien tha (hien dau cam 🚫).
+  document.addEventListener('dragstart', () => setLinkDragging(true), true);
 
   function createWebviewElement(url, restoreState) {
     const el = document.createElement('webview');
@@ -1459,7 +1467,7 @@
     titleBar.classList.add('drag-over-new-tab');
   });
   titleBar.addEventListener('dragleave', (e) => {
-    if (e.target === titleBar) titleBar.classList.remove('drag-over-new-tab');
+    if (!e.relatedTarget || !titleBar.contains(e.relatedTarget)) titleBar.classList.remove('drag-over-new-tab');
   });
   titleBar.addEventListener('drop', (e) => {
     e.preventDefault();
