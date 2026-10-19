@@ -924,53 +924,27 @@
   // ben duoi). KHONG con dung executeJavaScript tiem vao "the gioi chinh" cua
   // trang khach nhu truoc nua, vi cach do khong the luu lai gi ca.
 
-  // ====== YouTube: chi con 1 viec duy nhat - tu dong bam nut "Bo qua" quang cao
-  // ngay khi no xuat hien (quet moi 200ms, kiem tra ca 4 class khac nhau tuy
-  // phien ban giao dien YouTube). KHONG chan quang cao, KHONG tua nhanh, KHONG
-  // an banner, va khong con cong tac nao trong Cai dat.
-  function buildYoutubeAdSkipScript() {
-    const fn = function () {
-      if (window.__qrAdSkipInstalled) return;
-      window.__qrAdSkipInstalled = true;
-      // CHI bam khi nut \"Bo qua\" THAT SU dang hien tren man hinh (co kich thuoc,
-      // khong bi display:none/visibility:hidden/opacity 0) va da hien >= 400ms.
-      // Truoc day bam ca nut con AN trong trang (YouTube dung san nut trong DOM
-      // tu dau quang cao, chi hien sau ~5 giay) -> quang cao bi bo qua truoc gio
-      // cho phep -> YouTube coi nhu trinh chan quang cao va hien canh bao.
-      var shownSince = new WeakMap();
-      function isReallyVisible(el) {
-        if (!el || !el.isConnected) return false;
-        var r = el.getBoundingClientRect();
-        if (r.width < 8 || r.height < 8) return false;
-        var cs = getComputedStyle(el);
-        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.1) return false;
-        for (var p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-          var ps = getComputedStyle(p);
-          if (ps.display === 'none' || ps.visibility === 'hidden' || parseFloat(ps.opacity) < 0.1) return false;
-        }
-        return !el.disabled && el.getAttribute('aria-disabled') !== 'true';
-      }
-      setInterval(function () {
-        try {
-          var skipSelectors = [
-            '.ytp-ad-skip-button', '.ytp-ad-skip-button-modern',
-            '.ytp-skip-ad-button', '.videoAdUiSkipButton'
-          ];
-          var now = Date.now();
-          for (var i = 0; i < skipSelectors.length; i++) {
-            var btns = document.querySelectorAll(skipSelectors[i]);
-            for (var j = 0; j < btns.length; j++) {
-              var btn = btns[j];
-              if (!isReallyVisible(btn)) { shownSince.delete(btn); continue; }
-              var t0 = shownSince.get(btn);
-              if (!t0) { shownSince.set(btn, now); continue; }
-              if (now - t0 >= 400) { shownSince.delete(btn); btn.click(); }
-            }
-          }
-        } catch (e) {}
-      }, 200);
-    };
-    return `(${fn.toString()})();`;
+  // ====== YouTube: tu dong bam nut "Bo qua" quang cao bang CU BAM CHUOT THAT ======
+  // Truoc day chay script trong trang goi btn.click() -> day la su kien "gia"
+  // (isTrusted=false), YouTube nhan ra va hien canh bao chan quang cao ngay khi
+  // bam. Gio webview-preload.js chi TIM nut dang hien that + bao toa do ve day,
+  // con viec bam do host gui chuot that (sendInputEvent: di chuot -> nhan -> nha),
+  // Chromium coi nhu nguoi dung that bam (isTrusted=true).
+  function performTrustedSkipClick(el, pt) {
+    try {
+      if (!el || !pt || !isFinite(pt.x) || !isFinite(pt.y)) return;
+      if (!isYoutubeUrl(el.getURL())) return;
+      if (getComputedStyle(el).visibility !== 'visible' || el.offsetWidth === 0) return; // tab dang an
+      const x = Math.round(pt.x), y = Math.round(pt.y);
+      const rnd = (a, b) => a + Math.random() * (b - a);
+      el.sendInputEvent({ type: 'mouseMove', x, y });
+      setTimeout(() => {
+        try { el.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 }); } catch (e) {}
+        setTimeout(() => {
+          try { el.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 }); } catch (e) {}
+        }, rnd(45, 110));
+      }, rnd(70, 160));
+    } catch (e) {}
   }
 
   function isYoutubeUrl(url) {
@@ -1077,9 +1051,6 @@
       // moi/dieu huong sang trang khac) - webview-preload.js (chay o webview
       // nay) se nhan qua ipcRenderer.on('qr-browser:set-one-click-open',...).
       el.send('qr-browser:set-one-click-open', oneClickOpenStore.load().enabled !== false);
-      if (isYoutubeUrl(el.getURL())) {
-        el.executeJavaScript(buildYoutubeAdSkipScript()).catch(() => {});
-      }
     });
     el.addEventListener('did-navigate', e => { onTabNavigate(el, e.url); recordHistory(e.url); });
     el.addEventListener('did-navigate-in-page', e => onTabNavigate(el, e.url));
@@ -1110,6 +1081,10 @@
 
     // Nhan du lieu tu webview-preload.js khi nguoi dung submit form co mat khau.
     el.addEventListener('ipc-message', (e) => {
+      if (e.channel === 'qr-browser:ad-skip-click') {
+        performTrustedSkipClick(el, e.args && e.args[0]);
+        return;
+      }
       if (e.channel === 'qr-browser:drag-state') {
         setLinkDragging(!!(e.args && e.args[0]));
         return;

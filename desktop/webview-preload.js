@@ -229,3 +229,52 @@ function reassertZoom() {
   } catch (err) {}
 }
 ['DOMContentLoaded', 'load', 'pageshow'].forEach(ev => window.addEventListener(ev, reassertZoom));
+
+// ====== YouTube: tim nut "Bo qua quang cao" dang HIEN THAT va bao toa do ve host ======
+// Host (index.html) se gui cu bam chuot THAT tai toa do nay (khong con dung
+// btn.click() gia). Chi bao khi nut da hien that tren man hinh >= 500ms, va moi
+// lan bao cach nhau >= 2 giay.
+(function () {
+  try {
+    const h = location.hostname.toLowerCase();
+    if (!(h === 'youtube.com' || h.endsWith('.youtube.com'))) return;
+    const SELECTORS = ['.ytp-ad-skip-button', '.ytp-ad-skip-button-modern', '.ytp-skip-ad-button', '.videoAdUiSkipButton'];
+    const shownSince = new WeakMap();
+    let lastSent = 0;
+    const hiddenStyle = (cs) => cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.1;
+    function reallyVisible(el) {
+      if (!el || !el.isConnected) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) return false;
+      if (r.bottom <= 0 || r.right <= 0 || r.left >= window.innerWidth || r.top >= window.innerHeight) return false;
+      if (hiddenStyle(getComputedStyle(el))) return false;
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (hiddenStyle(getComputedStyle(p))) return false;
+      }
+      return !el.disabled && el.getAttribute('aria-disabled') !== 'true';
+    }
+    setInterval(() => {
+      try {
+        if (document.visibilityState !== 'visible') return;
+        const now = Date.now();
+        for (const sel of SELECTORS) {
+          for (const btn of document.querySelectorAll(sel)) {
+            if (!reallyVisible(btn)) { shownSince.delete(btn); continue; }
+            const t0 = shownSince.get(btn);
+            if (!t0) { shownSince.set(btn, now); continue; }
+            if (now - t0 < 500 || now - lastSent < 2000) continue;
+            const r = btn.getBoundingClientRect();
+            // Diem bam ngau nhien trong vung giua nut, nhan voi muc zoom cua trang
+            // (webFrame.setZoomFactor) de ra dung toa do man hinh cua webview.
+            const cx = r.left + r.width * (0.35 + Math.random() * 0.3);
+            const cy = r.top + r.height * (0.35 + Math.random() * 0.3);
+            lastSent = now;
+            shownSince.delete(btn);
+            ipcRenderer.sendToHost('qr-browser:ad-skip-click', { x: cx * currentZoom, y: cy * currentZoom });
+            return;
+          }
+        }
+      } catch (e) {}
+    }, 250);
+  } catch (e) {}
+})();
