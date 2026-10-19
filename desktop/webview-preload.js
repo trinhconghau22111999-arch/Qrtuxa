@@ -278,3 +278,31 @@ function reassertZoom() {
     }, 250);
   } catch (e) {}
 })();
+
+// ====== Bao cho host biet co dang chon (focus) 1 o nhap van ban khong ======
+// Dung cho nut nhap giong noi: tu tat neu qua 1 phut chua chon o nhap, hoac sau
+// khi chon roi lai bam ra ngoai o nhap. Chi bao khi cua so trang dang co tieu diem
+// (de cua so thanh giong noi cua Windows/bam thanh cong cu khong bi tinh nham).
+(function () {
+  try {
+    const NON_TEXT = ['button', 'checkbox', 'radio', 'submit', 'reset', 'file', 'image', 'range', 'color'];
+    function isEditable(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'IFRAME') return true; // khong biet ben trong khung nhung -> coi nhu co the nhap
+      if (el.isContentEditable || tag === 'TEXTAREA') return true;
+      if (tag === 'INPUT') return NON_TEXT.indexOf((el.type || 'text').toLowerCase()) === -1;
+      return false;
+    }
+    function report() {
+      try {
+        if (!document.hasFocus()) return;
+        ipcRenderer.sendToHost('qr-browser:input-focus', isEditable(document.activeElement));
+      } catch (e) {}
+    }
+    document.addEventListener('focusin', () => setTimeout(report, 30), true);
+    document.addEventListener('focusout', () => setTimeout(report, 30), true);
+    window.addEventListener('focus', () => setTimeout(report, 30));
+    document.addEventListener('mousedown', () => setTimeout(report, 60), true);
+  } catch (e) {}
+})();

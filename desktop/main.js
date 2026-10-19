@@ -556,12 +556,22 @@ ipcMain.handle('screenshot:snip', async () => {
 ipcMain.handle('voice:toggle', async () => {
   if (process.platform !== 'win32') return { ok: false, unsupported: true };
   const { execFile } = require('child_process');
-  const ps = "Add-Type -Namespace W -Name K2 -MemberDefinition '[DllImport(\"user32.dll\")] public static extern void keybd_event(byte b, byte s, int f, int e);';" +
+  // Dong dau: doc ma ngon ngu ban phim dang dung (0x042A = Tieng Viet) de host biet
+  // Windows se nghe tieng gi (Windows go giong noi theo ngon ngu ban phim).
+  const ps = "Add-Type -Namespace W -Name K2 -MemberDefinition '" +
+    "[DllImport(\"user32.dll\")] public static extern void keybd_event(byte b, byte s, int f, int e);" +
+    "[DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow();" +
+    "[DllImport(\"user32.dll\")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);" +
+    "[DllImport(\"user32.dll\")] public static extern IntPtr GetKeyboardLayout(uint t);';" +
+    "[uint32]$p=0;$t=[W.K2]::GetWindowThreadProcessId([W.K2]::GetForegroundWindow(),[ref]$p);" +
+    "Write-Output ([int64]([W.K2]::GetKeyboardLayout($t).ToInt64() -band 0xFFFF));" +
     "[W.K2]::keybd_event(0x5B,0,0,0);[W.K2]::keybd_event(0x48,0,0,0);" +
     "[W.K2]::keybd_event(0x48,0,2,0);[W.K2]::keybd_event(0x5B,0,2,0);";
   return await new Promise((resolve) => {
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true }, (err) => {
-      resolve(err ? { ok: false, error: String(err.message || err) } : { ok: true });
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true }, (err, stdout) => {
+      if (err) { resolve({ ok: false, error: String(err.message || err) }); return; }
+      const lang = parseInt(String(stdout || '').trim().split(/\s+/)[0], 10);
+      resolve({ ok: true, lang: isFinite(lang) ? lang : undefined });
     });
   });
 });

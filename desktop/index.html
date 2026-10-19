@@ -1086,6 +1086,10 @@
 
     // Nhan du lieu tu webview-preload.js khi nguoi dung submit form co mat khau.
     el.addEventListener('ipc-message', (e) => {
+      if (e.channel === 'qr-browser:input-focus') {
+        if (getComputedStyle(el).visibility === 'visible' && el.offsetWidth > 0) onVoiceInputFocus(!!(e.args && e.args[0]));
+        return;
+      }
       if (e.channel === 'qr-browser:ad-skip-click') {
         performTrustedSkipClick(el, e.args && e.args[0]);
         return;
@@ -1566,13 +1570,69 @@
 
   // Thong bao nho, tu bien mat - dung cho cac hanh dong tuc thi khong co
   // panel rieng (vd xoa cache) can 1 xac nhan ngan cho nguoi dung yen tam.
-  function showQuickToast(text) {
+  function showQuickToast(text, ms) {
     const toast = document.createElement('div');
     toast.textContent = text;
     toast.style.cssText = 'position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:rgba(20,10,30,0.95);color:#e9d8ff;border:1px solid rgba(192,38,255,0.5);padding:8px 16px;border-radius:8px;font-size:13px;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.4);';
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2200);
+    setTimeout(() => toast.remove(), ms || 2200);
   }
+
+  // ====== Nut nhap van ban bang giong noi (dung Windows + H cua Windows) ======
+  // Xanh = san sang, do = dang thu am. Tu tat khi:
+  //  - qua 60 giay ke tu luc bat ma chua chon o nhap nao trong trang; hoac
+  //  - da chon o nhap roi nhung sau do bam ra ngoai o nhap (con tro roi khoi o).
+  // webview-preload.js bao 'qr-browser:input-focus' (true/false) moi khi tieu diem thay doi.
+  const voiceBtn = document.getElementById('voiceBtn');
+  const VOICE_IDLE_LIMIT_MS = 60000;
+  let voiceRecording = false;
+  let voiceHadField = false;
+  let voiceTimer = null;
+  function setVoiceUi(on) {
+    voiceRecording = on;
+    voiceBtn.classList.toggle('voice-rec', on);
+    voiceBtn.classList.toggle('voice-idle', !on);
+    voiceBtn.title = on
+      ? 'Đang thu âm (đỏ) - chạm vào ô cần nhập rồi nói. Bấm lần nữa để dừng'
+      : 'Nhập bằng giọng nói: bấm để bắt đầu (xanh → đỏ), chạm vào ô cần nhập rồi nói; bấm lần nữa để dừng';
+    if (!on) { clearTimeout(voiceTimer); voiceTimer = null; voiceHadField = false; }
+  }
+  async function stopVoice(msg) {
+    if (!voiceRecording) return;
+    setVoiceUi(false);
+    try { await window.voiceBridge.toggle(); } catch (e) {}
+    if (msg) showQuickToast(msg, 3500);
+  }
+  function onVoiceInputFocus(isField) {
+    if (!voiceRecording) return;
+    if (isField) {
+      voiceHadField = true;
+      clearTimeout(voiceTimer); voiceTimer = null;
+    } else if (voiceHadField) {
+      stopVoice('Đã rời khỏi ô nhập — tự tắt nhập giọng nói.');
+    }
+  }
+  voiceBtn.onclick = async () => {
+    if (!window.voiceBridge) return;
+    if (voiceRecording) { stopVoice(); return; }
+    setVoiceUi(true); // doi mau ngay cho nhay
+    voiceHadField = false;
+    clearTimeout(voiceTimer);
+    voiceTimer = setTimeout(() => stopVoice('Quá 1 phút chưa chọn ô nhập — tự tắt nhập giọng nói.'), VOICE_IDLE_LIMIT_MS);
+    try {
+      const r = await window.voiceBridge.toggle();
+      if (!r || !r.ok) {
+        setVoiceUi(false);
+        alert(r && r.unsupported
+          ? 'Nhập bằng giọng nói hiện chỉ hỗ trợ trên Windows.'
+          : 'Không bật được nhập giọng nói' + (r && r.error ? ': ' + r.error : '.'));
+      } else if (r.lang && r.lang !== 0x042A) {
+        showQuickToast('Bàn phím đang không phải tiếng Việt nên Windows sẽ nghe theo ngôn ngữ bàn phím hiện tại (Windows + Phím cách để đổi).', 6000);
+      }
+    } catch (e) {
+      setVoiceUi(false);
+    }
+  };
 
   // Xoa cache HTTP cua cac trang web dang duyet (qua main.js, session
   // 'persist:browse'). CHI xoa cache mang - KHONG dong den cookie nen KHONG
@@ -2420,34 +2480,6 @@
   // thả chuột là ảnh vùng đó được chép vào clipboard (Esc để hủy).
   // Phải chờ ~300ms sau lần bấm đầu để biết có lần bấm thứ 2 hay không, nếu
   // không lần bấm đầu sẽ bật hộp thoại lưu trước khi kịp nhận ra là bấm đúp.
-  // ====== Nut nhap van ban bang giong noi (dung Windows + H cua Windows) ======
-  const voiceBtn = document.getElementById('voiceBtn');
-  let voiceRecording = false;
-  function setVoiceUi(on) {
-    voiceRecording = on;
-    voiceBtn.classList.toggle('voice-rec', on);
-    voiceBtn.classList.toggle('voice-idle', !on);
-    voiceBtn.title = on
-      ? 'Đang thu âm (đỏ) - chạm vào ô cần nhập rồi nói. Bấm lần nữa để dừng'
-      : 'Nhập bằng giọng nói: bấm để bắt đầu (xanh → đỏ), chạm vào ô cần nhập rồi nói; bấm lần nữa để dừng';
-  }
-  voiceBtn.onclick = async () => {
-    if (!window.voiceBridge) return;
-    const wasOn = voiceRecording;
-    setVoiceUi(!wasOn); // doi mau ngay cho nhay
-    try {
-      const r = await window.voiceBridge.toggle();
-      if (!r || !r.ok) {
-        setVoiceUi(wasOn);
-        alert(r && r.unsupported
-          ? 'Nhập bằng giọng nói hiện chỉ hỗ trợ trên Windows.'
-          : 'Không bật được nhập giọng nói' + (r && r.error ? ': ' + r.error : '.'));
-      }
-    } catch (e) {
-      setVoiceUi(wasOn);
-    }
-  };
-
   const screenshotBtnEl = document.getElementById('screenshotBtn');
   let shotClickTimer = null;
 
