@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('tabBridge', {
   onContextMenuAction: (callback) => {
     ipcRenderer.on('context-menu:action', (event, action) => callback(action));
   },
-  detachToNewWindow: (url) => ipcRenderer.send('tab:detach', url)
+  detachToNewWindow: (url, state) => ipcRenderer.send('tab:detach', url, state)
 });
 
 // Cau noi cho tinh nang Tai xuong (main.js theo doi session tai file va bao

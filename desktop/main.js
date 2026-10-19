@@ -549,7 +549,7 @@ function attachWindowControlsIpcOnce() {
   });
 }
 
-function createWindow(initialUrl) {
+function createWindow(initialUrl, initialState) {
   const win = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -570,6 +570,8 @@ function createWindow(initialUrl) {
   });
 
   const query = initialUrl ? { initialUrl } : undefined;
+  // Trạng thái trang lúc tách tab (vị trí cuộn, thời điểm video/nhạc) - JSON qua query.
+  if (query && initialState) query.initialState = JSON.stringify(initialState);
   win.loadFile('index.html', query ? { query } : undefined);
 
   attachDownloadListenerOnce();
@@ -623,9 +625,9 @@ function createWindow(initialUrl) {
 
 // ====== Tach 1 tab thanh cua so rieng (keo tab ra khoi thanh tab / keo qua
 // cua so khac ma khong co cua so nao nhan -> mo cua so moi voi URL do) ======
-ipcMain.on('tab:detach', (e, url) => {
+ipcMain.on('tab:detach', (e, url, state) => {
   if (!url) return;
-  createWindow(url);
+  createWindow(url, state && typeof state === 'object' ? state : undefined);
 });
 
 // ====== Tai xuong: mo thu muc chua file / mo file / huy tai / xoa muc da xong ======

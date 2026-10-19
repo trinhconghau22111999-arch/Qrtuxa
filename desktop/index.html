@@ -978,7 +978,7 @@
     return null;
   }
 
-  function createWebviewElement(url) {
+  function createWebviewElement(url, restoreState) {
     const el = document.createElement('webview');
     el.setAttribute('src', url);
     el.setAttribute('partition', 'persist:browse');
@@ -997,6 +997,32 @@
     webviewsContainer.appendChild(el);
 
     el.addEventListener('dom-ready', () => {
+      // Tab vừa được tách ra từ cửa sổ khác: trang buộc phải tải lại (Electron
+      // không cho chuyển nguyên webview sang cửa sổ khác) nên khôi phục lại vị
+      // trí cuộn + thời điểm video/nhạc đang phát. Thử vài lần vì trang có thể
+      // còn đang dựng nội dung.
+      if (restoreState) {
+        const st = restoreState; restoreState = null;
+        const fn = function (st) {
+          try { window.scrollTo(st.x || 0, st.y || 0); } catch (e) {}
+          if (st.media) {
+            const m = document.querySelector('video, audio');
+            if (m && !m.__qrRestored) {
+              const apply = function () {
+                if (m.__qrRestored) return;
+                m.__qrRestored = true;
+                try { m.currentTime = st.media.t; } catch (e) {}
+                if (!st.media.paused) { try { m.play().catch(function(){}); } catch (e) {} }
+              };
+              if (m.readyState >= 1) apply(); else m.addEventListener('loadedmetadata', apply, { once: true });
+            }
+          }
+        };
+        const script = `(${fn.toString()})(${JSON.stringify(st)});`;
+        [300, 1200, 3000].forEach(ms => setTimeout(() => {
+          try { el.executeJavaScript(script).catch(() => {}); } catch (e) {}
+        }, ms));
+      }
       // Ap dung dung muc phong to da luu (theo tung origin) cho trang VUA tai
       // xong - xem zoomStore + webview-preload.js. Mac dinh 1 (100%) neu chua
       // tung chinh o trang nay bao gio.
@@ -1104,10 +1130,10 @@
     updateLastHistoryTitle(tab.url, title);
   }
 
-  function newTab(url) {
+  function newTab(url, restoreState) {
     url = url || 'https://www.google.com';
     const id = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-    const webview = createWebviewElement(url);
+    const webview = createWebviewElement(url, restoreState);
     tabs.set(id, {
       id, webview, url, title: 'Trang mới',
       sleeping: false, isPlayingMedia: false, lastActiveAt: Date.now()
@@ -1307,14 +1333,29 @@
         renderTabs();
       });
 
-      item.addEventListener('dragend', (e) => {
+      item.addEventListener('dragend', async (e) => {
         item.classList.remove('dragging');
         const effect = e.dataTransfer.dropEffect;
         if (effect === 'none') {
           // Khong noi nao nhan cu tha nay -> nguoi dung keo tab ra ngoai =>
           // tach thanh 1 cua so trinh duyet rieng, giong Chrome.
           const t = tabs.get(tab.id);
-          if (t && window.tabBridge) window.tabBridge.detachToNewWindow(t.url);
+          // Lấy trạng thái trang (cuộn, video/nhạc) trước khi đóng để cửa sổ mới khôi phục.
+          let state = null;
+          if (t && t.webview && !t.sleeping) {
+            const grab = function () {
+              const m = document.querySelector('video, audio');
+              return { x: window.scrollX, y: window.scrollY,
+                media: (m && m.currentTime > 0) ? { t: m.currentTime, paused: m.paused } : null };
+            };
+            try {
+              state = await Promise.race([
+                t.webview.executeJavaScript(`(${grab.toString()})();`),
+                new Promise(r => setTimeout(() => r(null), 800))
+              ]);
+            } catch (err) { state = null; }
+          }
+          if (t && window.tabBridge) window.tabBridge.detachToNewWindow(t.url, state);
           closeTab(tab.id);
         } else if (effect === 'move' && !internalReorderHandled) {
           // Da duoc 1 noi khac (thanh tab cua 1 cua so app khac) nhan -> dong tab o day.
@@ -2664,7 +2705,9 @@
     // Neu tab nay duoc tach ra tu 1 tab khac (keo tab ra ngoai), main.js se
     // truyen URL ban dau qua query string cua chinh trang index.html.
     const initialUrlFromQuery = new URLSearchParams(location.search).get('initialUrl');
-    newTab(initialUrlFromQuery || 'https://www.google.com'); // mo san 1 tab dau tien khi khoi dong app
+    let initialState = null;
+    try { initialState = JSON.parse(new URLSearchParams(location.search).get('initialState') || 'null'); } catch (e) {}
+    newTab(initialUrlFromQuery || 'https://www.google.com', initialState); // mo san 1 tab dau tien khi khoi dong app
   });
   </script>
 </body>
