@@ -1603,8 +1603,10 @@
   }
   async function stopVoice(msg) {
     if (!voiceRecording) return;
+    const mode = voiceMode;
     setVoiceUi(false);
-    try { await window.voiceBridge.toggle(); } catch (e) {}
+    if (mode === 'web') { stopWebSpeech(); }
+    else { try { await window.voiceBridge.toggle(); } catch (e) {} }
     if (msg) showQuickToast(msg, 3500);
   }
   function onVoiceInputFocus(isField) {
@@ -1615,6 +1617,40 @@
     } else if (voiceHadField) {
       stopVoice('Đã rời khỏi ô nhập — tự tắt nhập giọng nói.');
     }
+  }
+  // ---- Mic Google (Web Speech API cua Chromium) - uu tien dung; loi thi quay lai Windows + H ----
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let voiceMode = 'win';      // 'web' (Google) | 'win' (Windows + H)
+  let recog = null;
+  function stopWebSpeech() {
+    const r = recog; recog = null;
+    if (r) { try { r.onend = null; r.onerror = null; r.onresult = null; r.stop(); } catch (e) {} }
+  }
+  function startWebSpeech(onFail) {
+    const r = new SpeechRec();
+    recog = r;
+    r.lang = 'vi-VN';
+    r.continuous = true;
+    r.interimResults = false;
+    r.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        if (!ev.results[i].isFinal) continue;
+        const text = ev.results[i][0].transcript.trim();
+        const wv = getActiveWebview();
+        if (text && wv) { try { wv.insertText(text + ' '); } catch (e) {} }
+      }
+    };
+    r.onerror = (ev) => {
+      if (recog !== r) return;
+      if (ev.error === 'no-speech' || ev.error === 'aborted') return; // tu bat lai o onend
+      recog = null;
+      try { r.onend = null; r.stop(); } catch (e) {}
+      onFail(ev.error || 'unknown');
+    };
+    r.onend = () => { // Chromium tu ngat sau 1 luc im lang -> bat lai neu van dang thu am
+      if (recog === r && voiceRecording) { try { r.start(); } catch (e) {} }
+    };
+    r.start();
   }
   function onVoiceInputHover(inside) {
     if (!voiceRecording) return;
@@ -1632,6 +1668,21 @@
     voiceHadField = false;
     clearTimeout(voiceTimer);
     voiceTimer = setTimeout(() => stopVoice('Quá 10 giây chưa chọn ô nhập — tự tắt nhập giọng nói.'), VOICE_IDLE_LIMIT_MS);
+    if (SpeechRec && !sessionStorage.getItem('voiceWebFailed')) {
+      voiceMode = 'web';
+      try {
+        startWebSpeech(async (err) => {
+          // Google mic loi (thuong 'network' vi Electron khong co khoa Google) -> dung Windows + H
+          sessionStorage.setItem('voiceWebFailed', '1');
+          if (!voiceRecording) return;
+          voiceMode = 'win';
+          showQuickToast('Mic Google không dùng được trong app (' + err + ') — chuyển sang giọng nói Windows.', 5000);
+          try { await window.voiceBridge.toggle(true); } catch (e) { setVoiceUi(false); }
+        });
+        return;
+      } catch (e) { stopWebSpeech(); }
+    }
+    voiceMode = 'win';
     try {
       const r = await window.voiceBridge.toggle(true);
       if (!r || !r.ok) {
