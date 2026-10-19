@@ -123,21 +123,31 @@ ipcMain.on('localstore:set', (e, { key, value }) => {
 // xuat ra file Excel (.xlsx) - 1 cot doc, moi dong 1 gia tri - va mo luon.
 // Tu viet bo ghi xlsx toi thieu (zip + XML) bang zlib co san, khong can them thu vien. ======
 const SCAN_HISTORY_KEY = 'scan-history';
-const SCAN_HISTORY_MAX = 5000;
+const SCAN_HISTORY_MAX = 50000;
+const SCAN_HISTORY_KEEP_MS = 60 * 24 * 3600 * 1000; // giu 60 ngay
+// Moi muc luu dang {t: thoi-diem(ms), v: noi dung}. Ban cu chi luu chuoi tran
+// (khong co gio) -> doi sang {t, v} voi t = lan ghi cuoi cua file (gan nhat co the).
+function loadScanHistory() {
+  let list = readLocalStoreValue(SCAN_HISTORY_KEY);
+  if (!Array.isArray(list)) return [];
+  let legacyT = Date.now();
+  try { legacyT = fs.statSync(localStoreFile(SCAN_HISTORY_KEY)).mtimeMs; } catch (e) {}
+  return list.map(x => (x && typeof x === 'object' && 'v' in x) ? x : { t: legacyT, v: String(x) });
+}
 ipcMain.on('scanhistory:add', (e, text) => {
   try {
-    const t = String(text == null ? '' : text).trim();
-    if (!t) return;
+    const v = String(text == null ? '' : text).trim();
+    if (!v) return;
     ensureDirSafe(APP_DATA_DIR);
-    let list = readLocalStoreValue(SCAN_HISTORY_KEY);
-    if (!Array.isArray(list)) list = [];
-    list.push(t);
+    const now = Date.now();
+    let list = loadScanHistory().filter(x => now - x.t <= SCAN_HISTORY_KEEP_MS);
+    list.push({ t: now, v });
     if (list.length > SCAN_HISTORY_MAX) list = list.slice(-SCAN_HISTORY_MAX);
     writeLocalStoreValue(SCAN_HISTORY_KEY, list);
   } catch (err) { /* ghi lich su loi thi bo qua, khong anh huong viec nhap */ }
 });
 ipcMain.handle('scanhistory:count', () => {
-  try { const l = readLocalStoreValue(SCAN_HISTORY_KEY); return Array.isArray(l) ? l.length : 0; } catch (err) { return 0; }
+  try { return loadScanHistory().length; } catch (err) { return 0; }
 });
 ipcMain.handle('scanhistory:clear', () => {
   try { ensureDirSafe(APP_DATA_DIR); writeLocalStoreValue(SCAN_HISTORY_KEY, []); return true; } catch (err) { return false; }
@@ -204,17 +214,26 @@ function buildXlsx(rows) {
 ipcMain.handle('scanhistory:export', async () => {
   try {
     ensureDirSafe(APP_DATA_DIR);
-    const list = readLocalStoreValue(SCAN_HISTORY_KEY);
-    if (!Array.isArray(list) || !list.length) return { ok: false, empty: true };
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
-    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    const dayKey = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const today = loadScanHistory().filter(x => x.t >= startOfDay).map(x => x.v);
+    if (!today.length) return { ok: false, empty: true };
     const dir = app.getPath('downloads');
     ensureDirSafe(dir);
-    const file = path.join(dir, `Lich-su-quet-${stamp}.xlsx`);
-    fs.writeFileSync(file, buildXlsx(list));
+    // Moi ngay 1 file: Lich-su-quet-YYYYMMDD.xlsx (bam lai trong ngay thi ghi de cung file).
+    // Neu file dang mo trong Excel (khong ghi de duoc) thi tao file them gio-phut-giay.
+    let file = path.join(dir, `Lich-su-quet-${dayKey}.xlsx`);
+    const data = buildXlsx(today);
+    try {
+      fs.writeFileSync(file, data);
+    } catch (err) {
+      file = path.join(dir, `Lich-su-quet-${dayKey}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.xlsx`);
+      fs.writeFileSync(file, data);
+    }
     const err = await shell.openPath(file);
-    return { ok: !err, filePath: file, count: list.length, error: err || undefined };
+    return { ok: !err, filePath: file, count: today.length, error: err || undefined };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
@@ -399,12 +418,14 @@ function attachRequestFilterOnce() {
   // onCompleted, ma kich hoat 'onErrorOccurred' rieng. Day thuong moi la
   // nguyen nhan that su cua loi "jwplayer Authentication failed" (request
   // xin khoa video bi chan hoan toan, khong he co status code tra ve).
+  const AD_LIKE_URL_RE = /doubleclick|pagead|\/ptracking|api\/stats\/ads|googleadservices|googlesyndication|\/get_midroll|\/api\/stats\/qoe/i;
   ses.webRequest.onErrorOccurred((details) => {
-    if (!AUTH_LIKE_URL_RE.test(details.url) && details.resourceType !== 'xhr'
+    const adLike = AD_LIKE_URL_RE.test(details.url);
+    if (!adLike && !AUTH_LIKE_URL_RE.test(details.url) && details.resourceType !== 'xhr'
       && details.resourceType !== 'fetch' && details.resourceType !== 'media') return;
     const time = new Date().toLocaleTimeString('vi-VN', { hour12: false });
     appendConsoleLog(
-      `[${time}] [NETWORK-ERROR] ${details.method} ${details.error} ${details.url}`
+      `[${time}] [${adLike ? 'AD-REQUEST-ERROR' : 'NETWORK-ERROR'}] ${details.method} ${details.error} ${details.url}`
     );
   });
 }
@@ -712,7 +733,27 @@ ipcMain.on('downloads:clear-finished', () => {
   broadcastDownloads();
 });
 
-app.whenReady().then(() => {
+// Mot lan duy nhat: xoa du lieu luu cua trang YouTube (localStorage, IndexedDB,
+// service worker, cache) trong phien duyet. Cac ban truoc tung chan quang cao
+// theo mang nen YouTube co the da ghi nho \"trinh duyet nay chan quang cao\" trong
+// cac kho nay, khien canh bao van hien du khong con chan nua. KHONG xoa cookie
+// nen khong bi dang xuat tai khoan.
+async function resetYoutubeSiteDataOnce() {
+  const FLAG = 'yt-reset-v1';
+  try {
+    ensureDirSafe(APP_DATA_DIR);
+    if (readLocalStoreValue(FLAG)) return;
+    const ses = session.fromPartition(DOWNLOAD_PARTITION);
+    for (const origin of ['https://www.youtube.com', 'https://m.youtube.com', 'https://music.youtube.com', 'https://youtube.com']) {
+      await ses.clearStorageData({ origin, storages: ['localstorage', 'indexdb', 'serviceworkers', 'cachestorage'] });
+    }
+    await ses.clearCache();
+    writeLocalStoreValue(FLAG, true);
+  } catch (err) { /* loi thi bo qua, lan mo sau se thu lai */ }
+}
+
+app.whenReady().then(async () => {
+  await resetYoutubeSiteDataOnce();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

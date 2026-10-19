@@ -792,7 +792,7 @@
       <div id="qrActions">
         <button id="refreshQr" title="Tạo mã QR mới (mã cũ sẽ ngừng hoạt động)">Phiên mới</button>
         <button id="copyLinkBtn" class="secondary" title="Sao chép đường dẫn">Sao chép link</button>
-        <button id="scanHistoryBtn" class="secondary" title="Tải về file Excel các dữ liệu đã quét và nhập">Lịch sử quét</button>
+        <button id="scanHistoryBtn" class="secondary" title="Tải về file Excel dữ liệu đã quét và nhập trong hôm nay (mỗi ngày 1 file)">Lịch sử quét</button>
       </div>
       <div id="qrHint">
         Dùng một điện thoại khác quét mã QR này, rồi ngắm camera vào mã QR/mã vạch cần nhập.<br>
@@ -1713,8 +1713,8 @@
     scanHistoryBtn.textContent = 'Đang tạo file...';
     try {
       const r = await window.scanHistoryBridge.exportXlsx();
-      if (r && r.empty) qrStatus.textContent = 'Chưa có dữ liệu quét nào trong lịch sử.';
-      else if (r && r.ok) qrStatus.textContent = 'Đã tải file Excel (' + r.count + ' dòng) vào thư mục Tải xuống.';
+      if (r && r.empty) qrStatus.textContent = 'Hôm nay chưa có dữ liệu quét nào.';
+      else if (r && r.ok) qrStatus.textContent = 'Đã tải file Excel hôm nay (' + r.count + ' dòng) vào thư mục Tải xuống.';
       else qrStatus.textContent = 'Không tạo/mở được file Excel' + (r && r.error ? ': ' + r.error : '.');
     } catch (e) {
       qrStatus.textContent = 'Lỗi xuất Excel: ' + e.message;
