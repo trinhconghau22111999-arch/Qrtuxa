@@ -101,6 +101,18 @@ ipcMain.handle('localstore:get-all', (e, keys) => {
   }
   return result;
 });
+// Preload của trang khách hỏi ĐỒNG BỘ mức zoom đã lưu cho origin của nó ngay lúc
+// trang bắt đầu dựng (trước cả khi vẽ khung hình đầu), để trang hiện đúng cỡ
+// luôn thay vì hiện 100% rồi mới giật sang cỡ đã lưu.
+ipcMain.on('zoom:get-sync', (e, origin) => {
+  let z = 1;
+  try {
+    const map = readLocalStoreValue('zoom-by-origin');
+    const v = map && origin ? Number(map[origin]) : 1;
+    if (v && isFinite(v)) z = Math.min(3, Math.max(0.5, v));
+  } catch (err) {}
+  e.returnValue = z;
+});
 ipcMain.on('localstore:set', (e, { key, value }) => {
   try {
     ensureDirSafe(APP_DATA_DIR);

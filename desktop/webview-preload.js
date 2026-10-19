@@ -207,3 +207,24 @@ window.addEventListener('dragend', () => {
 window.addEventListener('drop', () => {
   try { ipcRenderer.sendToHost('qr-browser:drag-state', false); } catch (e) {}
 }, true);
+
+// ====== Giữ cỡ trang CỐ ĐỊNH, không giật ======
+// Trước đây mức zoom đã lưu chỉ được host áp dụng SAU khi trang đã tải xong
+// (dom-ready) nên mỗi lần mở lại/chuyển trang, trang hiện 100% rồi "giật" sang
+// cỡ đã lưu, có trang còn bị đặt lại về 100% rồi giật lần nữa. Giờ:
+//  1. Hỏi main.js mức đã lưu cho origin này và áp dụng NGAY khi preload chạy
+//     (trước khi trang vẽ gì), nên trang hiện đúng cỡ từ khung hình đầu tiên.
+//  2. Chỉ áp lại khi cỡ thực tế bị lệch so với mức đã chốt (DOMContentLoaded,
+//     load, pageshow) - không đặt lại vô ích để tránh nháy.
+//  3. Khóa zoom bằng cử chỉ chụm 2 ngón (visual zoom) để trang không tự co giãn.
+try {
+  const savedZoom = ipcRenderer.sendSync('zoom:get-sync', location.origin);
+  if (savedZoom && isFinite(savedZoom)) applyZoom(savedZoom);
+} catch (err) { /* không lấy được thì giữ 100% */ }
+try { webFrame.setVisualZoomLevelLimits(1, 1); } catch (err) {}
+function reassertZoom() {
+  try {
+    if (Math.abs(webFrame.getZoomFactor() - currentZoom) > 0.001) webFrame.setZoomFactor(currentZoom);
+  } catch (err) {}
+}
+['DOMContentLoaded', 'load', 'pageshow'].forEach(ev => window.addEventListener(ev, reassertZoom));
