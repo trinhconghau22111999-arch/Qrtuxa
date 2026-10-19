@@ -117,11 +117,6 @@ ipcMain.on('localstore:set', (e, { key, value }) => {
   try {
     ensureDirSafe(APP_DATA_DIR);
     writeLocalStoreValue(key, value);
-    // Cap nhat ngay cache trong bo nho ma webRequest dung (xem
-    // adBlockEnabledCache) - khong doi lan sau moi doc lai tu file.
-    if (key === 'adblock-enabled' && value && typeof value.enabled === 'boolean') {
-      adBlockEnabledCache = value.enabled;
-    }
   } catch (err) { /* 1 lan ghi loi khong lam sap app, bo qua */ }
 });
 function ensureDirSafe(dir) {
@@ -254,44 +249,10 @@ ipcMain.on('phishing:allow-once', (e, host) => {
   if (host) phishingAllowlistOnce.add(String(host).toLowerCase());
 });
 
-// ====== Chan quang cao YouTube: THEM lop chan theo domain o tang mang
-// (tham khao cach lam cua repo Y-utubecuatoi - app YouTube rieng cung cua
-// chu du an nay), KET HOP voi co che JS co san (tu dong bam "Bo qua quang
-// cao" + an banner - xem YOUTUBE_AD_SKIP_JS trong desktop/index.html).
-// Chan o tang mang giup chan tan goc (ke ca quang cao dang overlay/iframe
-// khac domain ma JS trong trang khong voi toi de tu bam duoc), con lop JS
-// van giu de xu ly phan quang cao lot qua (khong phai domain nao trong
-// danh sach nay cung chan het duoc moi loai quang cao). Danh sach domain
-// LAY TU blocklist.txt cua Y-utubecuatoi.
-//
-// LUU Y VE "imasdk.googleapis.com": day la chinh SDK quang cao (IMA SDK)
-// ma trinh phat YouTube dung de HOI truoc "video nay co quang cao khong"
-// TRUOC KHI quyet dinh phat noi dung chinh. Ban Android tham khao co ghi
-// chu ro: chan domain nay ma tra ve "200 OK nhung rong" (thay vi 1 loi that
-// su) se khien code cho phan hoi IMA SDK hieu nham la "dang tai" va TREO VO
-// THOI HAN (video bam vao khong phat duoc gi). O day dung callback({cancel:
-// true}) cua Electron - day la 1 loi mang THAT SU (net::ERR_BLOCKED_BY_
-// CLIENT), khac han voi kieu "200 rong" cua Android WebView, nen KHONG gap
-// lai loi treo do - code goi IMA SDK se roi dung vao nhanh xu ly loi that
-// (von da co san de xu ly khi mat mang that) thay vi cho vo ich.
-// Cache trong bo nho trang thai bat/tat "Chan quang cao" - doc tu localstore
-// luc khoi dong, cap nhat lai ngay khi renderer ghi thay doi (xem
-// ipcMain.on('localstore:set', ...) ben duoi) de webRequest o day (chay o
-// main process, khong the goi thang localStorage cua renderer) luon biet
-// dung trang thai hien tai ma khong phai doc file moi lan co request.
-let adBlockEnabledCache = true; // trung voi default { enabled: true } cua adBlockStore ben renderer
-function refreshAdBlockEnabledCache() {
-  try {
-    const v = readLocalStoreValue('adblock-enabled');
-    if (v && typeof v.enabled === 'boolean') adBlockEnabledCache = v.enabled;
-  } catch (err) { /* giu nguyen gia tri cache cu neu doc loi */ }
-}
-
 let requestFilterAttached = false;
 function attachRequestFilterOnce() {
   if (requestFilterAttached) return;
   requestFilterAttached = true;
-  refreshAdBlockEnabledCache();
   const ses = session.fromPartition(DOWNLOAD_PARTITION);
   ses.webRequest.onBeforeRequest((details, callback) => {
     let host = '';
@@ -411,6 +372,23 @@ function attachVietnameseLangHeaderOnce() {
 // dataURL), o day chi lo hien hop thoai "Luu thanh..." de nguoi dung chon
 // noi luu, roi ghi file PNG that xuong dung cho do (renderer khong co quyen
 // ghi file truc tiep vi contextIsolation dang bat).
+// Bam 2 lan nut chup anh: gui CHINH to hop phim Windows + Shift + S (cong cu cat
+// man hinh cua Windows). Dung keybd_event qua PowerShell; neu loi thi mo
+// ms-screenclip: (cung cong cu do).
+ipcMain.handle('screenshot:snip', async () => {
+  if (process.platform !== 'win32') return false;
+  const { execFile } = require('child_process');
+  const ps = "Add-Type -Namespace W -Name K -MemberDefinition '[DllImport(\"user32.dll\")] public static extern void keybd_event(byte b, byte s, int f, int e);';" +
+    "[W.K]::keybd_event(0x5B,0,0,0);[W.K]::keybd_event(0x10,0,0,0);[W.K]::keybd_event(0x53,0,0,0);" +
+    "[W.K]::keybd_event(0x53,0,2,0);[W.K]::keybd_event(0x10,0,2,0);[W.K]::keybd_event(0x5B,0,2,0);";
+  return await new Promise((resolve) => {
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true }, (err) => {
+      if (err) { try { shell.openExternal('ms-screenclip:'); } catch (e) {} resolve(false); }
+      else resolve(true);
+    });
+  });
+});
+
 ipcMain.handle('screenshot:save', async (e, dataUrl) => {
   try {
     const win = BrowserWindow.fromWebContents(e.sender);
