@@ -903,6 +903,11 @@
     const fn = function () {
       if (window.__qrAdSkipInstalled) return;
       window.__qrAdSkipInstalled = true;
+      try {
+        var st = document.createElement('style');
+        st.textContent = 'ytd-enforcement-message-view-model, tp-yt-iron-overlay-backdrop.opened { display:none !important; }';
+        (document.head || document.documentElement).appendChild(st);
+      } catch (e) {}
       // Co the bi doi lai sau boi toggle trong Cai dat (xem broadcastAdSkipEnabled).
       if (typeof window.__qrAdSkipEnabled === 'undefined') window.__qrAdSkipEnabled = true;
 
@@ -934,6 +939,20 @@
                 video.playbackRate = 16;
               }
             }
+          }
+
+          // 4. Bo bang canh bao "trinh chan quang cao" cua YouTube va cho video
+          // phat tiep: xoa hop thoai + lop phu toi, tra lai cuon trang, bam phat.
+          var enf = document.querySelector('ytd-enforcement-message-view-model');
+          if (enf) {
+            var dlg = enf.closest('tp-yt-paper-dialog') || enf.closest('ytd-popup-container') || enf;
+            dlg.remove();
+            var backs = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
+            for (var b = 0; b < backs.length; b++) backs[b].remove();
+            document.body.style.removeProperty('overflow');
+            document.documentElement.style.removeProperty('overflow');
+            var pv = document.querySelector('video');
+            if (pv && pv.paused) { try { pv.play(); } catch (e) {} }
           }
 
           // 3. An banner/overlay quang cao tren giao dien
