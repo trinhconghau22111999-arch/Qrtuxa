@@ -124,7 +124,22 @@ ipcMain.on('localstore:set', (e, { key, value }) => {
 // Tu viet bo ghi xlsx toi thieu (zip + XML) bang zlib co san, khong can them thu vien. ======
 const SCAN_HISTORY_KEY = 'scan-history';
 const SCAN_HISTORY_MAX = 50000;
-const SCAN_HISTORY_KEEP_MS = 60 * 24 * 3600 * 1000; // giu 60 ngay
+function startOfToday() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+// Chi giu du lieu CUA HOM NAY: sang ngay moi thi du lieu ngay truoc bi xoa (file Excel
+// da tai ve thu muc Tai xuong thi van con). Xoa khi: them du lieu, xuat Excel, mo app.
+function pruneScanHistoryToToday() {
+  try {
+    ensureDirSafe(APP_DATA_DIR);
+    const all = loadScanHistory();
+    const sod = startOfToday();
+    const kept = all.filter(x => x.t >= sod);
+    if (kept.length !== all.length) writeLocalStoreValue(SCAN_HISTORY_KEY, kept);
+    return kept;
+  } catch (err) { return []; }
+}
 // Moi muc luu dang {t: thoi-diem(ms), v: noi dung}. Ban cu chi luu chuoi tran
 // (khong co gio) -> doi sang {t, v} voi t = lan ghi cuoi cua file (gan nhat co the).
 function loadScanHistory() {
@@ -140,7 +155,7 @@ ipcMain.on('scanhistory:add', (e, text) => {
     if (!v) return;
     ensureDirSafe(APP_DATA_DIR);
     const now = Date.now();
-    let list = loadScanHistory().filter(x => now - x.t <= SCAN_HISTORY_KEEP_MS);
+    let list = pruneScanHistoryToToday();
     list.push({ t: now, v });
     if (list.length > SCAN_HISTORY_MAX) list = list.slice(-SCAN_HISTORY_MAX);
     writeLocalStoreValue(SCAN_HISTORY_KEY, list);
@@ -199,15 +214,22 @@ function xmlEsc(v) {
   return String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-function buildXlsx(rows) {
-  const sheetRows = rows.map((v, i) =>
-    `<row r="${i + 1}"><c r="A${i + 1}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c></row>`).join('');
+function buildXlsx(rows) { // rows: [{v, t}] -> cot A: noi dung, cot B: gio:phut:giay, cot C: ngay/thang/nam
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const cell = (ref, text) => `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(text)}</t></is></c>`;
+  const sheetRows = rows.map((x, i) => {
+    const d = new Date(x.t);
+    const time = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    const date = `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+    const r = i + 1;
+    return `<row r="${r}">${cell('A' + r, x.v)}${cell('B' + r, time)}${cell('C' + r, date)}</row>`;
+  }).join('');
   const files = [
     { name: '[Content_Types].xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>') },
     { name: '_rels/.rels', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
     { name: 'xl/workbook.xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Lich su quet" sheetId="1" r:id="rId1"/></sheets></workbook>') },
     { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>') },
-    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="32" customWidth="1"/></cols><sheetData>' + sheetRows + '</sheetData></worksheet>', 'utf8') }
+    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="32" customWidth="1"/><col min="2" max="3" width="14" customWidth="1"/></cols><sheetData>' + sheetRows + '</sheetData></worksheet>', 'utf8') }
   ];
   return zipFiles(files);
 }
@@ -217,8 +239,7 @@ ipcMain.handle('scanhistory:export', async () => {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const dayKey = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
-    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const today = loadScanHistory().filter(x => x.t >= startOfDay).map(x => x.v);
+    const today = pruneScanHistoryToToday();
     if (!today.length) return { ok: false, empty: true };
     const dir = app.getPath('downloads');
     ensureDirSafe(dir);
@@ -753,6 +774,7 @@ async function resetYoutubeSiteDataOnce() {
 }
 
 app.whenReady().then(async () => {
+  pruneScanHistoryToToday();
   await resetYoutubeSiteDataOnce();
   createWindow();
   app.on('activate', () => {
