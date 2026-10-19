@@ -339,7 +339,8 @@
   #qrBox { background:#fff; padding:10px; border-radius:12px; }
   #qrPanel canvas { display:block; width:250px; height:250px; max-width:100%; background:#fff; border-radius:0; box-shadow:none; }
   #qrLinkRow { display:block; margin-top:12px; width:100%; }
-  #qrLink { display:block; font-size:12px; color:#c9a8ff; word-break:break-all; text-align:center; text-decoration:none; }
+  /* Ẩn chữ đường link dưới mã QR (nút Sao chép link vẫn dùng được). */
+  #qrLink { display:none; font-size:12px; color:#c9a8ff; word-break:break-all; text-align:center; text-decoration:none; }
   #qrStatus { margin-top:12px; font-size:14px; color:#9ada9a; min-height:20px; text-align:center; }
   #qrActions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; justify-content:center; }
   #qrActions button {
