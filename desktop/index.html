@@ -926,15 +926,40 @@
     const fn = function () {
       if (window.__qrAdSkipInstalled) return;
       window.__qrAdSkipInstalled = true;
+      // CHI bam khi nut \"Bo qua\" THAT SU dang hien tren man hinh (co kich thuoc,
+      // khong bi display:none/visibility:hidden/opacity 0) va da hien >= 400ms.
+      // Truoc day bam ca nut con AN trong trang (YouTube dung san nut trong DOM
+      // tu dau quang cao, chi hien sau ~5 giay) -> quang cao bi bo qua truoc gio
+      // cho phep -> YouTube coi nhu trinh chan quang cao va hien canh bao.
+      var shownSince = new WeakMap();
+      function isReallyVisible(el) {
+        if (!el || !el.isConnected) return false;
+        var r = el.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8) return false;
+        var cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.1) return false;
+        for (var p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          var ps = getComputedStyle(p);
+          if (ps.display === 'none' || ps.visibility === 'hidden' || parseFloat(ps.opacity) < 0.1) return false;
+        }
+        return !el.disabled && el.getAttribute('aria-disabled') !== 'true';
+      }
       setInterval(function () {
         try {
           var skipSelectors = [
             '.ytp-ad-skip-button', '.ytp-ad-skip-button-modern',
             '.ytp-skip-ad-button', '.videoAdUiSkipButton'
           ];
+          var now = Date.now();
           for (var i = 0; i < skipSelectors.length; i++) {
-            var btn = document.querySelector(skipSelectors[i]);
-            if (btn) btn.click();
+            var btns = document.querySelectorAll(skipSelectors[i]);
+            for (var j = 0; j < btns.length; j++) {
+              var btn = btns[j];
+              if (!isReallyVisible(btn)) { shownSince.delete(btn); continue; }
+              var t0 = shownSince.get(btn);
+              if (!t0) { shownSince.set(btn, now); continue; }
+              if (now - t0 >= 400) { shownSince.delete(btn); btn.click(); }
+            }
           }
         } catch (e) {}
       }, 200);
