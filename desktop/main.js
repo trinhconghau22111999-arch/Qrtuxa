@@ -272,34 +272,6 @@ ipcMain.on('phishing:allow-once', (e, host) => {
 // CLIENT), khac han voi kieu "200 rong" cua Android WebView, nen KHONG gap
 // lai loi treo do - code goi IMA SDK se roi dung vao nhanh xu ly loi that
 // (von da co san de xu ly khi mat mang that) thay vi cho vo ich.
-const AD_BLOCK_DOMAINS = new Set([
-  // He sinh thai quang cao Google (nguon chinh cua toan bo quang cao trong
-  // YouTube, gom ca quang cao phat trong video LAN the "Duoc tai tro").
-  'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
-  'google-analytics.com', 'googletagmanager.com', 'googletagservices.com',
-  'adservice.google.com', 'imasdk.googleapis.com', 'app-measurement.com',
-  'googleoptimize.com',
-  // Mang quang cao/theo doi ben thu 3 pho bien.
-  'amazon-adsystem.com', 'adnxs.com', 'scorecardresearch.com', 'moatads.com',
-  'adsafeprotected.com', 'serving-sys.com', 'criteo.com', 'criteo.net',
-  'taboola.com', 'outbrain.com', 'media.net', 'adroll.com',
-  'rubiconproject.com', 'pubmatic.com', 'openx.net', 'casalemedia.com',
-  'indexexchange.com', 'smartadserver.com', 'adform.net', 'bidswitch.net',
-  'contextweb.com', 'yieldmo.com', 'sharethrough.com', 'teads.tv', '3lift.com',
-  'adsrvr.org', 'mathtag.com', 'demdex.net', 'everesttech.net',
-  'flashtalking.com',
-  // Mang quang cao pho bien tai Viet Nam.
-  'admicro.vn', 'adtima.vn', 'eclick.vn'
-]);
-function isAdBlockedHost(host) {
-  if (!host) return false;
-  host = host.toLowerCase();
-  for (const d of AD_BLOCK_DOMAINS) {
-    if (host === d || host.endsWith('.' + d)) return true;
-  }
-  return false;
-}
-
 // Cache trong bo nho trang thai bat/tat "Chan quang cao" - doc tu localstore
 // luc khoi dong, cap nhat lai ngay khi renderer ghi thay doi (xem
 // ipcMain.on('localstore:set', ...) ben duoi) de webRequest o day (chay o
@@ -334,16 +306,9 @@ function attachRequestFilterOnce() {
       }
     }
 
-    // Chan quang cao theo domain (xem giai thich o tren) - ap dung cho MOI
-    // <webview> dung chung partition nay, tuc la CA trang web dang duyet
-    // binh thuong LAN webview mo tu nut YouTube nho (split-view) - vi ca 2
-    // deu dung chung 1 session/partition 'persist:browse', khong can phan
-    // biet rieng theo tung tab. Khong chan mainFrame (khong ai dieu huong
-    // thang toi 1 domain quang cao ca, chi la subresource trong trang khac).
-    if (adBlockEnabledCache && details.resourceType !== 'mainFrame' && isAdBlockedHost(host)) {
-      callback({ cancel: true });
-      return;
-    }
+    // Khong con chan quang cao theo domain o tang mang: YouTube phat hien
+    // request quang cao bi chan roi hien canh bao. Gio de quang cao tai binh
+    // thuong, trang YouTube tu bam "Bo qua" / tua nhanh qua script o renderer.
 
     callback({ cancel: false });
   });
