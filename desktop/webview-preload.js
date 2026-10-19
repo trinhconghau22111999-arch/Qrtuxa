@@ -280,7 +280,7 @@ function reassertZoom() {
 })();
 
 // ====== Bao cho host biet co dang chon (focus) 1 o nhap van ban khong ======
-// Dung cho nut nhap giong noi: tu tat neu qua 1 phut chua chon o nhap, hoac sau
+// Dung cho nut nhap giong noi: tu tat neu qua 10 giay chua chon o nhap, hoac sau
 // khi chon roi lai bam ra ngoai o nhap. Chi bao khi cua so trang dang co tieu diem
 // (de cua so thanh giong noi cua Windows/bam thanh cong cu khong bi tinh nham).
 (function () {
@@ -304,5 +304,29 @@ function reassertZoom() {
     document.addEventListener('focusout', () => setTimeout(report, 30), true);
     window.addEventListener('focus', () => setTimeout(report, 30));
     document.addEventListener('mousedown', () => setTimeout(report, 60), true);
+
+    // Con tro chuot: bao khi chuot vao / roi khoi 1 o nhap (khong can bam).
+    function editableOf(el) {
+      while (el && el.nodeType === 1) {
+        if (el.tagName !== 'IFRAME' && isEditable(el)) return el;
+        el = el.parentElement;
+      }
+      return null;
+    }
+    document.addEventListener('mouseover', (e) => {
+      try { if (editableOf(e.target)) ipcRenderer.sendToHost('qr-browser:input-hover', true); } catch (err) {}
+    }, true);
+    document.addEventListener('mouseout', (e) => {
+      try {
+        const from = editableOf(e.target);
+        if (!from) return;
+        const to = editableOf(e.relatedTarget);
+        if (to === from) return; // van con trong cung 1 o nhap
+        ipcRenderer.sendToHost('qr-browser:input-hover', false);
+      } catch (err) {}
+    }, true);
+    document.documentElement.addEventListener('mouseleave', () => {
+      try { ipcRenderer.sendToHost('qr-browser:input-hover', false); } catch (err) {}
+    });
   } catch (e) {}
 })();

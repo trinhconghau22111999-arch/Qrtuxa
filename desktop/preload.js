@@ -105,5 +105,5 @@ contextBridge.exposeInMainWorld('scanHistoryBridge', {
 
 // Nhap van ban bang giong noi (Windows + H cua Windows).
 contextBridge.exposeInMainWorld('voiceBridge', {
-  toggle: () => ipcRenderer.invoke('voice:toggle')
+  toggle: (start) => ipcRenderer.invoke('voice:toggle', !!start)
 });
