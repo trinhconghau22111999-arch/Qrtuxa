@@ -48,6 +48,9 @@
     border-bottom: 1px solid var(--neon-a50);
     -webkit-app-region: drag; /* cho phep keo di chuyen cua so bang thanh nay */
   }
+  /* Đang kéo 1 liên kết từ trang: tắt vùng kéo cửa sổ để thả được vào chỗ trống
+     bên phải dấu + (mở tab mới giống Chrome/Cốc Cốc). */
+  body.link-dragging #titleBar { -webkit-app-region: no-drag; }
   #titleBar #settingsWrap {
     flex-shrink:0;
     -webkit-app-region: no-drag; /* can bam duoc nen phai tat drag o day */
@@ -978,6 +981,17 @@
     return null;
   }
 
+  // Bật/tắt chế độ "đang kéo link" (xem CSS body.link-dragging). Có chốt an toàn
+  // tự tắt sau 15s và khi thả/nhả chuột ở bất kỳ đâu trong app.
+  let linkDragTimer = null;
+  function setLinkDragging(on) {
+    document.body.classList.toggle('link-dragging', on);
+    clearTimeout(linkDragTimer);
+    if (on) linkDragTimer = setTimeout(() => document.body.classList.remove('link-dragging'), 15000);
+  }
+  ['drop', 'dragend', 'mouseup'].forEach(ev =>
+    document.addEventListener(ev, () => setLinkDragging(false), true));
+
   function createWebviewElement(url, restoreState) {
     const el = document.createElement('webview');
     el.setAttribute('src', url);
@@ -1075,6 +1089,10 @@
 
     // Nhan du lieu tu webview-preload.js khi nguoi dung submit form co mat khau.
     el.addEventListener('ipc-message', (e) => {
+      if (e.channel === 'qr-browser:drag-state') {
+        setLinkDragging(!!(e.args && e.args[0]));
+        return;
+      }
       if (e.channel === 'qr-browser:password-capture' && e.args && e.args[0]) {
         onPasswordCaptured(e.args[0]);
       }

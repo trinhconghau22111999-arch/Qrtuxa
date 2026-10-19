@@ -192,3 +192,18 @@ window.addEventListener('wheel', function (e) {
 // trang tai xong (dom-ready), voi gia tri da luu rieng cho origin nay (mac
 // dinh 1 neu chua tung chinh o trang do bao gio) - xem createWebviewElement().
 ipcRenderer.on('qr-browser:apply-zoom', (e, z) => applyZoom(z));
+
+// ====== Báo cho host biết đang kéo 1 liên kết/chữ từ trang ======
+// Vùng trống trên thanh tab là "vùng kéo cửa sổ" (-webkit-app-region:drag) nên
+// hệ điều hành nuốt luôn sự kiện thả -> kéo link thả vào bên phải dấu + không
+// mở tab mới. Host dựa vào 2 tín hiệu này để tạm tắt vùng kéo cửa sổ trong lúc
+// đang kéo (xem body.link-dragging trong index.html).
+window.addEventListener('dragstart', () => {
+  try { ipcRenderer.sendToHost('qr-browser:drag-state', true); } catch (e) {}
+}, true);
+window.addEventListener('dragend', () => {
+  try { ipcRenderer.sendToHost('qr-browser:drag-state', false); } catch (e) {}
+}, true);
+window.addEventListener('drop', () => {
+  try { ipcRenderer.sendToHost('qr-browser:drag-state', false); } catch (e) {}
+}, true);
