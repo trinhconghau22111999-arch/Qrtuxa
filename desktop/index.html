@@ -594,6 +594,10 @@
   body #addBookmarkBtn .mi { width:28px; height:28px; }
   body #addBookmarkBtn:hover { background:transparent !important; color:#7c3aed !important; }
   body #urlbarWrap #urlbar { padding-right:44px; }
+  /* Ngoi sao dau trang: quy tac "body #toolbar button { color:#fff !important }" truoc day de len mau cua sao
+     (sao trang tren nen trang nen nhin nhu mat, chi hien khi re chuot). Dung selector manh hon de sao luon VANG, re chuot moi TIM. */
+  body #toolbar #urlbarWrap #addBookmarkBtn { color:#ffc400 !important; }
+  body #toolbar #urlbarWrap #addBookmarkBtn:hover { color:#7c3aed !important; background:transparent !important; }
   body #bookmarksBar { background:#fff !important; border-bottom:1px solid #e3dcf2 !important; }
   body #bookmarksEmpty { color:var(--mo-hint) !important; }
   body .bm-item { background:var(--mo-url) !important; border:none !important; color:var(--mo-urltext) !important; box-shadow:none !important; }
