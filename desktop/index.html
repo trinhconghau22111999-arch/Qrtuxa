@@ -1962,13 +1962,25 @@
   const settingsMenu = document.getElementById('settingsMenu');
   settingsBtn.onclick = (e) => {
     e.stopPropagation();
-    settingsMenu.classList.toggle('show');
+    setSettingsMenu(!settingsMenu.classList.contains('show'));
   };
-  document.addEventListener('click', () => settingsMenu.classList.remove('show'));
+  // Lớp trong suốt phủ toàn màn hình khi menu đang mở: bấm ra ngoài (kể cả lên
+  // nội dung trang web trong <webview>, vốn không đẩy sự kiện click lên đây) là
+  // đóng menu. Thêm blur của cửa sổ phòng khi webview giành focus.
+  const settingsCatcher = document.createElement('div');
+  settingsCatcher.style.cssText = 'display:none;position:fixed;inset:0;z-index:29;background:transparent;';
+  document.body.appendChild(settingsCatcher);
+  function setSettingsMenu(show) {
+    settingsMenu.classList.toggle('show', show);
+    settingsCatcher.style.display = show ? 'block' : 'none';
+  }
+  settingsCatcher.addEventListener('mousedown', () => setSettingsMenu(false));
+  window.addEventListener('blur', () => setSettingsMenu(false));
+  document.addEventListener('click', () => setSettingsMenu(false));
   settingsMenu.querySelectorAll('.settings-item').forEach(el => {
     el.onclick = (e) => {
       e.stopPropagation();
-      settingsMenu.classList.remove('show');
+      setSettingsMenu(false);
       if (el.dataset.action === 'restoreMessengerBtns') {
         restoreHiddenMessengerBtns();
         return;
