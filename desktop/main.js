@@ -418,7 +418,7 @@ function attachRequestFilterOnce() {
   // onCompleted, ma kich hoat 'onErrorOccurred' rieng. Day thuong moi la
   // nguyen nhan that su cua loi "jwplayer Authentication failed" (request
   // xin khoa video bi chan hoan toan, khong he co status code tra ve).
-  const AD_LIKE_URL_RE = /doubleclick|pagead|\/ptracking|api\/stats\/ads|googleadservices|googlesyndication|\/get_midroll|\/api\/stats\/qoe/i;
+  const AD_LIKE_URL_RE = /doubleclick|pagead|\/ptracking|api\/stats\/ads|googleadservices|googlesyndication|\/get_midroll/i;
   ses.webRequest.onErrorOccurred((details) => {
     const adLike = AD_LIKE_URL_RE.test(details.url);
     if (!adLike && !AUTH_LIKE_URL_RE.test(details.url) && details.resourceType !== 'xhr'
@@ -735,7 +735,7 @@ ipcMain.on('downloads:clear-finished', () => {
 
 // Mot lan duy nhat: xoa du lieu luu cua trang YouTube (localStorage, IndexedDB,
 // service worker, cache) trong phien duyet. Cac ban truoc tung chan quang cao
-// theo mang nen YouTube co the da ghi nho \"trinh duyet nay chan quang cao\" trong
+// theo mang nen YouTube co the da ghi nho "trinh duyet nay chan quang cao" trong
 // cac kho nay, khien canh bao van hien du khong con chan nua. KHONG xoa cookie
 // nen khong bi dang xuat tai khoan.
 async function resetYoutubeSiteDataOnce() {
