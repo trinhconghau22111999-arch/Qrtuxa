@@ -1,6 +1,6 @@
-# Qrtuxa — trình duyệt desktop + nhập liệu từ xa bằng QR
+# Qrtuxa — trình duyệt desktop + nhập liệu từ xa bằng QR + truyền tệp với điện thoại
 
-Ứng dụng desktop (Electron, chạy trên Windows) có 2 phần:
+Ứng dụng desktop (Electron, chạy trên Windows) có 3 phần:
 
 1. Một **trình duyệt web đầy đủ tính năng** (thẻ tab, dấu trang, lịch sử, tải
    xuống, mật khẩu đã lưu, chặn quảng cáo, chặn web đen/lừa đảo, mở link 1
@@ -8,11 +8,14 @@
 2. **QR Remote Input** — tính năng gốc của app: quét mã QR/mã vạch bằng camera
    điện thoại, nội dung quét được sẽ **gõ thẳng vào vị trí con trỏ đang chọn
    trên máy tính** — như một máy quét mã vạch không dây dùng điện thoại.
+3. **Truyền tệp** — gửi/nhận tệp giữa máy tính và điện thoại (1 điện thoại, nhập
+   mã 6 số) qua WebRTC DataChannel. Không còn xem/quay video.
 
 `package.json` hiện đặt tên nội bộ là `qr-remote-input-browser` (tên gốc lúc
 mới chỉ có tính năng #2) — tên hiển thị trong cửa sổ app là **"QR Remote
 Browser"**; "Qrtuxa" là tên repo/thương hiệu dùng khi nhắc tới app này từ phía
-điện thoại.
+điện thoại (VD dòng chữ "Nhập mã này vào Truyền tệp trên máy tính (Qrtuxa)" trong
+app trên điện thoại).
 
 ## 1. Trình duyệt
 
@@ -49,23 +52,41 @@ Luồng hoạt động:
 Hữu ích khi cần nhập nhanh nội dung từ mã vạch/QR vào máy tính (VD mã sản
 phẩm, link, số serial...) mà không cần máy quét mã vạch chuyên dụng.
 
-## Ghi chú
+## 3. Truyền tệp
 
-- Tính năng **Truyền tệp** (nút kết nối bằng mã 6 số, nhận/gửi tệp, xem/sửa ảnh nhận
-  được, nhập chữ từ xa qua kết nối đó) đã được **gỡ hoàn toàn** khỏi app. Lịch sử
-  còn trong git nếu cần xem lại.
-- `docs/cam.html` là bản thiết kế **cũ, không còn được dùng** — không có chỗ nào
-  trong code hiện tại trỏ tới file này, giữ lại chỉ để tham khảo lịch sử.
+Cần app trên điện thoại hiển thị mã 6 số.
 
-## Firebase
+- Mở menu **3 chấm → "Truyền tệp"** (nằm ngay dưới QR Input) để vào trang Truyền tệp riêng, nhập mã 6 số vào ô
+  duy nhất rồi bấm Kết nối. Mã **lưu vĩnh viễn**, tự kết nối lại khi mở app, chỉ
+  mất khi bấm Ngắt hoặc nhập mã khác. Đóng trang chỉ ẩn giao diện, không ngắt kết nối.
+- **Nhận tệp** từ điện thoại: lần đầu app hỏi chọn thư mục lưu (rồi nhớ lại). Tệp
+  được **ghi thẳng xuống đĩa từng đoạn 64KB** ngay khi nhận (không gom vào RAM) nên
+  tệp rất lớn (~1GB trở lên) vẫn nhận được. Tên trùng sẽ thêm " (1)", " (2)"...
+  thay vì ghi đè. Mất kết nối giữa chừng hoặc nhận thiếu dữ liệu thì tệp dở bị xóa.
+  Nhận ảnh thì mở luôn màn hình xem/sửa ảnh (cắt, xoay, vẽ, đánh dấu).
+- **Gửi tệp** sang điện thoại: bấm "Chọn tệp gửi sang điện thoại" khi đã kết nối.
+  Tệp được đọc từng khối 1MB bằng `file.slice()` (không đọc cả tệp vào RAM), có
+  kiểm soát tốc độ gửi.
+- Thanh tiến trình hiện cho cả gửi và nhận. Mỗi lần chỉ gửi 1 tệp.
+- Điện thoại vẫn có thể **nhập chữ từ xa** vào ô đang có con trỏ trong trang web.
+
+### Ghi chú
+
+- `docs/cam.html` là bản thiết kế **cũ, không còn được dùng** (từ thời xem camera
+  qua canvas) — không có chỗ nào trong code hiện tại trỏ tới file này, giữ lại chỉ
+  để tham khảo lịch sử.
+
+## Firebase — 2 tính năng dùng 2 nhánh dữ liệu khác nhau
 
 Project mặc định hiện tại (`desktop/index.html`, `docs/index.html`): `qrremod`.
 
 | Tính năng | Nhánh dữ liệu | Ai ghi/đọc |
 |---|---|---|
 | QR Remote Input | `sessions/{id}/data` | Điện thoại ghi, máy tính đọc |
+| Truyền tệp | `rooms/{mã 6 số}` (+ `viewers/`, `offer`, `iceCandidatesHost`...) | App điện thoại ghi, máy tính đọc/ghi |
 
-**Rules cần có nhánh `sessions`** (nếu không sẽ báo lỗi quyền — permission denied):
+**Rules cần đủ CẢ HAI nhánh** — dán thiếu 1 trong 2 sẽ làm tính năng còn lại
+báo lỗi quyền (permission denied) hoặc kẹt vô hạn ở trạng thái "đang kết nối":
 
 ```json
 {
@@ -73,6 +94,12 @@ Project mặc định hiện tại (`desktop/index.html`, `docs/index.html`): `q
     "sessions": {
       ".read": true,
       ".write": true
+    },
+    "rooms": {
+      "$roomCode": {
+        ".read": true,
+        ".write": true
+      }
     }
   }
 }
@@ -89,6 +116,11 @@ npm run build      # đóng gói .exe (NSIS) bằng electron-builder
 
 ## Nguyên tắc thiết kế cần giữ nguyên khi chỉnh sửa
 
+- 2 tính năng (QR Remote Input và Truyền tệp) dùng 2 nhánh Firebase **riêng biệt**
+  (`sessions` và `rooms`) — không gộp chung hay đổi rules của nhánh này khi
+  chỉ định sửa nhánh kia.
+- Truyền tệp: tệp phải được ghi/đọc **từng đoạn**, không gom cả tệp vào RAM
+  (cả chiều nhận lẫn chiều gửi) để tệp lớn vẫn truyền được.
 - Dữ liệu trình duyệt (dấu trang/lịch sử/mật khẩu/cài đặt) lưu file thật qua
   `localStoreBridge`, không dùng `localStorage` (mất khi xoá cache trình
   duyệt vì đây là nội dung `<webview>`, không phải trang top-level).

@@ -588,6 +588,13 @@ ipcMain.handle('screenshot:save', async (e, dataUrl) => {
 // cung vao 1 bien `win` co dinh - hoat dong dung cho MOI cua so, du la cua
 // so chinh hay cua so tach tu tab.
 //
+// Riêng dữ liệu nhận tệp (activeRecordingFiles) chuyen tu bien
+// cuc bo trong tung cua so thanh 1 Map DUNG CHUNG toan app - an toan vi
+// recordingId da bao gom timestamp + so dem tang dan nen luon duy nhat, du
+// phat sinh tu cua so nao.
+const activeRecordingFiles = new Map(); // recordingId -> { fd, filePath }
+let recordingIdCounter = 0;
+
 let windowControlsIpcAttached = false;
 function attachWindowControlsIpcOnce() {
   if (windowControlsIpcAttached) return;
@@ -661,6 +668,116 @@ function attachWindowControlsIpcOnce() {
       width: Math.max(MIN_W, Math.round(bounds.width)),
       height: Math.max(MIN_H, Math.round(bounds.height))
     });
+  });
+
+  // ====== Truyền tệp: chọn thư mục lưu + ghi tệp nhận được xuống đĩa TỪNG ĐOẠN ======
+  // Renderer không có quyền dùng fs (contextIsolation đang bật) nên mọi thao tác
+  // đĩa đều đi qua đây. Tệp được mở ngay khi bắt đầu nhận (giữ 1 file descriptor),
+  // mỗi đoạn dữ liệu ghi nối tiếp vào đó ngay khi tới - RAM chỉ giữ vài đoạn nhỏ,
+  // nên tệp ~1GB trở lên vẫn nhận được. Ghi KHÔNG ĐỒNG BỘ (fs.write) để không chặn
+  // tiến trình chính của Electron trong lúc ghi.
+  ipcMain.handle('recording:choose-folder', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Chọn nơi lưu tệp nhận được',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    return result.filePaths[0];
+  });
+
+  // Nếu tên tệp đã tồn tại thì thêm " (1)", " (2)"... để KHÔNG ghi đè tệp cũ.
+  function uniqueFilePath(folder, filename) {
+    const parsed = path.parse(filename);
+    let candidate = path.join(folder, filename);
+    let n = 1;
+    while (fs.existsSync(candidate)) {
+      candidate = path.join(folder, parsed.name + ' (' + n + ')' + parsed.ext);
+      n++;
+    }
+    return candidate;
+  }
+
+  ipcMain.handle('recording:start-file', (e, { folder, filename }) => {
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
+    try {
+      if (!folder || !filename) return { ok: false, error: 'missing folder/filename' };
+      fs.mkdirSync(folder, { recursive: true });
+      const filePath = uniqueFilePath(folder, path.basename(String(filename)));
+      const fd = fs.openSync(filePath, 'wx');
+      const recordingId = 'rec_' + (++recordingIdCounter) + '_' + Date.now();
+      activeRecordingFiles.set(recordingId, { fd, filePath });
+      return { ok: true, recordingId, path: filePath };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
+  // Ghi 1 đoạn nhị phân (Uint8Array) nối tiếp vào tệp đang mở - không cần base64.
+  // Renderer xếp hàng các lần gọi nên thứ tự ghi luôn đúng.
+  ipcMain.handle('recording:append-binary', async (e, { recordingId, data }) => {
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
+    const entry = activeRecordingFiles.get(recordingId);
+    if (!entry) return { ok: false, error: 'recording not found (da finish hoac chua start)' };
+    try {
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data.buffer || data, data.byteOffset || 0, data.byteLength ?? data.length);
+      let written = 0;
+      while (written < buf.length) {
+        const { bytesWritten } = await new Promise((resolve, reject) => {
+          fs.write(entry.fd, buf, written, buf.length - written, null, (err, n) => err ? reject(err) : resolve({ bytesWritten: n }));
+        });
+        written += bytesWritten;
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
+  ipcMain.handle('recording:finish-file', (e, recordingId) => {
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
+    const entry = activeRecordingFiles.get(recordingId);
+    if (!entry) return { ok: false, error: 'recording not found' };
+    try { fs.closeSync(entry.fd); } catch (err) {}
+    activeRecordingFiles.delete(recordingId);
+    return { ok: true, path: entry.filePath };
+  });
+
+  // Hủy 1 phiên nhận tệp đang dở (điện thoại báo file-cancel, mất kết nối giữa
+  // chừng, hoặc ghi đĩa lỗi) - đóng tệp VÀ XÓA luôn phần đã nhận, không để lại
+  // tệp lỗi/thiếu trên đĩa.
+  ipcMain.handle('recording:cancel-file', (e, recordingId) => {
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
+    const entry = activeRecordingFiles.get(recordingId);
+    if (!entry) return { ok: false, error: 'recording not found' };
+    try { fs.closeSync(entry.fd); } catch (err) {}
+    activeRecordingFiles.delete(recordingId);
+    try { fs.unlinkSync(entry.filePath); } catch (err) {}
+    return { ok: true };
+  });
+
+  // ====== Sua anh nhan tu dien thoai (Giai doan 5): cat/xoay/ve/nhap lieu ======
+  // Ghi DE thang len dung file da nhan (khong hien hop thoai "Luu thanh" vi
+  // day la sua-tai-cho, khac voi tinh nang chup man hinh trang web).
+  ipcMain.handle('imageEdit:save', (e, { path: filePath, dataUrl }) => {
+    if (!BrowserWindow.fromWebContents(e.sender)) return { ok: false, error: 'invalid sender' };
+    try {
+      const base64 = String(dataUrl || '').replace(/^data:image\/\w+;base64,/, '');
+      fs.writeFileSync(filePath, Buffer.from(base64, 'base64'));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
+
+  // Phòng khi app bị tắt đột ngột trong lúc còn tệp đang ghi dở - đóng hết các
+  // file descriptor còn mở, tránh rò rỉ tài nguyên.
+  app.on('before-quit', () => {
+    for (const entry of activeRecordingFiles.values()) {
+      try { fs.closeSync(entry.fd); } catch (err) {}
+    }
+    activeRecordingFiles.clear();
   });
 }
 
